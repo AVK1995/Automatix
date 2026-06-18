@@ -13,7 +13,7 @@ export default function Home() {
           Engine v1.0 is Live
         </div>
         
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
+        <h1 className="text-5xl md:text-[4rem] md:leading-[1.1] font-bold tracking-tight mb-6 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
           The Automation Engine <br /> for Modern Teams
         </h1>
         
