@@ -4,6 +4,8 @@ import { inngest } from '@/inngest/client';
 import { SYSTEM_STATUS } from '@/constants';
 import { verifyMetaSignature, verifyCalendlySignature } from '@/lib/verifyWebhook';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request, { params }) {
   try {
     // Await params in Next.js 15+ App Router

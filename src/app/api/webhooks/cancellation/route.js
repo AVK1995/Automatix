@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { SYSTEM_STATUS } from '@/constants';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}));
