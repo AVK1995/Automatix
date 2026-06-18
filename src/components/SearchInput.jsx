@@ -12,20 +12,27 @@ export default function SearchInput({ placeholder = "Search..." }) {
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams(window.location.search);
       if (query) {
         params.set('q', query);
       } else {
         params.delete('q');
       }
       
-      startTransition(() => {
-        router.replace(`?${params.toString()}`);
-      });
+      const newUrl = `?${params.toString()}`;
+      if (window.location.search !== newUrl && newUrl !== '?') {
+        startTransition(() => {
+          router.replace(newUrl);
+        });
+      } else if (!query && window.location.search.includes('q=')) {
+        startTransition(() => {
+          router.replace(window.location.pathname);
+        });
+      }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [query, router, searchParams]);
+  }, [query, router]);
 
   return (
     <div className="relative w-full max-w-sm">

@@ -3,7 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function AdminSidebar() {
+import { signOut } from 'next-auth/react';
+import { LogOut } from 'lucide-react';
+
+export default function AdminSidebar({ isMobile, onClose }) {
   const pathname = usePathname();
 
   const navItems = [
@@ -13,25 +16,26 @@ export default function AdminSidebar() {
     { name: 'System Settings', href: '/admin/settings' },
   ];
 
-  // Helper to determine if a route is active
-  // Since '/admin' is a prefix for others, we need exact match for it, and prefix match for others.
   const isActive = (href) => {
     if (href === '/admin') return pathname === '/admin';
     return pathname.startsWith(href);
   };
 
   return (
-    <aside className="w-64 border-r border-border-subtle bg-background flex flex-col">
-      <div className="p-4 border-b border-border-subtle">
+    <aside className={`w-64 border-r border-border-subtle bg-background flex flex-col ${isMobile ? 'h-full' : 'min-h-screen sticky top-0'}`}>
+      <div className="p-4 border-b border-border-subtle flex items-center justify-between">
         <h2 className="text-foreground font-semibold">Automatix Admin</h2>
       </div>
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
             <Link
               key={item.name}
               href={item.href}
+              onClick={() => {
+                if (onClose) onClose();
+              }}
               className={`block px-3 py-2 text-sm rounded-sm transition-colors ${
                 active
                   ? 'text-foreground bg-card border border-border-subtle'
@@ -43,6 +47,17 @@ export default function AdminSidebar() {
           );
         })}
       </nav>
+      
+      {/* Logout Button */}
+      <div className="p-4 border-t border-border-subtle">
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-sm transition-colors"
+        >
+          <LogOut size={16} />
+          <span>Sign Out</span>
+        </button>
+      </div>
     </aside>
   );
 }
