@@ -34,7 +34,7 @@ export default function PricingPage() {
           </div>
           <h2 className="text-2xl font-semibold text-foreground mb-2">Professional</h2>
           <p className="text-text-secondary text-sm mb-6">For businesses automating at scale.</p>
-          <div className="text-4xl font-semibold mb-8">$49<span className="text-lg text-text-secondary font-normal">/mo</span></div>
+          <div className="text-4xl font-semibold mb-8">₹499<span className="text-lg text-text-secondary font-normal">/mo</span></div>
           
           <ul className="space-y-4 mb-8 flex-1">
             <li className="flex items-center text-sm text-foreground"><CheckIcon className="w-4 h-4 text-accent-violet mr-3" /> Unlimited Workflows</li>
@@ -48,13 +48,13 @@ export default function PricingPage() {
             <strong className="block text-foreground mb-2 text-sm">Manual Provisioning Only</strong>
             We are currently in private beta. To purchase this plan:
             <ol className="list-decimal ml-5 mt-3 space-y-2 text-text-secondary">
-              <li>Send <strong className="text-foreground">$49</strong> via Bank Transfer/PayPal to <strong className="text-foreground">billing@automatix.local</strong></li>
-              <li>Email a screenshot of the receipt to the same address.</li>
+              <li>Send <strong className="text-foreground">₹499</strong> via UPI to <strong className="text-foreground">{process.env.PAYMENT_UPI_ID || 'your-upi@bank'}</strong> or via Bank Transfer to <strong className="text-foreground">{process.env.PAYMENT_BANK_DETAILS || 'Acc: 123456789, IFSC: XXXX00000'}</strong></li>
+              <li>Email a screenshot of the receipt to <strong className="text-foreground">{process.env.PAYMENT_EMAIL || 'billing@automatix.local'}</strong>.</li>
               <li>We will provision your isolated tenant account and email you a secure setup link within 12 hours.</li>
             </ol>
           </div>
 
-          <a href="mailto:billing@automatix.local" className="block text-center w-full py-3 rounded-sm bg-accent-violet text-white text-sm font-medium hover:opacity-90 transition-opacity">
+          <a href={`mailto:${process.env.PAYMENT_EMAIL || 'billing@automatix.local'}`} className="block text-center w-full py-3 rounded-sm bg-accent-violet text-white text-sm font-medium hover:opacity-90 transition-opacity">
             Email Receipt
           </a>
         </div>

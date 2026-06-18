@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function Home() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-background text-foreground p-8">
@@ -8,12 +10,16 @@ export default function Home() {
         </p>
         
         <div className="flex gap-4">
-          <button className="bg-accent-violet hover:opacity-90 text-white px-4 py-2 rounded-sm font-medium transition-opacity">
-            Open Dashboard
-          </button>
-          <button className="bg-accent-blue hover:opacity-90 text-white px-4 py-2 rounded-sm font-medium transition-opacity">
-            Configure Webhooks
-          </button>
+          <Link href="/admin">
+            <button className="bg-accent-violet hover:opacity-90 text-white px-4 py-2 rounded-sm font-medium transition-opacity cursor-pointer">
+              Open Admin Dashboard
+            </button>
+          </Link>
+          <Link href="/pricing">
+            <button className="bg-accent-blue hover:opacity-90 text-white px-4 py-2 rounded-sm font-medium transition-opacity cursor-pointer">
+              View Pricing & Plans
+            </button>
+          </Link>
         </div>
       </div>
     </div>
