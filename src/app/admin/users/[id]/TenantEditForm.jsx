@@ -10,7 +10,8 @@ export default function TenantEditForm({ tenant }) {
   const [error, setError] = useState('');
 
   const [resetLoading, setResetLoading] = useState(false);
-  const [resetLink, setResetLink] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
   const [resetError, setResetError] = useState('');
 
   const handleUpdate = async (e) => {
@@ -39,22 +40,26 @@ export default function TenantEditForm({ tenant }) {
     }
   };
 
-  const handleGenerateReset = async () => {
-    if (!confirm('Are you sure? This will immediately revoke their current password access until they use the new link.')) return;
+  const handleDirectPasswordReset = async (e) => {
+    e.preventDefault();
+    if (!confirm('Are you sure you want to forcibly change this user\'s password?')) return;
     
     setResetLoading(true);
     setResetError('');
-    setResetLink('');
+    setResetSuccess('');
 
     try {
-      const res = await fetch(`/api/admin/users/${tenant.id}/reset`, {
-        method: 'POST',
+      const res = await fetch(`/api/admin/users/${tenant.id}/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to generate reset link');
+      if (!res.ok) throw new Error(data.error || 'Failed to update password');
       
-      setResetLink(data.setupLink);
+      setResetSuccess('Password forcibly updated. The user can now log in with this new password.');
+      setNewPassword('');
     } catch (err) {
       setResetError(err.message);
     } finally {
@@ -125,38 +130,38 @@ export default function TenantEditForm({ tenant }) {
       {/* Password Management */}
       <section className="bg-card border border-border-subtle p-6 rounded-sm">
         <div className="mb-4">
-          <h3 className="text-base font-medium text-foreground">Password & Access Management</h3>
+          <h3 className="text-base font-medium text-foreground">Direct Password Reset</h3>
           <p className="text-xs text-text-secondary mt-1">
-            Generating a new setup link will instantly revoke their current password access. You must email them the new link to restore access.
+            Force a new password for this tenant. This will immediately revoke their current access.
           </p>
         </div>
 
-        <button 
-          onClick={handleGenerateReset}
-          disabled={resetLoading}
-          className="bg-background border border-border-subtle hover:bg-border-subtle text-foreground px-4 py-2 rounded-sm text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
-        >
-          {resetLoading ? 'Generating...' : 'Generate New Reset Link'}
-        </button>
-
-        {resetError && <p className="text-red-400 text-xs mt-3">{resetError}</p>}
-
-        {resetLink && (
-          <div className="mt-4 bg-accent-blue/5 border border-accent-blue/30 p-4 rounded-sm">
-            <h4 className="text-xs font-medium text-accent-blue mb-2">New Link Generated</h4>
-            <div className="flex items-center justify-between gap-4">
-              <code className="text-xs text-foreground bg-background px-2 py-1.5 rounded-sm border border-border-subtle truncate flex-1 block">
-                {resetLink}
-              </code>
-              <button 
-                onClick={() => navigator.clipboard.writeText(resetLink)}
-                className="text-xs font-medium text-accent-blue hover:opacity-80 shrink-0 border border-accent-blue/30 px-3 py-1.5 rounded-sm"
-              >
-                Copy
-              </button>
-            </div>
+        <form onSubmit={handleDirectPasswordReset} className="space-y-4 max-w-sm">
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">New Password</label>
+            <input 
+              type="password" 
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
+              placeholder="Enter new password"
+              required
+              minLength={6}
+            />
           </div>
-        )}
+
+          <div className="flex items-center gap-4">
+            <button 
+              type="submit"
+              disabled={resetLoading || !newPassword}
+              className="bg-background border border-border-subtle hover:bg-border-subtle text-foreground px-4 py-2 rounded-sm text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {resetLoading ? 'Updating...' : 'Set New Password'}
+            </button>
+            {resetSuccess && <span className="text-xs text-green-400 font-medium">{resetSuccess}</span>}
+            {resetError && <span className="text-xs text-red-400 font-medium">{resetError}</span>}
+          </div>
+        </form>
       </section>
     </div>
   );
