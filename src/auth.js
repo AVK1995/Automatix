@@ -20,18 +20,27 @@ export const {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        console.log("=== AUTH ATTEMPT ===");
+        console.log("Credentials received:", { email: credentials?.email, password: credentials?.password ? '***' : 'missing' });
+        
         if (!credentials?.email || !credentials?.password) return null;
 
         let user = await prisma.user.findUnique({
           where: { email: credentials.email },
         });
+        
+        console.log("User found in DB:", !!user, "Has password:", !!user?.password);
 
         const adminEmail = process.env.ADMIN_EMAIL || 'admin@automatix.local';
         const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+        
+        console.log("Expected Admin:", { email: adminEmail, password: adminPassword ? '***' : 'missing' });
 
         // Developer Fallback: Always allow Master Admin and auto-provision it if missing or corrupted
         if (credentials.email === adminEmail && credentials.password === adminPassword) {
+          console.log("Matched Developer Fallback logic!");
           if (!user || !user.password) {
+            console.log("Auto-provisioning missing/corrupted admin...");
             const hashedPassword = await bcrypt.hash(credentials.password, 10);
             user = await prisma.user.upsert({
               where: { email: credentials.email },
@@ -43,16 +52,22 @@ export const {
                 role: 'ADMIN',
               }
             });
+            console.log("Provisioned admin successfully!");
           }
           return { id: user.id, email: user.email, name: user.name, role: user.role };
         }
 
-        if (!user || !user.password) return null;
+        if (!user || !user.password) {
+          console.log("Failed: No user or no password hash in DB");
+          return null;
+        }
 
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
+        
+        console.log("Password valid check:", isPasswordValid);
 
         if (!isPasswordValid) return null;
 

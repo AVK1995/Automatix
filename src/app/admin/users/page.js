@@ -58,7 +58,7 @@ export default function TenantProvisioningPage() {
             onChange={(e) => setTier(e.target.value)}
             className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
           >
-            <option value="Professional">Professional ($49/mo)</option>
+            <option value="Professional">Professional (₹499/mo)</option>
             <option value="Enterprise">Enterprise (Custom)</option>
             <option value="Starter">Starter (Free)</option>
           </select>
