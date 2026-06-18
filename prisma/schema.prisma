@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum Status {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id               String          @id @default(uuid())
+  name             String?
+  email            String          @unique
+  emailVerified    DateTime?
+  password         String?
+  image            String?
+  role             Role            @default(CLIENT)
+  subscriptionTier String          @default("free")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  integrations     Integration[]
+  workflows        Workflow[]
+}
+
+model Integration {
+  id           String   @id @default(uuid())
+  clientId     String
+  client       User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  providerName String   
+  apiKey       String   // Note: Must be encrypted in application layer
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([clientId, providerName])
+}
+
+model Workflow {
+  id             String           @id @default(uuid())
+  clientId       String
+  client         User             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name           String
+  nodesJson      Json             
+  isActive       Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  executionLogs  ExecutionLog[]
+}
+
+model ExecutionLog {
+  id                  String             @id @default(uuid())
+  workflowId          String
+  workflow            Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  externalReferenceId String?            
+  status              Status             @default(ACTIVE)
+  currentNodeState    Json?              
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  analyticsEvents     AnalyticsEvent[]
+}
+
+model AnalyticsEvent {
+  id              String        @id @default(uuid())
+  executionLogId  String
+  executionLog    ExecutionLog  @relation(fields: [executionLogId], references: [id], onDelete: Cascade)
+  eventType       String        
+  timestamp       DateTime      @default(now())
+  metadata        Json?         
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
