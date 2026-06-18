@@ -17,11 +17,37 @@ export default async function AdminWorkflowsPage() {
   });
 
   const tableColumns = [
-    { header: 'Workflow ID', accessor: (row) => row.id.substring(0, 8) + '...' },
-    { header: 'Workflow Name', accessor: (row) => row.name },
-    { header: 'Tenant', accessor: (row) => row.client?.name || row.client?.email },
-    { header: 'Active Status', accessor: (row) => row.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true },
-    { header: 'Created At', accessor: (row) => new Date(row.createdAt).toLocaleDateString() },
+    { 
+      header: 'Workflow', 
+      accessor: (row) => (
+        <div>
+          <div className="font-semibold text-foreground">{row.name}</div>
+          <div className="text-xs text-text-secondary mt-0.5 font-mono">ID: {row.id.substring(0, 8)}...</div>
+        </div>
+      )
+    },
+    { 
+      header: 'Owner', 
+      accessor: (row) => (
+        <div>
+          <div className="text-sm text-foreground">{row.client?.name || 'Unknown'}</div>
+          <div className="text-xs text-text-secondary">{row.client?.email || 'N/A'}</div>
+        </div>
+      )
+    },
+    { header: 'Status', accessor: (row) => row.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true },
+    { header: 'Created', accessor: (row) => <span className="text-text-secondary">{new Date(row.createdAt).toLocaleDateString()}</span> },
+    { 
+      header: 'Actions', 
+      accessor: (row) => (
+        <a 
+          href={`/admin/workflows/${row.id}`} 
+          className="text-xs font-medium text-accent-blue hover:text-accent-blue/80 underline underline-offset-2"
+        >
+          View Logs &rarr;
+        </a>
+      ) 
+    },
   ];
 
   return (

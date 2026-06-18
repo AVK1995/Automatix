@@ -16,11 +16,25 @@ export default async function TenantProvisioningPage() {
   });
 
   const tableColumns = [
-    { header: 'Tenant Name', accessor: (row) => row.name || 'Pending Setup' },
-    { header: 'Email Address', accessor: (row) => row.email },
-    { header: 'Subscription', accessor: (row) => row.subscriptionTier },
-    { header: 'Workflows', accessor: (row) => `${row._count.workflows} Built` },
-    { header: 'Joined At', accessor: (row) => new Date(row.createdAt).toLocaleDateString() },
+    { 
+      header: 'Tenant / Email', 
+      accessor: (row) => (
+        <div>
+          <div className="font-semibold text-foreground">{row.name || 'Pending Setup'}</div>
+          <div className="text-xs text-text-secondary mt-0.5">{row.email}</div>
+        </div>
+      )
+    },
+    { 
+      header: 'Subscription', 
+      accessor: (row) => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-accent-violet/10 text-accent-violet border border-accent-violet/20">
+          {row.subscriptionTier}
+        </span>
+      )
+    },
+    { header: 'Workflows', accessor: (row) => <span className="text-foreground">{row._count.workflows} Built</span> },
+    { header: 'Joined At', accessor: (row) => <span className="text-text-secondary">{new Date(row.createdAt).toLocaleDateString()}</span> },
   ];
 
   return (
