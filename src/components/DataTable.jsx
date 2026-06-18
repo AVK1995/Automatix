@@ -15,7 +15,7 @@ export default function DataTable({ data, columns }) {
         <thead className="bg-background border-b border-border-subtle text-text-secondary">
           <tr>
             {columns.map((col, i) => (
-              <th key={i} className="px-4 py-3 font-medium tracking-wide">
+              <th key={i} className={`px-4 py-3 font-medium tracking-wide ${col.className || ''}`}>
                 {col.header}
               </th>
             ))}
@@ -43,7 +43,7 @@ export default function DataTable({ data, columns }) {
                 }
 
                 return (
-                  <td key={j} className="px-4 py-3">
+                  <td key={j} className={`px-4 py-3 ${col.className || ''}`}>
                     {displayValue}
                   </td>
                 );

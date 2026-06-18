@@ -44,6 +44,7 @@ export default async function AdminWorkflowsPage({ searchParams }) {
   const tableColumns = [
     { 
       header: 'Workflow', 
+      className: 'w-[45%]',
       accessor: (row) => (
         <div>
           <div className="font-semibold text-foreground">{row.name}</div>
@@ -51,20 +52,23 @@ export default async function AdminWorkflowsPage({ searchParams }) {
         </div>
       )
     },
-    { header: 'Status', accessor: (row) => row.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true },
-    { header: 'Created', accessor: (row) => <span className="text-sm text-text-secondary">{new Date(row.createdAt).toLocaleDateString()}</span> },
+    { header: 'Status', className: 'w-[15%]', accessor: (row) => row.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true },
+    { header: 'Created', className: 'w-[20%]', accessor: (row) => <span className="text-sm text-text-secondary">{new Date(row.createdAt).toLocaleDateString()}</span> },
     { 
       header: 'Actions', 
+      className: 'w-[20%] text-right',
       accessor: (row) => (
-        <a 
-          href={`/admin/workflows/${row.id}`} 
-          className="group inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-background border border-border-subtle hover:bg-border-subtle hover:text-foreground text-text-secondary transition-colors"
-        >
-          View Logs
-          <svg className="ml-1.5 w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </a>
+        <div className="flex justify-start">
+          <a 
+            href={`/admin/workflows/${row.id}`} 
+            className="group inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-background border border-border-subtle hover:bg-border-subtle hover:text-foreground text-text-secondary transition-colors"
+          >
+            View Logs
+            <svg className="ml-1.5 w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        </div>
       ) 
     },
   ];
