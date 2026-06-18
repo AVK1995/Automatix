@@ -5,6 +5,7 @@ import { useState } from 'react';
 export default function ProvisionForm() {
   const [email, setEmail] = useState('');
   const [tier, setTier] = useState('Professional');
+  const [cycle, setCycle] = useState('monthly');
   const [setupLink, setSetupLink] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +20,7 @@ export default function ProvisionForm() {
       const res = await fetch('/api/admin/provision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, tier })
+        body: JSON.stringify({ email, tier, cycle })
       });
 
       const data = await res.json();
@@ -51,17 +52,31 @@ export default function ProvisionForm() {
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-text-secondary mb-1">Subscription Tier</label>
-          <select 
-            value={tier}
-            onChange={(e) => setTier(e.target.value)}
-            className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-          >
-            <option value="Professional">Professional (₹499/mo)</option>
-            <option value="Enterprise">Enterprise (Custom)</option>
-            <option value="Starter">Starter (Free)</option>
-          </select>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">Subscription Tier</label>
+            <select 
+              value={tier}
+              onChange={(e) => setTier(e.target.value)}
+              className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
+            >
+              <option value="Professional">Professional (₹499)</option>
+              <option value="Enterprise">Enterprise (Custom)</option>
+              <option value="Starter">Starter (Free)</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">Billing Cycle</label>
+            <select 
+              value={cycle}
+              onChange={(e) => setCycle(e.target.value)}
+              className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
+            >
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
         </div>
 
         {error && <p className="text-red-400 text-xs">{error}</p>}

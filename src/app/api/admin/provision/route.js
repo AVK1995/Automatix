@@ -12,7 +12,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { email, tier } = await request.json();
+    const { email, tier, cycle } = await request.json();
 
     if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 });
 
@@ -22,12 +22,18 @@ export async function POST(request) {
       return NextResponse.json({ error: 'User already exists with this email' }, { status: 400 });
     }
 
+    const subscriptionCycle = cycle || 'monthly';
+    const daysToAdd = subscriptionCycle === 'yearly' ? 365 : 30;
+    const subscriptionExpiresAt = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000);
+
     // Create the User (no password yet)
     const newUser = await prisma.user.create({
       data: {
         email,
         role: 'CLIENT',
-        subscriptionTier: tier,
+        subscriptionTier: tier || 'Professional',
+        subscriptionCycle,
+        subscriptionExpiresAt,
       }
     });
 

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import DataTable from '@/components/DataTable';
 import ProvisionForm from './ProvisionForm';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,12 +29,29 @@ export default async function TenantProvisioningPage() {
     { 
       header: 'Subscription', 
       accessor: (row) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-accent-violet/10 text-accent-violet border border-accent-violet/20">
-          {row.subscriptionTier}
-        </span>
+        <div>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-accent-violet/10 text-accent-violet border border-accent-violet/20">
+            {row.subscriptionTier} [{row.subscriptionCycle}]
+          </span>
+          {row.subscriptionExpiresAt && (
+            <div className="text-[10px] text-text-secondary mt-1">
+              Expires: {new Date(row.subscriptionExpiresAt).toLocaleDateString()}
+            </div>
+          )}
+        </div>
       )
     },
-    { header: 'Workflows', accessor: (row) => <span className="text-foreground">{row._count.workflows} Built</span> },
+    { 
+      header: 'Workflows', 
+      accessor: (row) => (
+        <Link 
+          href={`/admin/workflows?tenantId=${row.id}`} 
+          className="text-accent-blue hover:text-accent-blue/80 underline underline-offset-2 font-medium"
+        >
+          {row._count.workflows} Built &rarr;
+        </Link>
+      ) 
+    },
     { header: 'Joined At', accessor: (row) => <span className="text-text-secondary">{new Date(row.createdAt).toLocaleDateString()}</span> },
   ];
 

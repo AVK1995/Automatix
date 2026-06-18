@@ -27,6 +27,8 @@ model User {
   image            String?
   role             Role            @default(CLIENT)
   subscriptionTier String          @default("free")
+  subscriptionCycle String         @default("monthly")
+  subscriptionExpiresAt DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
