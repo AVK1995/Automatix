@@ -22,22 +22,29 @@ export const {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
+        let user = await prisma.user.findUnique({
           where: { email: credentials.email },
         });
 
-        // For local development testing: Auto-create the admin user if it doesn't exist
-        if (!user && credentials.email === 'admin@automatix.local' && credentials.password === 'admin') {
-          const hashedPassword = await bcrypt.hash(credentials.password, 10);
-          const newUser = await prisma.user.create({
-            data: {
-              email: credentials.email,
-              password: hashedPassword,
-              name: 'Automatix Admin',
-              role: 'ADMIN',
-            }
-          });
-          return { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role };
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@automatix.local';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+
+        // Developer Fallback: Always allow Master Admin and auto-provision it if missing or corrupted
+        if (credentials.email === adminEmail && credentials.password === adminPassword) {
+          if (!user || !user.password) {
+            const hashedPassword = await bcrypt.hash(credentials.password, 10);
+            user = await prisma.user.upsert({
+              where: { email: credentials.email },
+              update: { password: hashedPassword, role: 'ADMIN' },
+              create: {
+                email: credentials.email,
+                password: hashedPassword,
+                name: 'Automatix Admin',
+                role: 'ADMIN',
+              }
+            });
+          }
+          return { id: user.id, email: user.email, name: user.name, role: user.role };
         }
 
         if (!user || !user.password) return null;

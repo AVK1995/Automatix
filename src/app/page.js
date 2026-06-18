@@ -2,22 +2,34 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background text-foreground p-8">
-      <div className="w-full max-w-2xl bg-card border border-border-subtle rounded-sm p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold mb-2">Automatix Engine</h1>
-        <p className="text-text-secondary mb-6">
-          Webhook, Marketing, and Chat Automation system initialized.
+    <div className="relative min-h-screen bg-[#0a0a0a] text-white overflow-hidden flex flex-col items-center justify-center p-8">
+      {/* Background Glow Effects */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent-violet/20 rounded-full blur-[120px] mix-blend-screen pointer-events-none"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent-blue/20 rounded-full blur-[120px] mix-blend-screen pointer-events-none"></div>
+
+      <div className="relative z-10 w-full max-w-3xl text-center flex flex-col items-center">
+        <div className="inline-flex items-center px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-xs font-medium text-text-secondary mb-8">
+          <span className="w-2 h-2 rounded-full bg-accent-violet mr-2 animate-pulse"></span>
+          Engine v1.0 is Live
+        </div>
+        
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
+          The Automation Engine <br /> for Modern Teams
+        </h1>
+        
+        <p className="text-lg md:text-xl text-text-secondary max-w-2xl mb-12 leading-relaxed">
+          Unify your webhooks, marketing sequences, and chat bots into a single, high-performance visual canvas. Build faster, scale infinitely.
         </p>
         
-        <div className="flex gap-4">
-          <Link href="/admin">
-            <button className="bg-accent-violet hover:opacity-90 text-white px-4 py-2 rounded-sm font-medium transition-opacity cursor-pointer">
-              Open Admin Dashboard
+        <div className="flex flex-col sm:flex-row gap-6 w-full justify-center">
+          <Link href="/pricing" className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto px-8 py-4 rounded-full bg-white text-black font-semibold hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-300 cursor-pointer">
+              View Pricing & Plans
             </button>
           </Link>
-          <Link href="/pricing">
-            <button className="bg-accent-blue hover:opacity-90 text-white px-4 py-2 rounded-sm font-medium transition-opacity cursor-pointer">
-              View Pricing & Plans
+          <Link href="/login" className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-white font-semibold hover:bg-white/10 hover:border-white/20 hover:scale-105 transition-all duration-300 cursor-pointer">
+              Login to Workspace
             </button>
           </Link>
         </div>
