@@ -14,6 +14,10 @@ export default function TenantEditForm({ tenant }) {
   const [resetSuccess, setResetSuccess] = useState('');
   const [resetError, setResetError] = useState('');
 
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [resetLink, setResetLink] = useState('');
+  const [linkError, setLinkError] = useState('');
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -64,6 +68,29 @@ export default function TenantEditForm({ tenant }) {
       setResetError(err.message);
     } finally {
       setResetLoading(false);
+    }
+  };
+
+  const handleGenerateReset = async () => {
+    if (!confirm('Are you sure? This will immediately revoke their current password access until they use the new link.')) return;
+    
+    setLinkLoading(true);
+    setLinkError('');
+    setResetLink('');
+
+    try {
+      const res = await fetch(`/api/admin/users/${tenant.id}/reset`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to generate reset link');
+      
+      setResetLink(data.setupLink);
+    } catch (err) {
+      setLinkError(err.message);
+    } finally {
+      setLinkLoading(false);
     }
   };
 
@@ -127,7 +154,7 @@ export default function TenantEditForm({ tenant }) {
         </form>
       </section>
 
-      {/* Password Management */}
+      {/* Direct Password Reset */}
       <section className="bg-card border border-border-subtle p-6 rounded-sm">
         <div className="mb-4">
           <h3 className="text-base font-medium text-foreground">Direct Password Reset</h3>
@@ -162,6 +189,43 @@ export default function TenantEditForm({ tenant }) {
             {resetError && <span className="text-xs text-red-400 font-medium">{resetError}</span>}
           </div>
         </form>
+      </section>
+
+      {/* Generate Reset Link */}
+      <section className="bg-card border border-border-subtle p-6 rounded-sm">
+        <div className="mb-4">
+          <h3 className="text-base font-medium text-foreground">Generate Reset Link</h3>
+          <p className="text-xs text-text-secondary mt-1">
+            Generating a new setup link will instantly revoke their current password access. You must email them the new link to restore access.
+          </p>
+        </div>
+
+        <button 
+          onClick={handleGenerateReset}
+          disabled={linkLoading}
+          className="bg-background border border-border-subtle hover:bg-border-subtle text-foreground px-4 py-2 rounded-sm text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+        >
+          {linkLoading ? 'Generating...' : 'Generate New Reset Link'}
+        </button>
+
+        {linkError && <p className="text-red-400 text-xs mt-3">{linkError}</p>}
+
+        {resetLink && (
+          <div className="mt-4 bg-accent-blue/5 border border-accent-blue/30 p-4 rounded-sm">
+            <h4 className="text-xs font-medium text-accent-blue mb-2">New Link Generated</h4>
+            <div className="flex items-center justify-between gap-4">
+              <code className="text-xs text-foreground bg-background px-2 py-1.5 rounded-sm border border-border-subtle truncate flex-1 block">
+                {resetLink}
+              </code>
+              <button 
+                onClick={() => navigator.clipboard.writeText(resetLink)}
+                className="text-xs font-medium text-accent-blue hover:opacity-80 shrink-0 border border-accent-blue/30 px-3 py-1.5 rounded-sm"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

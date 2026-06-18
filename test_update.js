@@ -1,5 +1,11 @@
+require('dotenv').config();
+const { Pool } = require('pg');
+const { PrismaPg } = require('@prisma/adapter-pg');
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   try {
@@ -17,7 +23,7 @@ async function main() {
     });
     console.log("Success:", updated);
   } catch (err) {
-    console.error("Error:", err);
+    console.error("Error updating:", err);
   } finally {
     await prisma.$disconnect();
   }
