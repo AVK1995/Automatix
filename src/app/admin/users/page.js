@@ -7,6 +7,11 @@ export const dynamic = 'force-dynamic';
 export default async function TenantProvisioningPage() {
   const users = await prisma.user.findMany({
     where: { role: 'CLIENT' },
+    include: {
+      _count: {
+        select: { workflows: true }
+      }
+    },
     orderBy: { createdAt: 'desc' }
   });
 
@@ -14,6 +19,7 @@ export default async function TenantProvisioningPage() {
     { header: 'Tenant Name', accessor: (row) => row.name || 'Pending Setup' },
     { header: 'Email Address', accessor: (row) => row.email },
     { header: 'Subscription', accessor: (row) => row.subscriptionTier },
+    { header: 'Workflows', accessor: (row) => `${row._count.workflows} Built` },
     { header: 'Joined At', accessor: (row) => new Date(row.createdAt).toLocaleDateString() },
   ];
 
