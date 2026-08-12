@@ -47,7 +47,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       });
 
       // Auto-generate webhook token if missing
-      if (['webhook', 'sheets_trigger'].includes(selectedNode.integration?.id) && !selectedNode.config?.webhookToken) {
+      if (['webhook', 'sheets_trigger', 'instagram'].includes(selectedNode.integration?.id) && !selectedNode.config?.webhookToken) {
         onUpdateNode(selectedNode.id, {
           ...selectedNode,
           config: {
@@ -1278,6 +1278,29 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                 <HelpCircle className="w-3 h-3" /> Need help? View setup guide
               </button>
             </div>
+            
+            {id === 'instagram' && (
+              <div className="bg-black/20 p-4 rounded-md border border-white/5 space-y-4 mb-4">
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">Webhook URL</label>
+                  <div className="flex items-center mt-1">
+                    <input 
+                      readOnly 
+                      value={config.webhookToken ? `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}` : 'Generating link...'} 
+                      className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" 
+                    />
+                    <button 
+                      disabled={!config.webhookToken}
+                      onClick={() => handleCopy(`${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}`)} 
+                      className="bg-white/10 hover:bg-white/20 px-3 py-2 disabled:opacity-50 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center"
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-text-tertiary mt-2">Paste this URL in your Meta App Webhook settings.</p>
+                </div>
+              </div>
+            )}
             {id === 'instagram_action' ? (
               <>
                 <div>
