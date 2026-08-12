@@ -6,7 +6,9 @@ import { saveConnection } from '@/actions/connections';
 import { Loader2, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function OAuthAuthorizePage() {
+import { Suspense } from 'react';
+
+function OAuthContent() {
   const searchParams = useSearchParams();
   const provider = searchParams.get('provider') || 'Unknown';
   
@@ -186,5 +188,13 @@ export default function OAuthAuthorizePage() {
         </p>
       </motion.div>
     </div>
+  );
+}
+
+export default function OAuthAuthorizePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex flex-col items-center justify-center p-4"><Loader2 className="w-8 h-8 text-accent-blue animate-spin" /></div>}>
+      <OAuthContent />
+    </Suspense>
   );
 }
