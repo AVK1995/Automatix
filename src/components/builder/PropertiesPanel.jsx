@@ -47,12 +47,12 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       });
 
       // Auto-generate webhook token if missing
-      if (['webhook', 'sheets_trigger', 'instagram'].includes(selectedNode.integration?.id) && !selectedNode.config?.webhookToken) {
+      if (['webhook', 'sheets_trigger', 'instagram'].includes(selectedNode?.integration?.id) && !selectedNode?.config?.webhookToken) {
         onUpdateNode(selectedNode.id, {
           ...selectedNode,
           config: {
             ...selectedNode.config,
-            webhookToken: crypto.randomUUID()
+            webhookToken: crypto.randomUUID ? crypto.randomUUID() : 'gen-' + Date.now() + Math.random().toString(36).substring(2)
           }
         });
       }
@@ -1415,7 +1415,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   <Toggle 
                     label="Listening Mode (Catching for the first time)"
                     checked={isPublished ? true : (config.isListening || false)}
-                    disabled={isPublished}
+                    disabled={isPublished || !config.webhookToken}
                     onChange={(checked) => handleChange('isListening', checked)}
                     description={isPublished ? "Listening mode is permanently active while workflow is published." : "Keep the trigger in listening mode to easily test and catch incoming DMs."}
                   />
