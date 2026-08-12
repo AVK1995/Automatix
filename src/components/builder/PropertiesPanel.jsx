@@ -46,8 +46,9 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         config: JSON.parse(JSON.stringify(selectedNode.config || {}))
       });
 
+      const isWebhookTrigger = ['webhook', 'sheets_trigger'].includes(selectedNode?.integration?.id) || selectedNode?.type === 'trigger_instagram';
       // Auto-generate webhook token if missing
-      if (['webhook', 'sheets_trigger', 'instagram'].includes(selectedNode?.integration?.id) && !selectedNode?.config?.webhookToken) {
+      if (isWebhookTrigger && !selectedNode?.config?.webhookToken) {
         onUpdateNode(selectedNode.id, {
           ...selectedNode,
           config: {
