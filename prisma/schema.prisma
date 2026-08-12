@@ -6,100 +6,94 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Role {
-  ADMIN
-  CLIENT
-}
-
-enum Status {
-  ACTIVE
-  CANCELLED
-  COMPLETED
-  FAILED
-}
-
 model User {
-  id               String          @id @default(uuid())
-  name             String?
-  email            String          @unique
-  emailVerified    DateTime?
-  password         String?
-  image            String?
-  role             Role            @default(CLIENT)
-  subscriptionTier String          @default("free")
-  subscriptionCycle String         @default("monthly")
+  id                    String              @id @default(uuid())
+  email                 String              @unique
+  role                  Role                @default(CLIENT)
+  subscriptionTier      String              @default("free")
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  emailVerified         DateTime?
+  image                 String?
+  name                  String?
+  password              String?
+  subscriptionCycle     String              @default("monthly")
   subscriptionExpiresAt DateTime?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-
-  accounts         Account[]
-  sessions         Session[]
-  integrations     Integration[]
-  workflows        Workflow[]
+  address               String?
+  phone                 String?
+  quotaTier             String              @default("free")
+  accounts              Account[]
+  automatixCalendars    AutomatixCalendar[]
+  integrations          Integration[]
+  Notification          Notification[]
+  sessions              Session[]
+  workflows             Workflow[]
 }
 
 model Integration {
-  id           String   @id @default(uuid())
-  clientId     String
-  client       User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  providerName String   
-  apiKey       String   // Note: Must be encrypted in application layer
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String            @id @default(uuid())
+  clientId        String
+  providerName    String
+  apiKey          String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  name            String            @default("My Connection")
+  accountEmail    String            @default("unknown@example.com")
+  clientEmail     String?
+  privateKey      String?
+  ConnectionUsage ConnectionUsage[]
+  client          User              @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  @@unique([clientId, providerName])
+  @@unique([clientId, providerName, accountEmail])
 }
 
 model Workflow {
-  id             String           @id @default(uuid())
-  clientId       String
-  client         User             @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  name           String
-  nodesJson      Json             
-  isActive       Boolean          @default(false)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-
-  executionLogs  ExecutionLog[]
+  id            String         @id @default(uuid())
+  clientId      String
+  name          String
+  nodesJson     Json
+  isActive      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  executionLogs ExecutionLog[]
+  client        User           @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 model ExecutionLog {
-  id                  String             @id @default(uuid())
+  id                  String           @id @default(uuid())
   workflowId          String
-  workflow            Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  externalReferenceId String?            
-  status              Status             @default(ACTIVE)
-  currentNodeState    Json?              
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-
+  externalReferenceId String?
+  status              Status           @default(ACTIVE)
+  currentNodeState    Json?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
   analyticsEvents     AnalyticsEvent[]
+  workflow            Workflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 }
 
 model AnalyticsEvent {
-  id              String        @id @default(uuid())
-  executionLogId  String
-  executionLog    ExecutionLog  @relation(fields: [executionLogId], references: [id], onDelete: Cascade)
-  eventType       String        
-  timestamp       DateTime      @default(now())
-  metadata        Json?         
+  id             String       @id @default(uuid())
+  executionLogId String
+  eventType      String
+  timestamp      DateTime     @default(now())
+  metadata       Json?
+  executionLog   ExecutionLog @relation(fields: [executionLogId], references: [id], onDelete: Cascade)
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -118,4 +112,94 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model AutomatixCalendar {
+  id           String   @id @default(uuid())
+  clientId     String
+  name         String
+  internalName String?
+  description  String?
+  platform     String   @default("gmeet")
+  redirectUrl  String?
+  themeColor   String   @default("#3B82F6")
+  buttonStyle  String   @default("rounded")
+  questions    Json
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  logoUrl      String?
+  timezone     String?  @default("UTC")
+  meetUrl      String?
+  sendDefaultEmail Boolean @default(true)
+  duration     Int      @default(30)
+  bufferBefore Int      @default(0)
+  bufferAfter  Int      @default(0)
+  futureLimit  Int      @default(30)
+  dateRangeType    String   @default("days_in_future")
+  futureLimitType  String   @default("calendar_days")
+  dateRangeStart   DateTime?
+  dateRangeEnd     DateTime?
+  noticePeriod     Int      @default(0)
+  noticePeriodUnit String   @default("hours")
+  slotIncrement    Int      @default(30)
+  maxBookingsPerDay Int?
+  availability Json?
+  client       User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  bookings     AutomatixBooking[]
+}
+
+model AutomatixBooking {
+  id          String   @id @default(uuid())
+  calendarId  String
+  name        String
+  email       String
+  startTime   DateTime
+  endTime     DateTime
+  timezone    String
+  answers     Json?
+  status      String   @default("CONFIRMED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  calendar    AutomatixCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+}
+
+model ConnectionUsage {
+  id            String      @id
+  integrationId String
+  date          DateTime    @db.Date
+  requestCount  Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime
+  Integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, date])
+}
+
+model Notification {
+  id        String   @id
+  userId    String
+  type      String
+  message   String
+  metadata  Json?
+  status    String   @default("UNREAD")
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum Status {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+  FAILED
+  PARTIALLY_FAILED
+  WAITING
 }

@@ -3,15 +3,28 @@ import { prisma } from '@/lib/prisma';
 import { inngest } from '@/inngest/client';
 import { SYSTEM_STATUS } from '@/constants';
 import { verifyMetaSignature, verifyCalendlySignature } from '@/lib/verifyWebhook';
+import { checkKeywordMatch } from '@/lib/keywordUtils';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request, { params }) {
+async function handleRequest(request, { params }, method) {
   try {
-    // Await params in Next.js 15+ App Router
     const { workflowId } = await params;
+    const url = new URL(request.url);
+    const token = url.searchParams.get('token');
+
+    if (!token) {
+      return NextResponse.json({ error: 'Missing webhook token' }, { status: 401 });
+    }
+    let rawBody = '';
+    if (method !== 'GET') {
+      try {
+        rawBody = await request.text();
+      } catch (e) {
+        console.warn('Could not read request body', e);
+      }
+    }
     
-    const rawBody = await request.text();
     const headers = Object.fromEntries(request.headers);
 
     // Signature Verification
@@ -25,11 +38,22 @@ export async function POST(request, { params }) {
       }
     }
 
-    let body;
-    try {
-      body = JSON.parse(rawBody);
-    } catch (e) {
-      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+    let body = {};
+    if (method !== 'GET') {
+      try {
+        body = rawBody ? JSON.parse(rawBody) : {};
+      } catch (e) {
+        return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+      }
+    } else {
+      // For GET requests, use searchParams as the payload
+      body = Object.fromEntries(url.searchParams.entries());
+      
+      // Meta Webhook Verification Handshake
+      if (body['hub.mode'] === 'subscribe' && body['hub.challenge']) {
+        // We will verify the token later in the logic.
+        // For now, if this is a subscribe request, we MUST return the raw challenge.
+      }
     }
     
     // Extract an external reference ID if one exists (e.g., from Calendly or Meta)
@@ -37,17 +61,122 @@ export async function POST(request, { params }) {
     const externalReferenceId = body.external_reference_id || body.invitee_uuid || null;
 
     // 1. Verify Workflow Exists and is Active
-    const workflow = await prisma.workflow.findUnique({
-      where: { id: workflowId },
-      select: { id: true, isActive: true }
-    });
+    let workflow;
+    try {
+      workflow = await prisma.workflow.findUnique({
+        where: { id: workflowId },
+        select: { id: true, isActive: true, nodesJson: true }
+      });
+    } catch (e) {
+      // Catch invalid UUID errors or other Prisma errors
+      console.warn('Prisma findUnique error:', e.message);
+    }
 
     if (!workflow) {
       return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
     }
 
-    if (!workflow.isActive) {
-      return NextResponse.json({ error: 'Workflow is currently inactive' }, { status: 400 });
+    let nodes = [];
+    if (typeof workflow.nodesJson === 'string') {
+      try {
+        const parsed = JSON.parse(workflow.nodesJson);
+        if (Array.isArray(parsed)) nodes = parsed;
+      } catch(e) {}
+    } else if (Array.isArray(workflow.nodesJson)) {
+      nodes = workflow.nodesJson;
+    }
+
+    const webhookNode = nodes.find(n => n.integration?.id === 'webhook' || (n.type === 'TRIGGER' && n.config?.webhookToken));
+    
+    if (!webhookNode || webhookNode.config?.webhookToken !== token) {
+      return NextResponse.json({ error: 'Invalid webhook token' }, { status: 401 });
+    }
+
+    const triggerEvent = webhookNode.config?.triggerEvent || 'POST';
+    if (webhookNode.integration?.id === 'webhook' && triggerEvent !== 'ALL' && triggerEvent !== method) {
+      return NextResponse.json({ error: `Method ${method} not allowed for this webhook` }, { status: 405 });
+    }
+
+    const isListening = webhookNode.config?.isListening === true;
+
+    if (!workflow.isActive && !isListening) {
+      return NextResponse.json({ error: 'Workflow is currently inactive and not listening' }, { status: 400 });
+    }
+
+    // Handle Meta's GET verification handshake now that we've validated the token
+    if (method === 'GET' && body['hub.mode'] === 'subscribe' && body['hub.challenge']) {
+      return new NextResponse(body['hub.challenge'], { status: 200, headers: { 'Content-Type': 'text/plain' } });
+    }
+
+    // Keyword Trigger Condition Evaluation (for Instagram) & Resumption Logic
+    if (webhookNode.integration?.id === 'instagram') {
+      let senderId = null;
+      let messageText = '';
+      
+      if (body?.entry?.[0]?.messaging?.[0]) {
+        const messaging = body.entry[0].messaging[0];
+        senderId = messaging.sender?.id;
+        messageText = messaging.message?.text || '';
+      }
+
+      // 1. Check if this user has an active workflow WAITING for a reply
+      if (senderId) {
+        const waitingLogs = await prisma.executionLog.findMany({
+          where: { workflowId: workflow.id, status: 'WAITING' },
+          orderBy: { updatedAt: 'desc' }
+        });
+        
+        const waitingLog = waitingLogs.find(log => {
+          const payload = log.currentNodeState?.payload;
+          return payload?.entry?.[0]?.messaging?.[0]?.sender?.id === senderId;
+        });
+
+        if (waitingLog) {
+          const delayNodeId = waitingLog.currentNodeState?.nodeId;
+          if (delayNodeId) {
+            const delayNode = nodes.find(n => n.id === delayNodeId);
+            if (delayNode?.parentId) {
+              const parentNode = nodes.find(n => n.id === delayNode.parentId);
+              const parentIntegrationId = parentNode?.integration?.id || parentNode?.integrationId;
+              
+              if (parentIntegrationId === 'instagram' || parentIntegrationId === 'instagram_action') {
+                const msgType = parentNode.config?.messageType;
+                if (msgType === 'quiz' || msgType === 'quick_replies') {
+                  const optionsStr = parentNode.config?.options || '';
+                  const validOptions = optionsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                  
+                  if (validOptions.length > 0 && !validOptions.includes(messageText.trim().toLowerCase())) {
+                    return NextResponse.json({ success: true, ignored: true, message: 'Message did not match expected quiz options' }, { status: 200 });
+                  }
+                }
+              }
+            }
+          }
+
+          // This is a reply to an actively waiting workflow! Resume it.
+          await inngest.send({
+            name: `workflow.resume.${delayNodeId || 'unknown'}`,
+            data: {
+              executionLogId: waitingLog.id,
+              payload: body
+            }
+          });
+          return NextResponse.json({ success: true, executionLogId: waitingLog.id, message: 'Resumed waiting workflow' }, { status: 200 });
+        }
+      }
+      
+      // 2. If not waiting, evaluate Trigger Condition
+      const condition = webhookNode.config?.condition;
+      const keywordConfig = webhookNode.config?.keyword || '';
+      const caseSensitive = webhookNode.config?.caseSensitive === true;
+      
+      if (condition && condition !== 'any') {
+        const isMatch = checkKeywordMatch(messageText, keywordConfig, condition, caseSensitive);
+        if (!isMatch) {
+          // Condition not met. Ignore this webhook.
+          return NextResponse.json({ success: true, ignored: true, message: 'Message did not match trigger keyword condition' }, { status: 200 });
+        }
+      }
     }
 
     // 2. Initialize Execution Log (Start of Run)
@@ -76,6 +205,14 @@ export async function POST(request, { params }) {
 
   } catch (error) {
     console.error('Incoming Webhook Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
   }
+}
+
+export async function GET(request, context) {
+  return handleRequest(request, context, 'GET');
+}
+
+export async function POST(request, context) {
+  return handleRequest(request, context, 'POST');
 }

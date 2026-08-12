@@ -1,0 +1,141 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { signOut } from 'next-auth/react';
+import { LogOut, LayoutDashboard, Workflow, Network, Settings, Server, ExternalLink, XCircle, CalendarDays } from 'lucide-react';
+import { startInngestDevServer, stopInngestDevServer, checkInngestStatus } from '@/actions/dev';
+import Logo from '@/components/Logo';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+
+export default function ClientSidebar({ isMobile, onClose }) {
+  const pathname = usePathname();
+  const [inngestRunning, setInngestRunning] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      const check = async () => {
+        const status = await checkInngestStatus();
+        setInngestRunning(status);
+      };
+      check();
+      const interval = setInterval(check, 15000);
+      return () => clearInterval(interval);
+    }
+  }, []);
+
+  const navItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
+    { name: 'Workflows', href: '/dashboard/workflows', icon: <Workflow size={16} /> },
+    { name: 'Calendars', href: '/dashboard/calendars', icon: <CalendarDays size={16} /> },
+    { name: 'Connections', href: '/dashboard/connections', icon: <Network size={16} /> },
+    { name: 'Settings', href: '/dashboard/settings', icon: <Settings size={16} /> },
+  ];
+
+  const isActive = (href) => {
+    if (href === '/dashboard') return pathname === '/dashboard';
+    return pathname.startsWith(href);
+  };
+
+  return (
+    <aside className={`w-64 border-r border-border-subtle bg-background flex flex-col ${isMobile ? 'h-full' : 'min-h-screen sticky top-0'}`}>
+      <div className="p-4 flex items-center justify-center">
+        <Logo size={24} />
+      </div>
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        {navItems.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              onClick={() => {
+                if (onClose) onClose();
+              }}
+              className={`flex items-center gap-3 px-3 py-2 text-sm rounded-sm transition-colors ${
+                active
+                  ? 'text-foreground bg-card border border-border-subtle'
+                  : 'text-text-secondary hover:text-foreground hover:bg-card border border-transparent'
+              }`}
+            >
+              <span className={active ? 'text-accent-blue' : 'text-text-secondary'}>
+                {item.icon}
+              </span>
+              <span>{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      
+      {/* Inngest Dev Mode Button */}
+      {process.env.NODE_ENV !== 'production' && (
+        <div className="p-4 border-t border-border-subtle space-y-2" suppressHydrationWarning>
+          <button
+            suppressHydrationWarning
+            onClick={async () => {
+              if (inngestRunning) {
+                setIsConfirmOpen(true);
+              } else {
+                try {
+                  await startInngestDevServer();
+                  setInngestRunning(true);
+                } catch (e) {}
+                window.open('http://127.0.0.1:8288', '_blank');
+              }
+            }}
+            className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-sm transition-colors border ${
+              inngestRunning 
+                ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20' 
+                : 'bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 border-accent-blue/20'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {inngestRunning ? <XCircle size={14} /> : <Server size={14} />}
+              <span>{inngestRunning ? 'Stop Inngest Server' : 'Run Inngest Dev'}</span>
+            </div>
+            {!inngestRunning && <ExternalLink size={12} className="opacity-70" />}
+          </button>
+          
+          {inngestRunning && (
+            <button
+              onClick={() => window.open('http://127.0.0.1:8288', '_blank')}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-sm transition-colors border bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 border-accent-blue/20"
+            >
+              <div className="flex items-center gap-2">
+                <ExternalLink size={14} />
+                <span>Open Inngest UI</span>
+              </div>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Logout Button */}
+      <div className="p-4 border-t border-border-subtle">
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-sm transition-colors"
+        >
+          <LogOut size={16} />
+          <span>Sign Out</span>
+        </button>
+      </div>
+
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={async () => {
+          await stopInngestDevServer();
+          setInngestRunning(false);
+          setIsConfirmOpen(false);
+        }}
+        title="Stop Inngest Server"
+        message="Are you sure you want to shut down the local Inngest development server?"
+        confirmText="Shut Down"
+        isDestructive={true}
+      />
+    </aside>
+  );
+}

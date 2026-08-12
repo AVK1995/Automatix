@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import DataTable from '@/components/DataTable';
 import ProvisionForm from './ProvisionForm';
 import Link from 'next/link';
+import DeleteButton from '@/components/DeleteButton';
 import SearchInput from '@/components/SearchInput';
 
 export const dynamic = 'force-dynamic';
@@ -35,23 +36,23 @@ export default async function TenantProvisioningPage({ searchParams }) {
       header: 'Tenant / Email', 
       className: 'w-[30%]',
       accessor: (row) => (
-        <div>
-          <div className="font-semibold text-foreground">{row.name || 'Pending Setup'}</div>
-          <div className="text-xs text-text-secondary mt-0.5">{row.email}</div>
-        </div>
+        <Link href={`/admin/users/${row.id}`} className="block group">
+          <div className="font-semibold text-foreground group-hover:text-accent-blue transition-colors">{row.name || 'Pending Setup'}</div>
+          <div className="text-xs text-text-secondary mt-0.5 group-hover:text-accent-blue/70 transition-colors">{row.email}</div>
+        </Link>
       )
     },
     { 
       header: 'Subscription', 
-      className: 'w-[20%]',
+      className: 'w-[20%] text-center',
       accessor: (row) => (
-        <div>
+        <div className="flex flex-col items-center">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-violet/10 text-accent-violet border border-accent-violet/20">
             {row.subscriptionTier} [{row.subscriptionCycle || 'monthly'}]
           </span>
           {row.subscriptionExpiresAt && (
             <div className="text-[10px] text-text-secondary mt-1.5 font-medium">
-              Expires: {new Date(row.subscriptionExpiresAt).toLocaleDateString()}
+              Expires: {new Date(row.subscriptionExpiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </div>
           )}
         </div>
@@ -59,7 +60,7 @@ export default async function TenantProvisioningPage({ searchParams }) {
     },
     { 
       header: 'Workflows', 
-      className: 'w-[15%]',
+      className: 'w-[15%] text-center',
       accessor: (row) => (
         <Link 
           href={`/admin/workflows?tenantId=${row.id}`} 
@@ -72,12 +73,12 @@ export default async function TenantProvisioningPage({ searchParams }) {
         </Link>
       ) 
     },
-    { header: 'Joined At', className: 'w-[15%]', accessor: (row) => <span className="text-sm text-text-secondary">{new Date(row.createdAt).toLocaleDateString()}</span> },
+    { header: 'Joined At', className: 'w-[15%]', accessor: (row) => <span className="text-sm text-text-secondary">{new Date(row.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> },
     { 
       header: 'Actions', 
-      className: 'w-[20%] text-right',
+      className: 'w-[20%] text-center',
       accessor: (row) => (
-        <div className="flex justify-end">
+        <div className="flex justify-center items-center">
           <Link 
             href={`/admin/users/${row.id}`} 
             className="group inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-background border border-border-subtle hover:bg-border-subtle hover:text-foreground text-text-secondary transition-colors"
@@ -88,6 +89,7 @@ export default async function TenantProvisioningPage({ searchParams }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </Link>
+          <DeleteButton id={row.id} type="user" confirmMessage={`Are you sure you want to completely delete ${row.email}? This will also delete ALL of their workflows.`} />
         </div>
       ) 
     },

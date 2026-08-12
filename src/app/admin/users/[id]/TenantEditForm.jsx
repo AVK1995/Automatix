@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Select from '@/components/ui/Select';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 export default function TenantEditForm({ tenant }) {
   const [tier, setTier] = useState(tenant.subscriptionTier || 'Professional');
@@ -17,6 +19,9 @@ export default function TenantEditForm({ tenant }) {
   const [linkLoading, setLinkLoading] = useState(false);
   const [resetLink, setResetLink] = useState('');
   const [linkError, setLinkError] = useState('');
+
+  const [confirmPasswordResetOpen, setConfirmPasswordResetOpen] = useState(false);
+  const [confirmGenerateResetOpen, setConfirmGenerateResetOpen] = useState(false);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -44,10 +49,7 @@ export default function TenantEditForm({ tenant }) {
     }
   };
 
-  const handleDirectPasswordReset = async (e) => {
-    e.preventDefault();
-    if (!confirm('Are you sure you want to forcibly change this user\'s password?')) return;
-    
+  const handleDirectPasswordReset = async () => {
     setResetLoading(true);
     setResetError('');
     setResetSuccess('');
@@ -72,8 +74,6 @@ export default function TenantEditForm({ tenant }) {
   };
 
   const handleGenerateReset = async () => {
-    if (!confirm('Are you sure? This will immediately revoke their current password access until they use the new link.')) return;
-    
     setLinkLoading(true);
     setLinkError('');
     setResetLink('');
@@ -114,27 +114,27 @@ export default function TenantEditForm({ tenant }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Subscription Tier</label>
-              <select 
+              <Select 
                 value={tier}
-                onChange={(e) => setTier(e.target.value)}
-                className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-              >
-                <option value="Professional">Professional</option>
-                <option value="Enterprise">Enterprise</option>
-                <option value="Starter">Starter</option>
-              </select>
+                onChange={(val) => setTier(val)}
+                options={[
+                  { value: 'Professional', label: 'Professional' },
+                  { value: 'Enterprise', label: 'Enterprise' },
+                  { value: 'Starter', label: 'Starter' }
+                ]}
+              />
             </div>
             
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Billing Cycle</label>
-              <select 
+              <Select 
                 value={cycle}
-                onChange={(e) => setCycle(e.target.value)}
-                className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-              >
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
+                onChange={(val) => setCycle(val)}
+                options={[
+                  { value: 'monthly', label: 'Monthly' },
+                  { value: 'yearly', label: 'Yearly' }
+                ]}
+              />
             </div>
           </div>
 
@@ -163,7 +163,7 @@ export default function TenantEditForm({ tenant }) {
           </p>
         </div>
 
-        <form onSubmit={handleDirectPasswordReset} className="space-y-4 max-w-sm">
+        <form onSubmit={(e) => { e.preventDefault(); setConfirmPasswordResetOpen(true); }} className="space-y-4 max-w-sm">
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">New Password</label>
             <input 
@@ -201,7 +201,7 @@ export default function TenantEditForm({ tenant }) {
         </div>
 
         <button 
-          onClick={handleGenerateReset}
+          onClick={() => setConfirmGenerateResetOpen(true)}
           disabled={linkLoading}
           className="bg-background border border-border-subtle hover:bg-border-subtle text-foreground px-4 py-2 rounded-sm text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
         >
@@ -227,6 +227,26 @@ export default function TenantEditForm({ tenant }) {
           </div>
         )}
       </section>
+
+      <ConfirmModal
+        isOpen={confirmPasswordResetOpen}
+        onClose={() => setConfirmPasswordResetOpen(false)}
+        onConfirm={handleDirectPasswordReset}
+        title="Force Password Reset"
+        message="Are you sure you want to forcibly change this user's password? This will immediately revoke their current access."
+        confirmText="Reset Password"
+        isDestructive={true}
+      />
+
+      <ConfirmModal
+        isOpen={confirmGenerateResetOpen}
+        onClose={() => setConfirmGenerateResetOpen(false)}
+        onConfirm={handleGenerateReset}
+        title="Generate Reset Link"
+        message="Are you sure? This will immediately revoke their current password access until they use the new link."
+        confirmText="Generate Link"
+        isDestructive={true}
+      />
     </div>
   );
 }

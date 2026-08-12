@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Select from '@/components/ui/Select';
 
 export default function ProvisionForm() {
   const [email, setEmail] = useState('');
@@ -55,27 +56,27 @@ export default function ProvisionForm() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">Subscription Tier</label>
-            <select 
+            <Select 
               value={tier}
-              onChange={(e) => setTier(e.target.value)}
-              className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-            >
-              <option value="Professional">Professional (₹499)</option>
-              <option value="Enterprise">Enterprise (Custom)</option>
-              <option value="Starter">Starter (Free)</option>
-            </select>
+              onChange={(val) => setTier(val)}
+              options={[
+                { value: 'Professional', label: 'Professional (₹499)' },
+                { value: 'Enterprise', label: 'Enterprise (Custom)' },
+                { value: 'Starter', label: 'Starter (Free)' }
+              ]}
+            />
           </div>
           
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">Billing Cycle</label>
-            <select 
+            <Select 
               value={cycle}
-              onChange={(e) => setCycle(e.target.value)}
-              className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-            >
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-            </select>
+              onChange={(val) => setCycle(val)}
+              options={[
+                { value: 'monthly', label: 'Monthly' },
+                { value: 'yearly', label: 'Yearly' }
+              ]}
+            />
           </div>
         </div>
 

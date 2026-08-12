@@ -26,7 +26,7 @@ export default async function WorkflowInternalPage({ params }) {
     { header: 'Ext. Reference', accessor: (row) => row.externalReferenceId || 'N/A' },
     { header: 'Status', accessor: (row) => row.status, isStatus: true },
     { header: 'Internal State', accessor: (row) => <code className="text-xs text-text-secondary bg-background px-2 py-1 rounded-sm border border-border-subtle">{JSON.stringify(row.currentNodeState)}</code> },
-    { header: 'Timestamp', accessor: (row) => <span className="text-text-secondary">{new Date(row.createdAt).toLocaleString()}</span> },
+    { header: 'Timestamp', accessor: (row) => <span className="text-text-secondary">{new Date(row.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span> },
   ];
 
   return (
