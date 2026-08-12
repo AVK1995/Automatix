@@ -21,13 +21,7 @@ export default async function ClientWorkflows() {
     })
   ]);
 
-  const testWf = workflows.find(w => w.name === 'Calendly Integration');
-  if (testWf) {
-    const fs = require('fs');
-    fs.writeFileSync('d:\\Automatix\\debug_wf2.json', JSON.stringify({
-      nodes: testWf.nodesJson
-    }, null, 2));
-  }
+
 
   return <WorkflowsClient workflows={workflows} notifications={notifications} />;
 }
