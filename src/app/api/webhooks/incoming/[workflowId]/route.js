@@ -86,7 +86,7 @@ async function handleRequest(request, { params }, method) {
       nodes = workflow.nodesJson;
     }
 
-    const webhookNode = nodes.find(n => n.integration?.id === 'webhook' || (n.type === 'TRIGGER' && n.config?.webhookToken));
+    const webhookNode = nodes.find(n => n.integration?.id === 'webhook' || n.type === 'trigger_instagram' || (n.type === 'TRIGGER' && n.config?.webhookToken));
     
     if (!webhookNode || webhookNode.config?.webhookToken !== token) {
       return NextResponse.json({ error: 'Invalid webhook token' }, { status: 401 });
@@ -109,7 +109,7 @@ async function handleRequest(request, { params }, method) {
     }
 
     // Keyword Trigger Condition Evaluation (for Instagram) & Resumption Logic
-    if (webhookNode.integration?.id === 'instagram') {
+    if (webhookNode.integration?.id === 'instagram' || webhookNode.type === 'trigger_instagram') {
       let senderId = null;
       let messageText = '';
       
