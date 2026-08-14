@@ -1315,14 +1315,17 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-white/5">
+                <div className="pt-2 border-t border-white/5 space-y-4">
                   <Toggle 
                     label="Listening Mode (Catching for the first time)"
                     checked={isPublished ? true : (config.isListening || false)}
-                    disabled={isPublished}
+                    disabled={isPublished || !config.webhookToken}
                     onChange={(checked) => handleChange('isListening', checked)}
-                    description={isPublished ? "Listening mode is permanently active while workflow is published." : "Keep the webhook in listening mode to easily test and catch incoming Instagram messages."}
+                    description={isPublished ? "Listening mode is permanently active while workflow is published." : "Keep the trigger in listening mode to easily test and catch incoming DMs."}
                   />
+                  {config.isListening && !isPublished && (
+                    renderSimulatorWidget("Simulate Incoming DM", "Send a test message to instantly capture fields to use as variables.", false, false)
+                  )}
                 </div>
               </div>
             )}
@@ -1494,87 +1497,6 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       <p className="text-[11px] text-text-secondary leading-relaxed">
                         If enabled, capitalization matters. For example, if your keyword is <strong className="text-white/70">&quot;Ready&quot;</strong>, a user sending <strong className="text-white/70">&quot;ready&quot;</strong> will NOT trigger this automation.
                       </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {id === 'instagram' && (
-              <div className="space-y-4 pt-4 border-t border-white/10">
-                <div className="bg-black/20 p-4 rounded-md border border-white/5 space-y-4">
-                  <Toggle 
-                    label="Listening Mode (Catching for the first time)"
-                    checked={isPublished ? true : (config.isListening || false)}
-                    disabled={isPublished || !config.webhookToken}
-                    onChange={(checked) => handleChange('isListening', checked)}
-                    description={isPublished ? "Listening mode is permanently active while workflow is published." : "Keep the trigger in listening mode to easily test and catch incoming DMs."}
-                  />
-                  {config.isListening && !isPublished && (
-                    renderSimulatorWidget("Simulate Incoming DM", "Send a test message to instantly capture fields to use as variables.", false, false)
-                  )}
-                </div>
-
-                <div className="pt-2 border-t border-white/5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-medium text-text-secondary">Recent Instagram DMs</label>
-                    {isLoadingHistory && <Sparkles className="w-3 h-3 text-brand-primary animate-pulse" />}
-                  </div>
-                  
-                  {payloadHistory.length === 0 ? (
-                    <div className="text-[11px] text-text-tertiary bg-black/20 rounded border border-white/5 p-3 text-center">
-                      No recent payloads found. Send a test DM!
-                    </div>
-                  ) : (
-                    <Select
-                      value={config.selectedEventId || (config.capturedPayload ? payloadHistory.find(h => JSON.stringify(h.payload) === JSON.stringify(config.capturedPayload))?.id || 'custom' : '')}
-                      onChange={(val) => {
-                        const selected = payloadHistory.find(h => h.id === val);
-                        if (selected) {
-                          onUpdateNode(selectedNode.id, {
-                            ...selectedNode,
-                            config: {
-                              ...selectedNode.config,
-                              capturedPayload: selected.payload,
-                              selectedEventId: selected.id
-                            }
-                          });
-                        }
-                      }}
-                      options={payloadHistory.map((item) => ({
-                        value: item.id,
-                        label: `DM #${item.id.split('-')[0]} - ${new Date(item.createdAt).toLocaleString()}`
-                      }))}
-                    />
-                  )}
-                </div>
-
-                {config.capturedPayload && (
-                  <div className="bg-black/20 p-4 rounded-md border border-brand-primary/30 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-[11px] font-medium text-brand-primary">Selected Payload Schema</label>
-                      <button
-                        onClick={() => {
-                          onUpdateNode(selectedNode.id, {
-                            ...selectedNode,
-                            config: {
-                              ...selectedNode.config,
-                              capturedPayload: null,
-                              clearedAt: Date.now(),
-                              selectedEventId: null,
-                              isListening: true
-                            }
-                          });
-                        }}
-                        className="text-[10px] text-text-secondary hover:text-white transition-colors flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3 h-3" /> Clear Selection
-                      </button>
-                    </div>
-                    <div className="bg-black/50 border border-white/10 rounded-md p-3 overflow-auto max-h-64 custom-scrollbar">
-                      <pre className="text-[11px] text-text-secondary font-mono leading-relaxed">
-                        {JSON.stringify(config.capturedPayload, null, 2)}
-                      </pre>
                     </div>
                   </div>
                 )}
