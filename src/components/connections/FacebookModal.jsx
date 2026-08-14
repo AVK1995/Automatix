@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Loader2, Facebook, HelpCircle } from 'lucide-react';
+import { X, Loader2, Users, HelpCircle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 import { useRouter } from 'next/navigation';
@@ -76,7 +76,7 @@ export default function FacebookModal({ isOpen, onClose, onSuccess }) {
         <div className="p-4 sm:p-6 border-b border-border-subtle flex justify-between items-center bg-[#151515]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border text-blue-500 bg-blue-500/10 border-blue-500/20">
-              <Facebook size={20} />
+              <Users size={20} />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">Connect Facebook</h2>
