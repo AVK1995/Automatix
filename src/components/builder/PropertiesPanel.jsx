@@ -1303,11 +1303,11 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       {copied ? 'Copied' : 'Copy'}
                     </button>
                   </div>
-                  <div className="mt-2 flex items-center justify-between">
+                  <div className="mt-2 flex flex-col gap-1.5">
                     <p className="text-[10px] text-text-tertiary">Paste this URL in your Meta App Webhook settings.</p>
                     <button 
                       onClick={() => setIsWebhookGuideOpen(true)}
-                      className="text-[10px] text-accent-blue hover:underline flex items-center gap-1"
+                      className="text-[10px] text-accent-blue hover:underline flex items-center gap-1 w-fit"
                     >
                       <Globe className="w-3 h-3" />
                       Need help? View setup guide

@@ -84,7 +84,7 @@ export default function DashboardAnalytics({ logs, isAdmin = false }) {
             <p className="text-xs text-text-secondary mt-1">Click on a point to view specific runs.</p>
           </div>
           <div className="flex-1 w-full min-h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <AreaChart
                 data={areaData}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -136,7 +136,7 @@ export default function DashboardAnalytics({ logs, isAdmin = false }) {
             <p className="text-xs text-text-secondary mt-1">Click a slice to drill down.</p>
           </div>
           <div className="flex-1 w-full min-h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={pieData}
