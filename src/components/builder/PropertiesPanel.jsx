@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle } from 'lucide-react';
+import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import ConnectIntegration from './ConnectIntegration';
