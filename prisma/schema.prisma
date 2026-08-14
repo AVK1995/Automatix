@@ -28,6 +28,7 @@ model User {
   Notification          Notification[]
   sessions              Session[]
   workflows             Workflow[]
+  supportTickets        SupportTicket[]
 }
 
 model Integration {
@@ -188,6 +189,30 @@ model Notification {
   createdAt DateTime @default(now())
   updatedAt DateTime
   User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   @default("GENERAL") // "REFUND", "CONCIERGE", "GENERAL"
+  subject   String
+  message   String
+  status    String   @default("OPEN")    // "OPEN", "IN_PROGRESS", "RESOLVED"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PlatformSettings {
+  id                 String   @id @default("default")
+  maxUsers           Int      @default(10)
+  starterPlanEnabled Boolean  @default(true)
+  starterPlanPrice   Int      @default(0)
+  starterPlanDesc    String   @default("Perfect for testing and small projects.")
+  proPlanEnabled     Boolean  @default(true)
+  proPlanPrice       Int      @default(499)
+  proPlanDesc        String   @default("For businesses automating at scale.")
+  updatedAt          DateTime @updatedAt
 }
 
 enum Role {

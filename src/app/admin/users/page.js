@@ -96,15 +96,26 @@ export default async function TenantProvisioningPage({ searchParams }) {
   ];
 
   return (
-    <div>
-      <ProvisionForm />
-      
+    <div className="p-8 space-y-8 max-w-7xl mx-auto">
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="text-lg font-medium text-foreground">All Provisioned Tenants</h2>
-          <SearchInput placeholder="Search by name or email..." />
+        <h1 className="text-2xl font-bold text-white mb-2">User & Tenant Management</h1>
+        <p className="text-sm text-text-secondary">Provision new tenants and manage existing client subscriptions.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1">
+          <ProvisionForm />
         </div>
-        <DataTable data={users} columns={tableColumns} />
+        
+        <div className="lg:col-span-2 bg-[#111] border border-border-subtle rounded-xl p-6 shadow-xl relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
+            <h2 className="text-lg font-semibold text-white">All Provisioned Tenants</h2>
+            <SearchInput placeholder="Search by name or email..." />
+          </div>
+          <div className="relative z-10">
+            <DataTable data={users} columns={tableColumns} />
+          </div>
+        </div>
       </div>
     </div>
   );

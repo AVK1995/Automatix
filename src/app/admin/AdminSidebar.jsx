@@ -31,6 +31,7 @@ export default function AdminSidebar({ isMobile, onClose }) {
     { name: 'Dashboard', href: '/admin', icon: <LayoutDashboard size={16} /> },
     { name: 'Users & Tenants', href: '/admin/users', icon: <Users size={16} /> },
     { name: 'Global Connections', href: '/admin/connections', icon: <LinkIcon size={16} /> },
+    { name: 'Concierge Requests', href: '/admin/concierge', icon: <Globe size={16} /> },
     { name: 'Usage Analytics', href: '/admin/analytics', icon: <Activity size={16} /> },
     { name: 'System Workflows', href: '/admin/workflows', icon: <Workflow size={16} /> },
     { name: 'Platform Settings', href: '/admin/settings', icon: <Settings size={16} /> },

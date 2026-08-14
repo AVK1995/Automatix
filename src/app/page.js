@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { auth } from '@/auth';
 import Logo from '@/components/Logo';
 import ProfileDropdown from '@/components/ProfileDropdown';
+import Footer from '@/components/ui/Footer';
 
 export default async function Home() {
   const session = await auth();
@@ -57,6 +58,10 @@ export default async function Home() {
             </Link>
           )}
         </div>
+      </div>
+
+      <div className="absolute bottom-0 w-full">
+        <Footer />
       </div>
     </div>
   );

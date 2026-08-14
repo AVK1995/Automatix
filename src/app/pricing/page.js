@@ -1,19 +1,51 @@
 import { CheckIcon } from '@/components/Icons';
 import Link from 'next/link';
+import Footer from '@/components/ui/Footer';
+import Logo from '@/components/Logo';
+import { ArrowLeft } from 'lucide-react';
+import { prisma } from '@/lib/prisma';
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const settings = await prisma.platformSettings.findFirst() || {
+    starterPlanEnabled: true,
+    starterPlanPrice: 0,
+    starterPlanDesc: "Perfect for testing and small projects.",
+    proPlanEnabled: true,
+    proPlanPrice: 499,
+    proPlanDesc: "For businesses automating at scale."
+  };
+
+  const billingEmail = process.env.PAYMENT_EMAIL || 'billing@automatix.local';
+  const emailSubject = encodeURIComponent('Automatix Professional Plan Upgrade');
+  const emailBody = encodeURIComponent(`Hello Automatix Team,
+
+Please find my payment receipt attached.
+
+Name: [Your Full Name]
+Pre-existing Automatix Account Email: [Your Registered Email]
+
+(Note: You must have a pre-existing account in Automatix to get access, otherwise your payment cannot be processed and no refund will be provided.)
+
+Thanks!`);
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${billingEmail}&su=${emailSubject}&body=${emailBody}`;
+
   return (
     <div className="relative min-h-screen bg-[#0a0a0a] text-white overflow-hidden flex flex-col items-center py-20 px-4">
       {/* Background Glows */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent-violet/10 rounded-full blur-[150px] pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent-blue/10 rounded-full blur-[150px] pointer-events-none"></div>
 
+      <div className="absolute top-4 left-4 z-20">
+        <Link href="/" className="flex items-center gap-2 text-text-secondary hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-lg border border-white/10 hover:bg-white/10">
+          <ArrowLeft size={16} />
+          <span className="text-sm font-medium">Back to Home</span>
+        </Link>
+      </div>
+
       <div className="relative z-10 w-full max-w-3xl text-center mb-16">
         <div className="inline-block mb-6">
           <Link href="/">
-             <div className="w-12 h-12 bg-gradient-to-tr from-accent-violet to-accent-blue rounded-2xl flex items-center justify-center shadow-lg mx-auto hover:scale-105 transition-transform">
-               <span className="font-bold text-white text-xl">A</span>
-             </div>
+             <Logo size={48} className="mx-auto hover:scale-105 transition-transform" />
           </Link>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent tracking-tight">Simple, transparent pricing</h1>
@@ -24,8 +56,8 @@ export default function PricingPage() {
         {/* Free Tier */}
         <div className="bg-[#111] border border-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-xl flex flex-col hover:border-white/20 transition-colors">
           <h2 className="text-2xl font-semibold text-white mb-2">Starter</h2>
-          <p className="text-text-secondary text-sm mb-6">Perfect for testing and small projects.</p>
-          <div className="text-5xl font-bold mb-8">₹0<span className="text-xl text-text-secondary font-medium">/mo</span></div>
+          <p className="text-text-secondary text-sm mb-6">{settings.starterPlanDesc}</p>
+          <div className="text-5xl font-bold mb-8">₹{settings.starterPlanPrice}<span className="text-xl text-text-secondary font-medium">/mo</span></div>
           
           <ul className="space-y-5 mb-8 flex-1">
             <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3" /> Up to 3 Workflows</li>
@@ -34,9 +66,15 @@ export default function PricingPage() {
             <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3" /> Community Support</li>
           </ul>
 
-          <button className="w-full py-4 rounded-xl border border-white/10 bg-white/5 text-white/50 text-sm font-semibold cursor-not-allowed">
-            Currently Unavailable
-          </button>
+          {settings.starterPlanEnabled ? (
+            <Link href="/register" className="block text-center w-full py-4 rounded-xl border border-accent-blue bg-accent-blue/10 hover:bg-accent-blue hover:text-white text-accent-blue font-semibold transition-all">
+              Get Started for Free
+            </Link>
+          ) : (
+            <button className="w-full py-4 rounded-xl border border-white/10 bg-white/5 text-white/50 text-sm font-semibold cursor-not-allowed" disabled>
+              Currently Unavailable
+            </button>
+          )}
         </div>
 
         {/* Pro Tier */}
@@ -46,8 +84,8 @@ export default function PricingPage() {
           </div>
           
           <h2 className="text-2xl font-semibold text-white mb-2">Professional</h2>
-          <p className="text-white/70 text-sm mb-6">For businesses automating at scale.</p>
-          <div className="text-5xl font-bold mb-8 text-white">₹499<span className="text-xl text-white/50 font-medium">/mo</span></div>
+          <p className="text-white/70 text-sm mb-6">{settings.proPlanDesc}</p>
+          <div className="text-5xl font-bold mb-8 text-white">₹{settings.proPlanPrice}<span className="text-xl text-white/50 font-medium">/mo</span></div>
           
           <ul className="space-y-5 mb-8 flex-1">
             <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3" /> Unlimited Workflows</li>
@@ -60,18 +98,23 @@ export default function PricingPage() {
           <div className="p-5 bg-black/40 border border-white/10 rounded-xl text-xs text-white/80 mb-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-accent-violet to-accent-blue"></div>
             <strong className="block text-white mb-2 text-sm ml-2">Manual Provisioning Only</strong>
-            <span className="ml-2 block">We are currently in private beta. To purchase this plan:</span>
+            <span className="ml-2 block text-accent-violet font-medium mb-2">⚠️ IMPORTANT: You MUST have a pre-existing free account before upgrading. We cannot process upgrades or refunds for unregistered users.</span>
+            <span className="ml-2 block">To purchase this plan:</span>
             <ol className="list-decimal ml-8 mt-3 space-y-2 text-white/60">
-              <li>Send <strong className="text-white">₹499</strong> via UPI to <strong className="text-white">{process.env.PAYMENT_UPI_ID || 'your-upi@bank'}</strong> or via Bank Transfer to <strong className="text-white">{process.env.PAYMENT_BANK_DETAILS || 'Acc: 123456789, IFSC: XXXX00000'}</strong></li>
-              <li>Email a screenshot of the receipt to <strong className="text-white">{process.env.PAYMENT_EMAIL || 'billing@automatix.local'}</strong>.</li>
-              <li>We will provision your isolated tenant account and email you a secure setup link within 12 hours.</li>
+              <li>Send <strong className="text-white">₹{settings.proPlanPrice}</strong> via UPI to <strong className="text-white">{process.env.PAYMENT_UPI_ID || 'your-upi@bank'}</strong> or via Bank Transfer to <strong className="text-white">{process.env.PAYMENT_BANK_DETAILS || 'Acc: 123456789, IFSC: XXXX00000'}</strong></li>
+              <li>Click the button below to email a screenshot of the receipt, your name, and your pre-existing account email.</li>
+              <li>We will provision your isolated tenant account within 12 hours.</li>
             </ol>
           </div>
 
-          <a href={`mailto:${process.env.PAYMENT_EMAIL || 'billing@automatix.local'}`} className="block text-center w-full py-4 rounded-xl bg-white text-black font-semibold hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-300">
-            Email Receipt
+          <a href={gmailUrl} target="_blank" rel="noopener noreferrer" className="block text-center w-full py-4 rounded-xl bg-white text-black font-semibold hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-300">
+            Email Receipt via Gmail
           </a>
         </div>
+      </div>
+      
+      <div className="absolute bottom-0 w-full z-20 mt-12">
+        <Footer />
       </div>
     </div>
   );

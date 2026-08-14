@@ -7,6 +7,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import Select from '@/components/ui/Select';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 import SmtpModal from '@/components/connections/SmtpModal';
+import LegalConsentModal from '@/components/ui/LegalConsentModal';
 
 export default function ConnectIntegration({ provider, selectedConnectionId, onConnectionSelect }) {
   const [loading, setLoading] = useState(true);
@@ -20,6 +21,11 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
   const [error, setError] = useState('');
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isSmtpModalOpen, setIsSmtpModalOpen] = useState(false);
+  const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
+  const [metaSetupMode, setMetaSetupMode] = useState('self-serve');
+  const [appId, setAppId] = useState('');
+  const [appSecret, setAppSecret] = useState('');
+  const [pageAccessToken, setPageAccessToken] = useState('');
 
   useEffect(() => {
     checkStatus();
@@ -57,6 +63,11 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
   };
 
   const handleConnect = () => {
+    setIsConsentModalOpen(true);
+  };
+
+  const handleConsentAccepted = () => {
+    setIsConsentModalOpen(false);
     if (provider.toLowerCase() === 'smtp') {
       setIsSmtpModalOpen(true);
       return;
@@ -64,6 +75,9 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
     setIsConnecting(true);
     setError('');
     setApiKey('');
+    setAppId('');
+    setAppSecret('');
+    setPageAccessToken('');
     setConnectionName('');
     setAccountEmail('');
   };
@@ -128,11 +142,72 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
     };
     window.addEventListener('message', messageListener);
 
+    let url = `/api/integrations/google/authorize?provider=${provider}`;
+    if (appId && appSecret) {
+       url += `&app_id=${encodeURIComponent(appId)}&app_secret=${encodeURIComponent(appSecret)}&connection_name=${encodeURIComponent(connectionName)}`;
+    }
+
     window.open(
-      `/api/integrations/google/authorize?provider=${provider}`, 
+      url, 
       'OAuth', 
       `width=${width},height=${height},left=${left},top=${top}`
     );
+  };
+
+  const handleMetaSelfServeSetup = async (e) => {
+    e.preventDefault();
+    if (!appId.trim() || !appSecret.trim() || !pageAccessToken.trim() || !connectionName.trim()) return;
+    
+    setIsSaving(true);
+    setError('');
+    
+    try {
+      const res = await fetch('/api/integrations/meta/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appId,
+          appSecret,
+          pageAccessToken,
+          connectionName,
+          providerName: provider
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to setup Meta webhooks');
+      }
+      
+      await checkStatus();
+      setIsConnecting(false);
+      
+      if (onConnectionSelect) {
+        onConnectionSelect(data.integrationId);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConciergeRequest = async () => {
+    setIsSaving(true);
+    try {
+       const { submitRefundRequest } = await import('@/actions/support');
+       const res = await submitRefundRequest(`Concierge Setup: ${provider}`, `Client requested a white-glove setup for ${provider}. Please contact them for Business Manager access.`);
+       if (res.success) {
+          alert('Request submitted! Our team will reach out to you shortly.');
+          setIsConnecting(false);
+       } else {
+          setError(res.error || 'Failed to submit request');
+       }
+    } catch (e) {
+       setError('Something went wrong');
+    }
+    setIsSaving(false);
   };
 
   if (loading) {
@@ -176,6 +251,142 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
             isOpen={isGuideOpen}
             onClose={() => setIsGuideOpen(false)}
             providerName={provider === 'sheets' ? 'Google Sheets' : provider}
+          />
+        </div>
+      );
+    }
+
+    if (provider === 'instagram' || provider === 'facebook' || provider === 'whatsapp') {
+      return (
+        <div className="bg-[#0a0a0a] border border-border-subtle rounded-lg p-4 space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-sm font-medium text-white capitalize">Connect {provider}</h4>
+              <button type="button" onClick={() => setIsGuideOpen(true)} className="text-[10px] text-accent-blue hover:underline flex items-center gap-1">
+                <HelpCircle className="w-3 h-3" /> Setup Guide
+              </button>
+            </div>
+            <p className="text-[10px] text-text-secondary">Choose how you want to securely connect your Meta account.</p>
+          </div>
+
+          {error && (
+            <div className="text-[10px] text-red-400 bg-red-500/10 p-2 rounded-md">
+              {error}
+            </div>
+          )}
+          
+          <div className="grid grid-cols-2 gap-3 mb-2">
+             <button 
+               type="button" 
+               className={`p-3 text-left border rounded-lg transition-colors ${metaSetupMode === 'self-serve' ? 'border-accent-blue bg-accent-blue/10' : 'border-border-subtle hover:border-white/20'}`}
+               onClick={() => setMetaSetupMode('self-serve')}
+             >
+               <h5 className="text-xs font-semibold text-white mb-1">Self-Serve</h5>
+               <p className="text-[9px] text-text-tertiary">Provide your App ID & Secret.</p>
+             </button>
+             <button 
+               type="button" 
+               className={`p-3 text-left border rounded-lg transition-colors ${metaSetupMode === 'concierge' ? 'border-accent-blue bg-accent-blue/10' : 'border-border-subtle hover:border-white/20'}`}
+               onClick={() => setMetaSetupMode('concierge')}
+             >
+               <h5 className="text-xs font-semibold text-white mb-1">Concierge Setup</h5>
+               <p className="text-[9px] text-text-tertiary">We handle the technical setup.</p>
+             </button>
+          </div>
+
+          {metaSetupMode === 'self-serve' && (
+             <form onSubmit={handleMetaSelfServeSetup} className="space-y-3">
+               <div>
+                 <label className="block text-[10px] font-medium text-text-secondary mb-1">Connection Name</label>
+                 <input 
+                   type="text" 
+                   value={connectionName}
+                   onChange={(e) => setConnectionName(e.target.value)}
+                   placeholder="e.g. My Meta App"
+                   className="w-full bg-background border border-border-subtle rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue"
+                   required
+                 />
+               </div>
+               <div>
+                 <label className="block text-[10px] font-medium text-text-secondary mb-1">Meta App ID</label>
+                 <input 
+                   type="text" 
+                   value={appId}
+                   onChange={(e) => setAppId(e.target.value)}
+                   placeholder="Paste App ID here..."
+                   className="w-full bg-background border border-border-subtle rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue font-mono"
+                   required
+                 />
+               </div>
+                <div>
+                 <label className="block text-[10px] font-medium text-text-secondary mb-1">Meta App Secret</label>
+                 <input 
+                   type="password" 
+                   value={appSecret}
+                   onChange={(e) => setAppSecret(e.target.value)}
+                   placeholder="Paste App Secret here..."
+                   className="w-full bg-background border border-border-subtle rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue font-mono"
+                   required
+                 />
+               </div>
+               <div>
+                 <label className="block text-[10px] font-medium text-text-secondary mb-1">Page Access Token</label>
+                 <input 
+                   type="password" 
+                   value={pageAccessToken}
+                   onChange={(e) => setPageAccessToken(e.target.value)}
+                   placeholder="Paste Page Access Token here..."
+                   className="w-full bg-background border border-border-subtle rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue font-mono"
+                   required
+                 />
+                 <p className="text-[9px] text-text-tertiary mt-1">Required to automate webhook subscriptions. Stored securely.</p>
+               </div>
+               <div className="flex gap-2 pt-2">
+                 <button 
+                   type="button"
+                   onClick={() => setIsConnecting(false)}
+                   className="flex-1 px-3 py-1.5 rounded-md text-[11px] font-medium text-text-secondary hover:text-white hover:bg-white/5 transition-colors"
+                 >
+                   Cancel
+                 </button>
+                 <button 
+                   type="submit"
+                   disabled={isSaving || !appId.trim() || !appSecret.trim() || !pageAccessToken.trim() || !connectionName.trim()}
+                   className="flex-1 bg-accent-blue hover:bg-accent-blue/90 text-white font-medium px-3 py-1.5 rounded-md text-[11px] transition-colors flex items-center justify-center"
+                 >
+                   {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Connect & Automate Setup'}
+                 </button>
+               </div>
+             </form>
+          )}
+
+          {metaSetupMode === 'concierge' && (
+             <div className="p-4 bg-white/5 border border-white/10 rounded-lg text-center space-y-4">
+                <p className="text-xs text-text-secondary">By submitting a Concierge Request, our infrastructure team will reach out to you via your registered email to get partner access to your Meta Business Manager. We will handle all the webhooks, tokens, and app creation securely on your behalf.</p>
+                <div className="flex gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setIsConnecting(false)}
+                    className="flex-1 px-3 py-1.5 rounded-md text-[11px] font-medium text-text-secondary hover:text-white hover:bg-white/5 transition-colors"
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleConciergeRequest}
+                    disabled={isSaving}
+                    className="flex-1 bg-accent-violet hover:bg-accent-violet/90 text-white font-medium px-3 py-1.5 rounded-md text-[11px] transition-colors flex items-center justify-center"
+                  >
+                    {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Request Concierge'}
+                  </button>
+                </div>
+             </div>
+          )}
+
+          <ConnectionGuideModal
+            isOpen={isGuideOpen}
+            onClose={() => setIsGuideOpen(false)}
+            providerName={provider === 'facebook' ? 'Instagram' : provider === 'whatsapp' ? 'WhatsApp' : 'Instagram'}
           />
         </div>
       );
@@ -375,6 +586,13 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
           }} 
         />
       )}
+
+      <LegalConsentModal 
+        isOpen={isConsentModalOpen}
+        onClose={() => setIsConsentModalOpen(false)}
+        onAccept={handleConsentAccepted}
+        provider={provider === 'sheets' ? 'Google Sheets' : provider === 'calendly' ? 'Calendly' : provider === 'instagram' ? 'Instagram' : provider}
+      />
     </>
   );
 }

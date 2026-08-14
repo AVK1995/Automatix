@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import Logo from '@/components/Logo';
 import Loader from '@/components/Loader';
+import Footer from '@/components/ui/Footer';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -61,9 +62,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md">
             <div className="mb-8 text-center">
               <Link href="/" className="inline-block mb-6">
-                 <div>
-                   <Logo size={48} className="justify-center mx-auto" />
-                 </div>
+                 <Logo size={48} className="justify-center mx-auto" />
               </Link>
               <h1 className="text-3xl font-semibold bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">Welcome back</h1>
               <p className="text-text-secondary text-sm mt-2">Enter your details to access your workspace</p>
@@ -123,6 +122,10 @@ export default function LoginPage() {
               </form>
             </div>
           </div>
+          
+      <div className="absolute bottom-0 w-full z-20">
+        <Footer />
+      </div>
     </div>
   );
 }
