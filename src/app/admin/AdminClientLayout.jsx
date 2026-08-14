@@ -16,11 +16,12 @@ export default function AdminClientLayout({ children }) {
   }, [pathname]);
 
   const getPageTitle = (path) => {
-    if (path === '/admin') return 'Dashboard / Overview';
-    if (path.startsWith('/admin/users')) return 'Dashboard / Users & Tenants';
-    if (path.startsWith('/admin/workflows')) return 'Dashboard / System Workflows';
-    if (path.startsWith('/admin/settings')) return 'Dashboard / Platform Settings';
-    return 'Dashboard';
+    if (path === '/admin') return 'Dashboard';
+    if (path.startsWith('/admin/users')) return 'Users & Tenants';
+    if (path.startsWith('/admin/workflows')) return 'System Workflows';
+    if (path.startsWith('/admin/settings')) return 'Platform Settings';
+    if (path.startsWith('/admin/concierge')) return 'Concierge Requests';
+    return 'Admin';
   };
 
   return (
@@ -67,12 +68,12 @@ export default function AdminClientLayout({ children }) {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col">
-        <header className="hidden md:flex h-14 items-center bg-background/80 backdrop-blur-md sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto w-full px-4 md:px-8">
+        <header className="hidden md:flex h-14 items-center bg-background/80 backdrop-blur-md sticky top-0 z-10 border-b border-border-subtle">
+          <div className="w-full px-4 md:px-8">
             <h1 className="text-sm font-medium text-text-secondary">{getPageTitle(pathname)}</h1>
           </div>
         </header>
-        <div className="p-4 md:p-8 max-w-7xl mx-auto w-full flex-1">
+        <div className="p-4 md:p-8 w-full flex-1">
           {children}
         </div>
       </main>
