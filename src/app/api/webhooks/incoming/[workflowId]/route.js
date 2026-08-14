@@ -113,10 +113,19 @@ async function handleRequest(request, { params }, method) {
       let senderId = null;
       let messageText = '';
       
-      if (body?.entry?.[0]?.messaging?.[0]) {
-        const messaging = body.entry[0].messaging[0];
-        senderId = messaging.sender?.id;
-        messageText = messaging.message?.text || '';
+      let messagingItem = null;
+      if (body?.entry?.[0]) {
+        const entry = body.entry[0];
+        if (entry.messaging && entry.messaging.length > 0) {
+          messagingItem = entry.messaging[0];
+        } else if (entry.standby && entry.standby.length > 0) {
+          messagingItem = entry.standby[0];
+        }
+      }
+
+      if (messagingItem) {
+        senderId = messagingItem.sender?.id;
+        messageText = messagingItem.message?.text || '';
       }
 
       // 1. Check if this user has an active workflow WAITING for a reply
@@ -128,7 +137,9 @@ async function handleRequest(request, { params }, method) {
         
         const waitingLog = waitingLogs.find(log => {
           const payload = log.currentNodeState?.payload;
-          return payload?.entry?.[0]?.messaging?.[0]?.sender?.id === senderId;
+          const entry = payload?.entry?.[0];
+          const item = entry?.messaging?.[0] || entry?.standby?.[0];
+          return item?.sender?.id === senderId;
         });
 
         if (waitingLog) {
@@ -146,6 +157,16 @@ async function handleRequest(request, { params }, method) {
                   const validOptions = optionsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
                   
                   if (validOptions.length > 0 && !validOptions.includes(messageText.trim().toLowerCase())) {
+                    if (isListening) {
+                       await prisma.executionLog.create({
+                         data: {
+                           workflowId: workflow.id,
+                           externalReferenceId: externalReferenceId,
+                           status: 'IGNORED',
+                           currentNodeState: { step: 'TRIGGER', payload: body, ignoredReason: 'Quiz option mismatch' }
+                         }
+                       });
+                    }
                     return NextResponse.json({ success: true, ignored: true, message: 'Message did not match expected quiz options' }, { status: 200 });
                   }
                 }
@@ -173,6 +194,16 @@ async function handleRequest(request, { params }, method) {
       if (condition && condition !== 'any') {
         const isMatch = checkKeywordMatch(messageText, keywordConfig, condition, caseSensitive);
         if (!isMatch) {
+          if (isListening) {
+             await prisma.executionLog.create({
+               data: {
+                 workflowId: workflow.id,
+                 externalReferenceId: externalReferenceId,
+                 status: 'IGNORED',
+                 currentNodeState: { step: 'TRIGGER', payload: body, ignoredReason: 'Keyword mismatch' }
+               }
+             });
+          }
           // Condition not met. Ignore this webhook.
           return NextResponse.json({ success: true, ignored: true, message: 'Message did not match trigger keyword condition' }, { status: 200 });
         }
