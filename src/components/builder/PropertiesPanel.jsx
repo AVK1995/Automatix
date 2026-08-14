@@ -172,7 +172,8 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       setPayloadHistory(history || []);
       
       // Auto-select the most recent payload ONLY if we haven't captured one yet
-      if (history && history.length > 0 && selectedNode?.config?.isListening) {
+      const isActuallyListening = isPublished ? true : (selectedNode?.config?.isListening || false);
+      if (history && history.length > 0 && isActuallyListening) {
         if (!selectedNode.config?.capturedPayload) {
           const mostRecent = history[0];
           const clearedAt = selectedNode.config?.clearedAt || 0;
@@ -205,7 +206,9 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
 
   useEffect(() => {
     let intervalId;
-    if (['webhook', 'sheets_trigger', 'instagram'].includes(selectedNode?.integration?.id) && selectedNode.config?.isListening && workflowId && workflowId !== 'new') {
+    const isActuallyListening = isPublished ? true : (selectedNode?.config?.isListening || false);
+    
+    if (['webhook', 'sheets_trigger', 'instagram'].includes(selectedNode?.integration?.id) && isActuallyListening && workflowId && workflowId !== 'new') {
       intervalId = setInterval(() => {
         fetchPayloadHistory(false);
       }, 3000);
@@ -213,7 +216,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [selectedNode?.integration?.id, selectedNode?.config?.isListening, workflowId, selectedNode?.id]);
+  }, [selectedNode?.integration?.id, selectedNode?.config?.isListening, workflowId, selectedNode?.id, isPublished]);
 
   if (!selectedNode) return null;
   
