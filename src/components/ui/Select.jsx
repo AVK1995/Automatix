@@ -55,11 +55,11 @@ export default function Select({ value, onChange, options, placeholder = 'Select
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between bg-black/50 border border-white/10 rounded-md px-3 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors ${buttonClassName} ${isOpen ? 'border-accent-blue' : ''}`}
       >
-        <span className={`text-left flex items-center gap-2 whitespace-nowrap overflow-hidden ${selectedOption ? 'text-white' : 'text-white/50'}`}>
+        <span className={`truncate text-left flex items-center gap-2 ${selectedOption ? 'text-white' : 'text-white/50'}`}>
           {selectedOption?.icon && <span className="shrink-0 flex items-center">{selectedOption.icon}</span>}
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 shrink-0 text-white/50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       <AnimatePresence>
@@ -117,7 +117,7 @@ export default function Select({ value, onChange, options, placeholder = 'Select
                       ${value === option.value ? 'bg-accent-blue/20 text-accent-blue' : 'text-white hover:bg-white/5'}
                     `}
                   >
-                    <span className="text-left flex items-center gap-2 whitespace-nowrap">
+                    <span className="truncate flex items-center gap-2">
                       {option.icon && <span className="shrink-0 flex items-center">{option.icon}</span>}
                       {option.label}
                     </span>
