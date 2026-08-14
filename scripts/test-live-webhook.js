@@ -5,8 +5,8 @@ const http = require('http');
 // CONFIGURATION
 // ==========================================
 // 1. Enter your Workflow ID and Webhook Token from the Automatix Builder UI
-const WORKFLOW_ID = 'YOUR_WORKFLOW_ID'; 
-const WEBHOOK_TOKEN = 'YOUR_WEBHOOK_TOKEN';
+const WORKFLOW_ID = '570d57f8-6582-42fc-ab6c-15c7107f6c86';
+const WEBHOOK_TOKEN = '4184fdcd-1019-4bc8-a701-974b4c2f66bd';
 
 // 2. Enter your Meta App Secret (from the Meta App Dashboard -> App settings -> Basic)
 const APP_SECRET = 'YOUR_META_APP_SECRET';
@@ -76,11 +76,11 @@ const options = {
 const req = http.request(options, (res) => {
   console.log(`\nResponse Status: ${res.statusCode}`);
   let responseBody = '';
-  
+
   res.on('data', (chunk) => {
     responseBody += chunk;
   });
-  
+
   res.on('end', () => {
     console.log(`Response Body: ${responseBody}`);
     if (res.statusCode === 200) {

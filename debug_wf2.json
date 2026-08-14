@@ -1,0 +1,214 @@
+{
+  "nodes": [
+    {
+      "id": "node-1781869066898",
+      "type": "TRIGGER",
+      "issue": null,
+      "title": "Calendar Event",
+      "config": {
+        "provider": "builtin",
+        "connectionId": "f3238717-ee36-4949-a6b7-ac94959cb0f1",
+        "triggerEvent": "invitee.created",
+        "capturedPayload": {
+          "resource": {
+            "name": "QA Test",
+            "email": "qa.tgo.001@gmail.com",
+            "status": "CONFIRMED",
+            "answers": {
+              "Income": "20000 Rs/m",
+              "Big Experience": "test big",
+              "WhatsApp Number": "IN +91 9075453949",
+              "Instagram Profile Link": "test link"
+            },
+            "endTime": "2026-08-04T04:30:00.000Z",
+            "timezone": "Asia/Calcutta",
+            "startTime": "2026-08-04T03:30:00.000Z",
+            "created_at": "2026-08-03T12:26:08.309Z"
+          }
+        },
+        "selectedEventId": "4bcb510b-515e-481c-b73b-4cd8fa71da9b"
+      },
+      "pathId": null,
+      "parentId": null,
+      "integration": {
+        "id": "calendar",
+        "name": "Calendar Event",
+        "color": "bg-blue-400/10 text-blue-400 border-blue-400/20",
+        "description": "Trigger when a new meeting is scheduled"
+      }
+    },
+    {
+      "id": "node-1785573266150",
+      "type": "ACTION",
+      "title": "Instagram DM",
+      "config": {},
+      "pathId": null,
+      "parentId": "node-1785679383095",
+      "integration": {
+        "id": "instagram_action",
+        "name": "Instagram DM",
+        "color": "bg-pink-600/10 text-pink-600 border-pink-600/20",
+        "description": "Send a direct message on Instagram"
+      }
+    },
+    {
+      "id": "node-1785679383095",
+      "type": "ACTION",
+      "title": "Instagram DM",
+      "config": {},
+      "pathId": null,
+      "parentId": "node-1785680686898",
+      "integration": {
+        "id": "instagram_action",
+        "name": "Instagram DM",
+        "color": "bg-pink-600/10 text-pink-600 border-pink-600/20",
+        "description": "Send a direct message on Instagram"
+      }
+    },
+    {
+      "id": "node-1785679386489",
+      "type": "ACTION",
+      "title": "Date & Time Formatter",
+      "config": {},
+      "pathId": null,
+      "parentId": "node-1785573266150",
+      "integration": {
+        "id": "date_formatter",
+        "name": "Date & Time Formatter",
+        "color": "bg-teal-500/10 text-teal-500 border-teal-500/20",
+        "description": "Modify and format dates and times"
+      }
+    },
+    {
+      "id": "node-1785680686898",
+      "type": "ACTION",
+      "title": "Instagram DM",
+      "config": {},
+      "pathId": null,
+      "parentId": "node-1785680694160",
+      "integration": {
+        "id": "instagram_action",
+        "name": "Instagram DM",
+        "color": "bg-pink-600/10 text-pink-600 border-pink-600/20",
+        "description": "Send a direct message on Instagram"
+      }
+    },
+    {
+      "id": "node-1785680694160",
+      "type": "ACTION",
+      "title": "Date & Time Formatter",
+      "config": {},
+      "pathId": null,
+      "parentId": "node-1785680738342",
+      "integration": {
+        "id": "date_formatter",
+        "name": "Date & Time Formatter",
+        "color": "bg-teal-500/10 text-teal-500 border-teal-500/20",
+        "description": "Modify and format dates and times"
+      }
+    },
+    {
+      "id": "node-1785680738342",
+      "type": "ACTION",
+      "title": "Custom JS Code Snippets",
+      "config": {},
+      "pathId": null,
+      "parentId": "node-1785680797749",
+      "integration": {
+        "id": "formatter_dev",
+        "name": "Custom JS Code Snippets",
+        "color": "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
+        "description": "Run custom JavaScript code snippets"
+      }
+    },
+    {
+      "id": "node-1785680797749",
+      "type": "ACTION",
+      "title": "Instagram DM",
+      "config": {},
+      "pathId": null,
+      "parentId": null,
+      "integration": {
+        "id": "instagram_action",
+        "name": "Instagram DM",
+        "color": "bg-pink-600/10 text-pink-600 border-pink-600/20",
+        "description": "Send a direct message on Instagram"
+      }
+    },
+    {
+      "id": "node-1785680879453",
+      "type": "ACTION",
+      "issue": null,
+      "title": "Date & Time Formatter",
+      "config": {
+        "operation": "format_timezone",
+        "dateString": "{{trigger.body.resource.created_at}}",
+        "outputFormat": "YYYY-MM-DD HH:mm A TZ"
+      },
+      "parentId": "node-1781869066898",
+      "testResult": {
+        "data": {
+          "result": "2026-08-03 12:26 PM UTC"
+        },
+        "success": true
+      },
+      "integration": {
+        "id": "date_formatter",
+        "name": "Date & Time Formatter",
+        "color": "bg-teal-500/10 text-teal-500 border-teal-500/20",
+        "description": "Modify and format dates and times"
+      }
+    },
+    {
+      "id": "node-1785758252081",
+      "type": "ACTION",
+      "issue": null,
+      "title": "Google Sheets",
+      "config": {
+        "range": "Analysis",
+        "sheetUrl": "https://docs.google.com/spreadsheets/d/1AjcbkJtFLFKbm8Sohys3ZBnCPPVXR1V451cutmYD9k4/edit",
+        "actionType": "WRITE",
+        "spreadsheetId": "1AjcbkJtFLFKbm8Sohys3ZBnCPPVXR1V451cutmYD9k4",
+        "rowDataMapping": [
+          {
+            "key": "Date",
+            "value": "{{steps.node-1785680879453.result}}"
+          },
+          {
+            "key": "Name",
+            "value": "{{trigger.body.invitee_name}}"
+          },
+          {
+            "key": "Email",
+            "value": "{{trigger.body.invitee_email}}"
+          },
+          {
+            "key": "Phone",
+            "value": ""
+          },
+          {
+            "key": "Q1",
+            "value": ""
+          },
+          {
+            "key": "Q2",
+            "value": ""
+          },
+          {
+            "key": "Q3",
+            "value": ""
+          }
+        ],
+        "spreadsheetName": "Automatix Test - Google Drive"
+      },
+      "pathId": null,
+      "parentId": "node-1785680879453",
+      "integration": {
+        "id": "sheets",
+        "name": "Google Sheets",
+        "color": "bg-green-600/10 text-green-600 border-green-600/20",
+        "description": "Add or update a row in Sheets"
+      }
+    }
+  ]
+}

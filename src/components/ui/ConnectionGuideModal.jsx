@@ -24,6 +24,39 @@ const PROVIDER_GUIDES = {
       }
     }
   },
+  'Calendly': {
+    icon: Calendar,
+    tabs: {
+      'Setup Guide': {
+        host: 'api.calendly.com',
+        port: '443',
+        steps: [
+          'Log into your Calendly account.',
+          <>Go to <strong>Integrations & apps</strong> in the top menu.</>,
+          <>Search for <strong>API and Webhooks</strong> and click on it.</>,
+          <>Under "Personal Access Tokens", click <strong>Generate New Token</strong>.</>,
+          <>Name the token "Automatix" and click <strong>Create Token</strong>.</>,
+          'Copy the generated token and paste it into the Connection Modal.'
+        ]
+      }
+    }
+  },
+  'Cal.com': {
+    icon: Calendar,
+    tabs: {
+      'Setup Guide': {
+        host: 'api.cal.com',
+        port: '443',
+        steps: [
+          'Log into your Cal.com account.',
+          <>Navigate to <strong>Settings</strong> {'>'} <strong>Security</strong> {'>'} <strong>API Keys</strong>.</>,
+          <>Click <strong>New API Key</strong> in the top right.</>,
+          'Add a note (e.g. "Automatix") and click Save.',
+          'Copy the generated API Key and paste it into the Connection Modal.'
+        ]
+      }
+    }
+  },
   'Instagram': {
     icon: Camera,
     tabs: {

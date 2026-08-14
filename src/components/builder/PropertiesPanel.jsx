@@ -1300,6 +1300,49 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   </div>
                   <p className="text-[10px] text-text-tertiary mt-2">Paste this URL in your Meta App Webhook settings.</p>
                 </div>
+
+                <div className="pt-2 border-t border-white/5">
+                  <Toggle 
+                    label="Listening Mode (Catching for the first time)"
+                    checked={isPublished ? true : (config.isListening || false)}
+                    disabled={isPublished}
+                    onChange={(checked) => handleChange('isListening', checked)}
+                    description={isPublished ? "Listening mode is permanently active while workflow is published." : "Keep the webhook in listening mode to easily test and catch incoming Instagram messages."}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {id === 'instagram' && (
+              <div className="pt-2 border-t border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium text-text-secondary">Recent Instagram Events</label>
+                  {isLoadingHistory && <Sparkles className="w-3 h-3 text-brand-primary animate-pulse" />}
+                </div>
+                
+                {payloadHistory.length === 0 ? (
+                  <div className="text-[11px] text-text-tertiary bg-black/20 rounded border border-white/5 p-3 text-center">
+                    No recent payloads found. Turn on Listening Mode and send a message!
+                  </div>
+                ) : (
+                  <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                    {payloadHistory.map((h, i) => (
+                      <div 
+                        key={h.id} 
+                        className={`p-3 rounded-md border text-xs cursor-pointer transition-colors ${selectedHistoryId === h.id ? 'bg-accent-blue/10 border-accent-blue text-white' : 'bg-black/30 border-white/5 text-text-secondary hover:bg-black/50 hover:border-white/10'}`}
+                        onClick={() => handleSelectHistory(h)}
+                      >
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="font-mono text-[10px] text-text-tertiary">{new Date(h.createdAt).toLocaleString()}</span>
+                          {selectedHistoryId === h.id && <CheckCircle2 className="w-3 h-3 text-accent-blue" />}
+                        </div>
+                        <pre className="font-mono text-[10px] overflow-x-auto whitespace-pre-wrap max-h-[100px] custom-scrollbar">
+                          {JSON.stringify(h.payload, null, 2)}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {id === 'instagram_action' ? (

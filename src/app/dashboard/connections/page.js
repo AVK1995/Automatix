@@ -33,7 +33,8 @@ export default async function ConnectionsPage() {
           workflowId: wf.id,
           workflowName: wf.name || 'Untitled Workflow',
           nodeId: node.id,
-          nodeTitle: node.title || 'Step'
+          nodeTitle: node.title || 'Step',
+          createdAt: wf.createdAt
         });
       }
 
@@ -59,7 +60,8 @@ export default async function ConnectionsPage() {
           workflowId: wf.id,
           workflowName: wf.name || 'Untitled Workflow',
           nodeId: node.id,
-          nodeTitle: node.title || 'Step'
+          nodeTitle: node.title || 'Step',
+          createdAt: wf.createdAt
         });
       }
     });

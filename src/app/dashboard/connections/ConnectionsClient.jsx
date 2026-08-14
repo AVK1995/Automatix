@@ -1,14 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, KeyRound, X, Calendar, Mail, Smartphone, Camera, Users, MessageSquare, Database, ArrowLeft, AlertTriangle, CheckCircle2, HelpCircle, Edit2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Trash2, KeyRound, X, Calendar, Mail, Smartphone, Camera, Users, MessageSquare, Database, ArrowLeft, AlertTriangle, CheckCircle2, HelpCircle, Edit2, ExternalLink, Search, Filter, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { deleteConnectionById, updateConnectionName } from '@/actions/connections';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import Select from '@/components/ui/Select';
 import SmtpModal from '@/components/connections/SmtpModal';
 import GoogleSheetsModal from '@/components/connections/GoogleSheetsModal';
 import PlaceholderModal from '@/components/connections/PlaceholderModal';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
+import InstagramModal from '@/components/connections/InstagramModal';
+import ApiKeyModal from '@/components/connections/ApiKeyModal';
 
 const PROVIDERS = [
   { name: 'Automatix Calendar', icon: Calendar, color: 'text-accent-blue bg-accent-blue/10 border-accent-blue/30 shadow-[0_0_15px_rgba(59,130,246,0.15)] ring-1 ring-accent-blue/50', isPremium: true },
@@ -28,12 +32,19 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
   const [isAdding, setIsAdding] = useState(false);
   const [isSmtpOpen, setIsSmtpOpen] = useState(false);
   const [isSheetsOpen, setIsSheetsOpen] = useState(false);
+  const [isInstagramOpen, setIsInstagramOpen] = useState(false);
+  const [apiKeyProvider, setApiKeyProvider] = useState(null);
   const [placeholderProvider, setPlaceholderProvider] = useState(null);
   const [guideProvider, setGuideProvider] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedWorkflowFilter, setSelectedWorkflowFilter] = useState('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
+  const [selectedDateFilter, setSelectedDateFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
   const router = useRouter();
 
   const handleSaveEdit = async (id) => {
@@ -61,6 +72,59 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
     setConnections(initialConnections);
   }, [initialConnections]);
 
+  // Extract unique workflows for the workflow filter dropdown
+  const availableWorkflows = useMemo(() => {
+    const map = {};
+    Object.values(usageMap).forEach(list => {
+      list.forEach(item => {
+        if (item.workflowId && !map[item.workflowId]) {
+          map[item.workflowId] = item.workflowName;
+        }
+      });
+    });
+    return Object.entries(map).map(([id, name]) => ({ id, name }));
+  }, [usageMap]);
+
+  // Filter and sort connections dynamically
+  const filteredConnections = useMemo(() => {
+    return connections.filter(conn => {
+      // 1. Search Query Filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = conn.name?.toLowerCase().includes(q);
+        const matchEmail = (conn.accountEmail || conn.spreadsheetId || '').toLowerCase().includes(q);
+        const usage = usageMap[conn.id] || [];
+        const matchWorkflow = usage.some(u => 
+          u.workflowName?.toLowerCase().includes(q) || u.nodeTitle?.toLowerCase().includes(q)
+        );
+        if (!matchName && !matchEmail && !matchWorkflow) return false;
+      }
+
+      // 2. Workflow Filter
+      if (selectedWorkflowFilter !== 'all') {
+        const usage = usageMap[conn.id] || [];
+        const isInWorkflow = usage.some(u => u.workflowId === selectedWorkflowFilter);
+        if (!isInWorkflow) return false;
+      }
+
+      // 3. Status Filter
+      if (selectedStatusFilter !== 'all') {
+        const usage = usageMap[conn.id] || [];
+        const isActive = usage.length > 0;
+        if (selectedStatusFilter === 'active' && !isActive) return false;
+        if (selectedStatusFilter === 'inactive' && isActive) return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'usage') return (usageMap[b.id]?.length || 0) - (usageMap[a.id]?.length || 0);
+      return 0;
+    });
+  }, [connections, searchQuery, selectedWorkflowFilter, selectedStatusFilter, sortBy, usageMap]);
+
   const handleOAuthStart = (provider) => {
     if (provider === 'Automatix Calendar') {
       router.push('/dashboard/calendars');
@@ -74,6 +138,16 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
     
     if (provider === 'Google Sheets') {
       setIsSheetsOpen(true);
+      return;
+    }
+
+    if (provider === 'Instagram') {
+      setIsInstagramOpen(true);
+      return;
+    }
+
+    if (provider === 'Calendly' || provider === 'Cal.com') {
+      setApiKeyProvider(provider);
       return;
     }
 
@@ -97,28 +171,119 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
 
   return (
     <div className="space-y-6">
-      {/* Action Bar */}
-      <div className="flex justify-between items-center bg-card border border-border-subtle p-4 rounded-sm">
-        <div>
-          <h2 className="text-sm font-medium text-foreground">Active Connections</h2>
-          <p className="text-xs text-text-secondary mt-1">Manage external tool integrations</p>
-        </div>
-        {!isAdding && (
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => {
-                if (connections.length >= 5) {
-                  alert('You have reached the maximum limit of 5 connections on the free plan. Please upgrade your plan to add more.');
-                  return;
-                }
-                setIsAdding(true);
-              }}
-              className="flex items-center gap-2 bg-accent-blue hover:opacity-90 text-white px-4 py-2 rounded-sm text-sm font-medium transition-opacity"
-            >
-              <Plus size={16} />
-              Add Connection
-            </button>
+      {/* Action & Filter Bar */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center bg-card border border-border-subtle p-4 rounded-sm">
+          <div>
+            <h2 className="text-sm font-medium text-foreground">Active Connections</h2>
+            <p className="text-xs text-text-secondary mt-1">Manage external tool integrations</p>
           </div>
+          {!isAdding && (
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => {
+                  if (connections.length >= 5) {
+                    alert('You have reached the maximum limit of 5 connections on the free plan. Please upgrade your plan to add more.');
+                    return;
+                  }
+                  setIsAdding(true);
+                }}
+                className="flex items-center gap-2 bg-accent-blue hover:opacity-90 text-white px-4 py-2 rounded-sm text-sm font-medium transition-opacity"
+              >
+                <Plus size={16} />
+                Add Connection
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Search & Filters Bar */}
+        {selectedProvider && (
+          <div className="bg-card border border-border-subtle p-3 rounded-sm flex flex-wrap items-center justify-between gap-3">
+          {/* Search Box */}
+          <div className="relative flex-1 min-w-[240px]">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by connection name, email, or workflow..."
+              className="w-full bg-black/40 border border-border-subtle rounded-md pl-9 pr-8 py-1.5 text-xs text-white placeholder:text-text-tertiary focus:outline-none focus:border-accent-blue transition-colors"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-white"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Workflow Filter */}
+            <div className="w-48 shrink-0">
+              <Select
+                value={selectedWorkflowFilter}
+                onChange={setSelectedWorkflowFilter}
+                options={[
+                  { value: 'all', label: 'All Workflows', icon: <Filter size={14} className="text-text-tertiary" /> },
+                  ...availableWorkflows.map(wf => ({ value: wf.id, label: wf.name, icon: <Filter size={14} className="text-text-tertiary" /> }))
+                ]}
+                placeholder="All Workflows"
+                buttonClassName="py-1 text-xs bg-black/40 border-border-subtle h-[32px]"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="w-40 shrink-0">
+              <Select
+                value={selectedStatusFilter}
+                onChange={setSelectedStatusFilter}
+                options={[
+                  { value: 'all', label: 'All Statuses', icon: <SlidersHorizontal size={14} className="text-text-tertiary" /> },
+                  { value: 'active', label: 'Active Only', icon: <SlidersHorizontal size={14} className="text-text-tertiary" /> },
+                  { value: 'inactive', label: 'Inactive Only', icon: <SlidersHorizontal size={14} className="text-text-tertiary" /> }
+                ]}
+                placeholder="All Statuses"
+                buttonClassName="py-1 text-xs bg-black/40 border-border-subtle h-[32px]"
+              />
+            </div>
+
+            {/* Date Filter */}
+            <div className="w-36 shrink-0">
+              <Select
+                value={selectedDateFilter}
+                onChange={setSelectedDateFilter}
+                options={[
+                  { value: 'all', label: 'All Time', icon: <Calendar size={14} className="text-text-tertiary" /> },
+                  { value: '24h', label: 'Past 24 Hours', icon: <Calendar size={14} className="text-text-tertiary" /> },
+                  { value: '7d', label: 'Past 7 Days', icon: <Calendar size={14} className="text-text-tertiary" /> },
+                  { value: '14d', label: 'Past 14 Days', icon: <Calendar size={14} className="text-text-tertiary" /> }
+                ]}
+                placeholder="All Time"
+                buttonClassName="py-1 text-xs bg-black/40 border-border-subtle h-[32px]"
+              />
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="w-40 shrink-0">
+              <Select
+                value={sortBy}
+                onChange={setSortBy}
+                options={[
+                  { value: 'newest', label: 'Newest First', icon: <ArrowUpDown size={14} className="text-text-tertiary" /> },
+                  { value: 'oldest', label: 'Oldest First', icon: <ArrowUpDown size={14} className="text-text-tertiary" /> },
+                  { value: 'name', label: 'Name (A-Z)', icon: <ArrowUpDown size={14} className="text-text-tertiary" /> },
+                  { value: 'usage', label: 'Most Workflows', icon: <ArrowUpDown size={14} className="text-text-tertiary" /> }
+                ]}
+                placeholder="Sort by"
+                buttonClassName="py-1 text-xs bg-black/40 border-border-subtle h-[32px]"
+              />
+            </div>
+          </div>
+        </div>
         )}
       </div>
 
@@ -188,7 +353,7 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
 
           <div className="space-y-4">
             {(() => {
-              const providerConnections = connections.filter(conn => {
+              const providerConnections = filteredConnections.filter(conn => {
                 const providerName = (conn.providerName || conn.provider || 'Unknown').toLowerCase();
                 let displayProvider = PROVIDERS.find(p => p.name.toLowerCase() === providerName)?.name || providerName;
                 if (providerName.includes('sheet')) displayProvider = 'Google Sheets';
@@ -222,11 +387,11 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
                 return (
                   <div key={conn.id} className="bg-card border border-border-subtle p-6 rounded-md flex flex-col">
                     <div className="flex items-start justify-between mb-4 border-b border-border-subtle pb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-sm bg-accent-blue/10 text-accent-blue flex items-center justify-center">
+                      <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
+                        <div className="w-10 h-10 rounded-sm bg-accent-blue/10 text-accent-blue flex items-center justify-center shrink-0">
                           {isPseudo ? <Database size={20} /> : <KeyRound size={20} />}
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             {editingId === conn.id ? (
                               <input
@@ -243,7 +408,7 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
                               />
                             ) : (
                               <>
-                                <p className="text-base font-medium text-white">{conn.name}</p>
+                                <p className="text-base font-medium text-white truncate">{conn.name}</p>
                                 {!isPseudo && (
                                   <button
                                     onClick={() => {
@@ -259,7 +424,7 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
                               </>
                             )}
                           </div>
-                          <p className="text-xs text-text-secondary mt-0.5">
+                          <p className="text-xs text-text-secondary mt-0.5 truncate">
                             {isPseudo ? `ID: ${conn.spreadsheetId}` : conn.accountEmail}
                           </p>
                         </div>
@@ -279,44 +444,117 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
                     </div>
 
                     <div className="space-y-4">
-                      {usage.length > 0 ? (
-                        usage.map((u, i) => {
-                          const stats = workflowStats[u.workflowId] || { total: 0, failed: 0 };
-                          return (
-                            <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-background border border-border-subtle rounded-md gap-4">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
-                                <div>
-                                  <p className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Connection Name</p>
-                                  <p className="text-sm font-medium text-white">{conn.name}</p>
+                      <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md flex items-center justify-between text-xs text-green-400">
+                        <span className="flex items-center gap-2 font-medium">
+                          <CheckCircle2 size={14} /> Connection Status: Active & Secured
+                        </span>
+                        <span className="text-text-tertiary text-[11px]">Your account credentials are stored and operating cleanly</span>
+                      </div>
+
+                      {(() => {
+                        const q = searchQuery.trim().toLowerCase();
+                        const matchConn = q ? (conn.name?.toLowerCase().includes(q) || (conn.accountEmail || conn.spreadsheetId || '').toLowerCase().includes(q)) : false;
+
+                        const usageByWorkflow = {};
+                        usage.forEach(u => {
+                          if (selectedWorkflowFilter !== 'all' && u.workflowId !== selectedWorkflowFilter) return;
+
+                          if (selectedDateFilter !== 'all') {
+                             const wfDate = new Date(u.createdAt || 0);
+                             const diffDays = (new Date() - wfDate) / (1000 * 60 * 60 * 24);
+                             if (selectedDateFilter === '24h' && diffDays > 1) return;
+                             if (selectedDateFilter === '7d' && diffDays > 7) return;
+                             if (selectedDateFilter === '14d' && diffDays > 14) return;
+                          }
+
+                          if (q && !matchConn) {
+                             const matchWorkflow = u.workflowName?.toLowerCase().includes(q) || u.nodeTitle?.toLowerCase().includes(q);
+                             if (!matchWorkflow) return;
+                          }
+
+                          if (!usageByWorkflow[u.workflowId]) {
+                            usageByWorkflow[u.workflowId] = {
+                              workflowId: u.workflowId,
+                              workflowName: u.workflowName,
+                              steps: []
+                            };
+                          }
+                          usageByWorkflow[u.workflowId].steps.push(u);
+                        });
+                        const workflowGroups = Object.values(usageByWorkflow).sort((a, b) => {
+                          const aDate = new Date(a.steps[0].createdAt || 0);
+                          const bDate = new Date(b.steps[0].createdAt || 0);
+                          
+                          if (sortBy === 'newest') return bDate - aDate;
+                          if (sortBy === 'oldest') return aDate - bDate;
+                          if (sortBy === 'name') return (a.workflowName || '').localeCompare(b.workflowName || '');
+                          if (sortBy === 'usage') return b.steps.length - a.steps.length;
+                          return 0;
+                        });
+
+                        return workflowGroups.length > 0 ? (
+                          workflowGroups.map((wfGroup) => {
+                            const stats = workflowStats[wfGroup.workflowId] || { total: 0, failed: 0 };
+
+                            return (
+                              <div key={wfGroup.workflowId} className="bg-background border border-border-subtle rounded-lg p-5 space-y-4">
+                                {/* Workflow Header */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-xs uppercase tracking-wider text-text-tertiary font-semibold shrink-0">Workflow:</span>
+                                    <Link 
+                                      href={`/workflows/${wfGroup.workflowId}`} 
+                                      className="text-base font-semibold text-accent-blue hover:underline flex items-center gap-1.5 group/link min-w-0"
+                                      title="Open this workflow in builder"
+                                    >
+                                      <span className="truncate">{wfGroup.workflowName}</span>
+                                      <ExternalLink size={14} className="opacity-70 group-hover/link:opacity-100 transition-opacity shrink-0" />
+                                    </Link>
+                                  </div>
+
+                                  <Link
+                                    href={`/workflows/${wfGroup.workflowId}`}
+                                    className="text-xs bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue border border-accent-blue/30 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 shrink-0 w-full sm:w-auto"
+                                  >
+                                    Open Workflow →
+                                  </Link>
                                 </div>
-                                <div>
-                                  <p className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Main Workflow Name</p>
-                                  <p className="text-sm font-medium text-white">{u.workflowName}</p>
-                                </div>
-                                <div>
-                                  <p className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Step Name</p>
-                                  <p className="text-sm font-medium text-white">{u.nodeTitle}</p>
+
+                                {/* Steps List */}
+                                <div className="space-y-2">
+                                  <p className="text-[11px] font-medium text-text-secondary uppercase tracking-wider">Connected Steps in this Workflow ({wfGroup.steps.length})</p>
+                                  <div className="divide-y divide-border-subtle/50 bg-black/20 rounded-md border border-white/5 overflow-hidden">
+                                    {wfGroup.steps.map((step, idx) => (
+                                      <div key={idx} className="flex items-center justify-between p-3 text-xs">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-accent-blue" />
+                                          <span className="font-medium text-white">{step.nodeTitle}</span>
+                                        </div>
+
+                                        <div className="flex items-center gap-6">
+                                          <div className="flex items-center gap-1.5 text-text-secondary">
+                                            <span>Runs:</span>
+                                            <span className="font-semibold text-white">{stats.total}</span>
+                                          </div>
+                                          <div className="flex items-center gap-1.5 text-text-secondary">
+                                            <span>Failed:</span>
+                                            <span className={`font-semibold ${stats.failed > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>{stats.failed}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-6 px-6 py-2 bg-card border-l border-border-subtle">
-                                <div className="text-center">
-                                  <p className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Total Runs</p>
-                                  <p className="text-sm font-semibold text-white">{stats.total}</p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-[10px] uppercase tracking-wider text-text-secondary mb-1">Total Failed</p>
-                                  <p className="text-sm font-semibold text-red-400">{stats.failed}</p>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="p-4 bg-background border border-border-subtle rounded-md flex items-center gap-2 text-text-secondary">
-                          <AlertTriangle size={16} />
-                          <p className="text-sm italic">This connection is not currently used in any workflows.</p>
-                        </div>
-                      )}
+                            );
+                          })
+                        ) : (
+                          <div className="p-4 bg-background border border-border-subtle rounded-md flex items-center gap-2 text-text-secondary">
+                            <AlertTriangle size={16} />
+                            <p className="text-sm italic">This connection is not currently used in any workflows.</p>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
@@ -328,7 +566,7 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {(() => {
             const groupedByApp = {};
-            connections.forEach(conn => {
+            filteredConnections.forEach(conn => {
               const providerName = (conn.providerName || conn.provider || 'Unknown').toLowerCase();
               
               let appDef = PROVIDERS.find(p => p.name.toLowerCase() === providerName);
@@ -369,8 +607,6 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
 
               if (usage.length === 0) {
                 group.inactive += 1;
-              } else if (hasIssues) {
-                group.needsAttention += 1;
               } else {
                 group.active += 1;
               }
@@ -458,6 +694,27 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
         onClose={() => setIsSheetsOpen(false)}
         onSuccess={() => {
           setIsSheetsOpen(false);
+          setIsAdding(false);
+          router.refresh();
+        }}
+      />
+
+      <InstagramModal
+        isOpen={isInstagramOpen}
+        onClose={() => setIsInstagramOpen(false)}
+        onSuccess={() => {
+          setIsInstagramOpen(false);
+          setIsAdding(false);
+          router.refresh();
+        }}
+      />
+
+      <ApiKeyModal
+        isOpen={!!apiKeyProvider}
+        onClose={() => setApiKeyProvider(null)}
+        providerName={apiKeyProvider}
+        onSuccess={() => {
+          setApiKeyProvider(null);
           setIsAdding(false);
           router.refresh();
         }}

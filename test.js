@@ -1,0 +1,1 @@
+import { prisma } from './src/lib/prisma.js'; async function run() { const logs = await prisma.executionLog.findMany({ orderBy: { createdAt: 'desc' }, take: 1, include: { analyticsEvents: { orderBy: { timestamp: 'asc' } } } }); console.log(JSON.stringify(logs, null, 2)); } run().catch(console.error);
