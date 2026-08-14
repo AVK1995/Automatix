@@ -151,7 +151,7 @@ const PROVIDER_GUIDES = {
           <>
             A "Token generated" modal will appear. Check the <strong>"I understand"</strong> box, click the <strong>Copy</strong> button to copy the token, and click <strong>Done</strong>.
             <div className="mt-3 p-3 bg-black/20 rounded-md border border-white/5 text-xs text-text-tertiary">
-              <strong className="text-white">Note on Steps 3, 4 & 5:</strong> You can completely ignore "Configure webhooks", "Business login", and "App review" on the Meta page. Since you authorized your own account as a tester, your token is fully active for automation!
+              <strong className="text-white">Note on Steps 3, 4 & 5:</strong> You can ignore "Business login" and "App review". However, you MUST configure webhooks if you want to trigger workflows from incoming DMs!
             </div>
           </>,
           <>
@@ -164,8 +164,8 @@ const PROVIDER_GUIDES = {
                 Paste the Access Token you just copied into the connection form below! 
                 <span className="block mt-1 text-xs text-text-tertiary font-mono">Example format: IGAAY...</span>
               </p>
-              <div className="p-3 bg-black/20 rounded-md border border-white/5 text-xs text-text-tertiary">
-                <strong className="text-white">All done!</strong> You can safely close the Meta Developer and Instagram tabs now.
+              <div className="mt-3 p-3 bg-black/20 rounded-md border border-white/5 text-xs text-text-tertiary">
+                <strong className="text-white">To receive DM triggers:</strong> In the Automatix workflow builder, select the Instagram trigger to get your Webhook URL. Go to your Meta App Dashboard {'>'} Webhooks, select <strong>Instagram</strong>, subscribe to `messages`, and paste the URL!
               </div>
             </div>
           </>
