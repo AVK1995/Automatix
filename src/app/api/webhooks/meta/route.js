@@ -133,7 +133,7 @@ export async function POST(request) {
 
              // Resume waiting workflow
              await inngest.send({
-               name: \`workflow.resume.\${delayNodeId || 'unknown'}\`,
+               name: `workflow.resume.${delayNodeId || 'unknown'}`,
                data: {
                  executionLogId: waitingLog.id,
                  payload: body
