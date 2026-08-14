@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Loader2, Camera, HelpCircle } from 'lucide-react';
+import { X, Loader2, Phone, HelpCircle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 import { useRouter } from 'next/navigation';
 
-export default function InstagramModal({ isOpen, onClose, onSuccess }) {
+export default function WhatsappModal({ isOpen, onClose, onSuccess }) {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -14,7 +14,7 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
     connectionName: '',
     appId: '',
     appSecret: '',
-    pageAccessToken: ''
+    pageAccessToken: '' // Technically WhatsApp Business Token
   });
   const [error, setError] = useState(null);
   const router = useRouter();
@@ -41,7 +41,7 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          providerName: 'instagram',
+          providerName: 'whatsapp',
           connectionName: formData.connectionName,
           appId: formData.appId,
           appSecret: formData.appSecret,
@@ -52,7 +52,7 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
       const data = await res.json();
       
       if (!res.ok) {
-        setError(data.error || 'Failed to connect Instagram account.');
+        setError(data.error || 'Failed to connect WhatsApp account.');
         setLoading(false);
         return;
       }
@@ -75,12 +75,12 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
       >
         <div className="p-4 sm:p-6 border-b border-border-subtle flex justify-between items-center bg-[#151515]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border text-pink-600 bg-pink-600/10 border-pink-600/20">
-              <Camera size={20} />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border text-green-500 bg-green-500/10 border-green-500/20">
+              <Phone size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Connect Instagram</h2>
-              <p className="text-xs text-text-secondary">Add a new Instagram Bot connection</p>
+              <h2 className="text-lg font-semibold text-white">Connect WhatsApp</h2>
+              <p className="text-xs text-text-secondary">Add a new WhatsApp Business connection</p>
             </div>
           </div>
           <button 
@@ -94,7 +94,7 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
         <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
           <div className="flex justify-between items-center mb-4">
             <p className="text-sm text-text-secondary">
-              Enter your Meta App credentials to connect your Instagram account.
+              Enter your Meta App credentials to connect your WhatsApp Business account.
             </p>
             <button 
               type="button" 
@@ -111,14 +111,14 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
-          <form id="instagram-form" onSubmit={handleSubmit} className="space-y-4">
+          <form id="whatsapp-form" onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Connection Name</label>
               <input
                 type="text"
                 value={formData.connectionName}
                 onChange={(e) => setFormData({...formData, connectionName: e.target.value})}
-                placeholder="e.g. My Insta Bot"
+                placeholder="e.g. My WA Bot"
                 className="w-full bg-[#111] border border-border-subtle rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors"
                 required
               />
@@ -149,12 +149,12 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Page Access Token</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">System User Token (Permanent)</label>
               <input
                 type="password"
                 value={formData.pageAccessToken}
                 onChange={(e) => setFormData({...formData, pageAccessToken: e.target.value})}
-                placeholder="Paste your long-lived token here..."
+                placeholder="Paste your permanent access token here..."
                 className="w-full bg-[#111] border border-border-subtle rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors font-mono"
                 required
               />
@@ -173,7 +173,7 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
           </button>
           <button
             type="submit"
-            form="instagram-form"
+            form="whatsapp-form"
             className="bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 min-w-[100px] justify-center"
             disabled={loading}
           >
@@ -189,7 +189,7 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
       <ConnectionGuideModal
         isOpen={isGuideOpen}
         onClose={() => setIsGuideOpen(false)}
-        providerName="Instagram"
+        providerName="WhatsApp"
       />
     </div>,
     document.body

@@ -12,6 +12,8 @@ import GoogleSheetsModal from '@/components/connections/GoogleSheetsModal';
 import PlaceholderModal from '@/components/connections/PlaceholderModal';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 import InstagramModal from '@/components/connections/InstagramModal';
+import FacebookModal from '@/components/connections/FacebookModal';
+import WhatsappModal from '@/components/connections/WhatsappModal';
 import ApiKeyModal from '@/components/connections/ApiKeyModal';
 
 const PROVIDERS = [
@@ -33,6 +35,8 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
   const [isSmtpOpen, setIsSmtpOpen] = useState(false);
   const [isSheetsOpen, setIsSheetsOpen] = useState(false);
   const [isInstagramOpen, setIsInstagramOpen] = useState(false);
+  const [isFacebookOpen, setIsFacebookOpen] = useState(false);
+  const [isWhatsappOpen, setIsWhatsappOpen] = useState(false);
   const [apiKeyProvider, setApiKeyProvider] = useState(null);
   const [placeholderProvider, setPlaceholderProvider] = useState(null);
   const [guideProvider, setGuideProvider] = useState(null);
@@ -143,6 +147,16 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
 
     if (provider === 'Instagram') {
       setIsInstagramOpen(true);
+      return;
+    }
+
+    if (provider === 'Facebook') {
+      setIsFacebookOpen(true);
+      return;
+    }
+
+    if (provider === 'WhatsApp') {
+      setIsWhatsappOpen(true);
       return;
     }
 
@@ -704,6 +718,26 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
         onClose={() => setIsInstagramOpen(false)}
         onSuccess={() => {
           setIsInstagramOpen(false);
+          setIsAdding(false);
+          router.refresh();
+        }}
+      />
+
+      <FacebookModal
+        isOpen={isFacebookOpen}
+        onClose={() => setIsFacebookOpen(false)}
+        onSuccess={() => {
+          setIsFacebookOpen(false);
+          setIsAdding(false);
+          router.refresh();
+        }}
+      />
+
+      <WhatsappModal
+        isOpen={isWhatsappOpen}
+        onClose={() => setIsWhatsappOpen(false)}
+        onSuccess={() => {
+          setIsWhatsappOpen(false);
           setIsAdding(false);
           router.refresh();
         }}

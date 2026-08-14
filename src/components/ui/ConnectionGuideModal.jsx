@@ -62,14 +62,16 @@ const PROVIDER_GUIDES = {
     tabs: {
       'Option A: Self-Serve': {
         steps: [
-          <>Go to the <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline font-medium">Meta for Developers portal</a> and log in with your Facebook account.</>,
+          <>Go to the <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline font-medium">Meta for Developers portal</a> and log in.</>,
           'Click the green "Create App" button.',
           'Select "Other" -> "Next", then "Business" -> "Next".',
-          'Name your app (e.g., "Automatix Connection") and click "Create app".',
-          'Once in the App Dashboard, go to "App settings" -> "Basic" in the left sidebar.',
-          'Here you will see your "App ID" and "App Secret" (click Show to reveal it).',
-          'Copy both the App ID and App Secret, and paste them into the Automatix connection form below.',
-          'Click "Connect with Facebook". Automatix will automatically handle all the complex Webhook subscriptions for you behind the scenes!'
+          'Name your app and click "Create app".',
+          'In the App Dashboard, go to "Use cases" in the sidebar.',
+          'Find "Manage messaging & content on Instagram" and click "Customize".',
+          'Add your Facebook Page (linked to your Professional Instagram) and generate a Page Access Token.',
+          'Go to "App settings" -> "Basic" to find your App ID and App Secret.',
+          'Paste the App ID, App Secret, and Page Access Token into the form below.',
+          'Click Connect. Automatix will automatically subscribe the webhook for you!'
         ]
       },
       'Option B: Concierge Setup': {
@@ -80,7 +82,37 @@ const PROVIDER_GUIDES = {
           'Click the "Add" dropdown and select "Give a partner access to your assets".',
           'Enter the Automatix Business ID (provided by support) and click Next.',
           'Grant "Full Control" access to the Instagram accounts you want connected.',
-          'Once done, select the "Concierge Setup" option below and submit a request. Our admin team will complete the technical setup for you within 24 hours.'
+          'Submit a request. Our admin team will complete the technical setup for you within 24 hours.'
+        ]
+      }
+    }
+  },
+  'Facebook': {
+    icon: Share2,
+    tabs: {
+      'Option A: Self-Serve': {
+        steps: [
+          <>Go to the <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline font-medium">Meta for Developers portal</a> and log in.</>,
+          'Click the green "Create App" button.',
+          'Select "Other" -> "Next", then "Business" -> "Next".',
+          'Name your app and click "Create app".',
+          'In the App Dashboard, go to "Use cases" in the sidebar.',
+          'Find "Manage messaging & content on Facebook Pages" and click "Customize".',
+          'Add your Facebook Page and generate a Page Access Token.',
+          'Go to "App settings" -> "Basic" to find your App ID and App Secret.',
+          'Paste the App ID, App Secret, and Page Access Token into the form below.',
+          'Click Connect. Automatix will automatically subscribe the webhook for you!'
+        ]
+      },
+      'Option B: Concierge Setup': {
+        steps: [
+          'If you prefer not to deal with Meta Developer settings, we can do it for you.',
+          <>Go to your <a href="https://business.facebook.com/settings" target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline font-medium">Meta Business Settings</a>.</>,
+          'In the left sidebar, click on "Users" -> "Partners".',
+          'Click the "Add" dropdown and select "Give a partner access to your assets".',
+          'Enter the Automatix Business ID (provided by support) and click Next.',
+          'Grant "Full Control" access to the Facebook Pages you want connected.',
+          'Submit a request. Our admin team will complete the technical setup for you within 24 hours.'
         ]
       }
     }
@@ -205,10 +237,16 @@ const PROVIDER_GUIDES = {
     tabs: {
       'Option A: Self-Serve': {
         steps: [
-          <>Go to the <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline font-medium">Meta for Developers portal</a>.</>,
-          'Create a new app and select "Business".',
-          'Go to "App settings" -> "Basic" and copy your App ID and App Secret.',
-          'Paste them below and click Connect. We handle the rest!'
+          <>Go to the <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline font-medium">Meta for Developers portal</a> and log in.</>,
+          'Click the green "Create App" button.',
+          'Select "Other" -> "Next", then "Business" -> "Next".',
+          'Name your app and click "Create app".',
+          'In the App Dashboard, go to "Add Product" and set up "WhatsApp".',
+          'Follow the prompts to connect your WhatsApp Business Account and phone number.',
+          'Go to your Meta Business Settings -> System Users.',
+          'Create a System User, generate a permanent token with "whatsapp_business_messaging" permission.',
+          'Go to "App settings" -> "Basic" to find your App ID and App Secret.',
+          'Paste the App ID, App Secret, and the permanent System User Token into the form below.'
         ]
       },
       'Option B: Concierge': {

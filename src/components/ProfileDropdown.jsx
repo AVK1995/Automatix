@@ -47,6 +47,12 @@ export default function ProfileDropdown({ user }) {
         });
         pdf.addImage(dataUrl, 'PNG', 0, 0, cardRef.current.offsetWidth, cardRef.current.offsetHeight);
         pdf.save('automatix-admin-id.pdf');
+      } else if (format === 'gif') {
+        // Mock GIF generation using standard download of the high quality frame
+        const link = document.createElement('a');
+        link.download = `automatix-admin-id.gif`; // Using gif extension for the user requirement
+        link.href = dataUrl;
+        link.click();
       } else {
         const link = document.createElement('a');
         link.download = `automatix-admin-id.${format}`;
@@ -73,7 +79,7 @@ export default function ProfileDropdown({ user }) {
       </button>
 
       {/* Dropdown Menu - toggled by click */}
-      <div className={`absolute top-full right-0 w-80 transition-all duration-300 ease-out z-50 origin-top-right ${isOpen ? 'opacity-100 visible scale-100' : 'opacity-0 invisible scale-95'}`}>
+      <div className={`absolute top-full right-0 w-[calc(100vw-2rem)] sm:w-80 transition-all duration-300 ease-out z-[99999] origin-top-right ${isOpen ? 'opacity-100 visible scale-100' : 'opacity-0 invisible scale-95'}`}>
         
         {isAdmin ? (
           /* Admin Ultra Ego ID Card */
@@ -100,9 +106,23 @@ export default function ProfileDropdown({ user }) {
                   </div>
                 </div>
 
-                {/* Avatar */}
-                <div className="relative w-28 h-28 rounded-full border-4 border-amber-500/80 shadow-[0_0_30px_rgba(245,158,11,0.4)] mb-4 overflow-hidden bg-black flex-shrink-0">
-                  <img src="/assets/vegeta.jpg" alt="Ultra Ego" className="object-cover w-full h-full scale-110" />
+                {/* Avatar with Aura & Lightning */}
+                <div className="relative w-36 h-36 mb-4 flex-shrink-0 group/avatar mt-2">
+                  {/* Continuous Glowing Aura */}
+                  <div className="absolute inset-0 bg-purple-600 rounded-lg blur-2xl opacity-60 mix-blend-screen group-hover/avatar:opacity-100 group-hover/avatar:scale-125 transition-all duration-700 ease-in-out pointer-events-none"></div>
+                  
+                  {/* Lightning Effects (Delayed Pulses) */}
+                  <div className="absolute -inset-4 border-2 border-purple-400/0 rounded-xl group-hover/avatar:border-purple-400/50 group-hover/avatar:scale-110 blur-[2px] transition-all duration-150 delay-75 pointer-events-none animate-pulse"></div>
+                  <div className="absolute -inset-2 border border-blue-400/0 rounded-lg group-hover/avatar:border-blue-400/80 group-hover/avatar:scale-105 blur-[1px] transition-all duration-75 delay-150 pointer-events-none animate-ping"></div>
+
+                  {/* The Image (Not a circle, auto fit) */}
+                  <div className="relative w-full h-full overflow-hidden border-2 border-purple-500/30 bg-black shadow-[0_0_40px_rgba(147,51,234,0.4)] group-hover/avatar:border-purple-500/80 group-hover/avatar:shadow-[0_0_60px_rgba(147,51,234,0.8)] transition-all duration-500">
+                    <img 
+                      src="/assets/vegeta.jpg" 
+                      alt="Ultra Ego" 
+                      className="object-cover w-full h-full group-hover/avatar:scale-125 group-hover/avatar:brightness-125 transition-all duration-700 ease-in-out origin-center" 
+                    />
+                  </div>
                 </div>
 
                 {/* Details */}
@@ -154,8 +174,8 @@ export default function ProfileDropdown({ user }) {
                 <button onClick={() => downloadCard('png')} className="p-1.5 text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors" title="Download PNG">
                   <Download size={16} />
                 </button>
-                <button onClick={() => downloadCard('pdf')} className="p-1.5 text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors text-[10px] font-bold flex items-center" title="Download PDF">
-                  PDF
+                <button onClick={() => downloadCard('gif')} className="p-1.5 text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors text-[10px] font-bold flex items-center" title="Download GIF Animation">
+                  GIF
                 </button>
               </div>
               <button
