@@ -91,9 +91,19 @@ export default function ProfileDropdown({ user }) {
               {/* Shine Animation */}
               <div className="absolute inset-0 translate-x-[-150%] skew-x-[-45deg] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent group-hover:animate-shine z-10 pointer-events-none"></div>
 
-              {/* Animated Background Aura */}
-              <div className="absolute top-0 right-0 w-48 h-48 bg-purple-600/20 rounded-full blur-3xl animate-pulse -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-amber-600/10 rounded-full blur-3xl animate-pulse pointer-events-none"></div>
+              {/* Volcano & Lava Background Environment */}
+              <div className="absolute -bottom-10 -left-10 -right-10 h-32 bg-orange-600/20 rounded-full blur-[40px] group-hover:bg-orange-500/40 group-hover:animate-pulse transition-colors duration-700 pointer-events-none"></div>
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-32 bg-red-700/30 rounded-t-full blur-[50px] group-hover:bg-red-600/60 group-hover:scale-150 transition-all duration-1000 ease-out pointer-events-none"></div>
+
+              {/* Lightning Environment */}
+              <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/10 group-hover:animate-ping opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none mix-blend-overlay"></div>
+              
+              {/* Wind Effects */}
+              <div className="absolute inset-0 overflow-hidden opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none">
+                <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-white to-transparent -translate-y-full group-hover:animate-windfast"></div>
+                <div className="absolute top-0 left-2/4 w-px h-full bg-gradient-to-b from-transparent via-purple-300 to-transparent -translate-y-full group-hover:animate-windfast delay-100"></div>
+                <div className="absolute top-0 left-3/4 w-px h-full bg-gradient-to-b from-transparent via-amber-200 to-transparent -translate-y-full group-hover:animate-windfast delay-200"></div>
+              </div>
 
               <div className="relative z-20 flex flex-col items-center">
                 {/* Header Logo */}
@@ -106,21 +116,26 @@ export default function ProfileDropdown({ user }) {
                   </div>
                 </div>
 
-                {/* Avatar with Aura & Lightning */}
-                <div className="relative w-36 h-36 mb-4 flex-shrink-0 group/avatar mt-2">
-                  {/* Continuous Glowing Aura */}
-                  <div className="absolute inset-0 bg-purple-600 rounded-lg blur-2xl opacity-60 mix-blend-screen group-hover/avatar:opacity-100 group-hover/avatar:scale-125 transition-all duration-700 ease-in-out pointer-events-none"></div>
-                  
-                  {/* Lightning Effects (Delayed Pulses) */}
-                  <div className="absolute -inset-4 border-2 border-purple-400/0 rounded-xl group-hover/avatar:border-purple-400/50 group-hover/avatar:scale-110 blur-[2px] transition-all duration-150 delay-75 pointer-events-none animate-pulse"></div>
-                  <div className="absolute -inset-2 border border-blue-400/0 rounded-lg group-hover/avatar:border-blue-400/80 group-hover/avatar:scale-105 blur-[1px] transition-all duration-75 delay-150 pointer-events-none animate-ping"></div>
+                {/* Dynamic Transparent Character with Aura */}
+                <div className="relative w-48 h-48 mb-4 flex-shrink-0 group/avatar">
+                  {/* Surrounding Dynamic Aura */}
+                  <div className="absolute inset-0 bg-purple-600/20 rounded-full blur-3xl mix-blend-screen group-hover/avatar:bg-purple-500/50 group-hover/avatar:scale-150 transition-all duration-500 ease-in-out pointer-events-none animate-pulse"></div>
 
-                  {/* The Image (Not a circle, auto fit) */}
-                  <div className="relative w-full h-full overflow-hidden border-2 border-purple-500/30 bg-black shadow-[0_0_40px_rgba(147,51,234,0.4)] group-hover/avatar:border-purple-500/80 group-hover/avatar:shadow-[0_0_60px_rgba(147,51,234,0.8)] transition-all duration-500">
+                  {/* Character Images (Black bg removed via mix-blend-screen) */}
+                  <div className="relative w-full h-full mix-blend-screen group-hover/avatar:drop-shadow-[0_0_30px_rgba(147,51,234,0.8)] transition-all duration-500 z-10">
+                    
+                    {/* Idle State: Breathing */}
                     <img 
-                      src="/assets/vegeta.jpg" 
-                      alt="Ultra Ego" 
-                      className="object-cover w-full h-full group-hover/avatar:scale-125 group-hover/avatar:brightness-125 transition-all duration-700 ease-in-out origin-center" 
+                      src="/assets/vegeta_idle.jpg" 
+                      alt="Ultra Ego Idle" 
+                      className="absolute inset-0 object-contain w-full h-full opacity-100 group-hover/avatar:opacity-0 transition-opacity duration-300 animate-breathe" 
+                    />
+
+                    {/* Hover State: Screaming */}
+                    <img 
+                      src="/assets/vegeta_screaming.jpg" 
+                      alt="Ultra Ego Screaming" 
+                      className="absolute inset-0 object-contain w-full h-full opacity-0 group-hover/avatar:opacity-100 scale-95 group-hover/avatar:scale-110 group-hover/avatar:animate-shake transition-all duration-300 origin-bottom" 
                     />
                   </div>
                 </div>
