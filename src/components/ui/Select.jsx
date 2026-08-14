@@ -55,7 +55,7 @@ export default function Select({ value, onChange, options, placeholder = 'Select
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between bg-black/50 border border-white/10 rounded-md px-3 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors ${buttonClassName} ${isOpen ? 'border-accent-blue' : ''}`}
       >
-        <span className={`truncate text-left flex items-center gap-2 ${selectedOption ? 'text-white' : 'text-white/50'}`}>
+        <span className={`text-left flex items-center gap-2 ${selectedOption ? 'text-white' : 'text-white/50'}`}>
           {selectedOption?.icon && <span className="shrink-0 flex items-center">{selectedOption.icon}</span>}
           {selectedOption ? selectedOption.label : placeholder}
         </span>
@@ -69,7 +69,7 @@ export default function Select({ value, onChange, options, placeholder = 'Select
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 w-full mt-1 bg-[#111] backdrop-blur-xl border border-white/10 rounded-md shadow-2xl overflow-hidden max-h-72 flex flex-col"
+            className="absolute z-50 min-w-full w-max mt-1 bg-[#111] backdrop-blur-xl border border-white/10 rounded-md shadow-2xl overflow-hidden max-h-72 flex flex-col"
           >
             <div className="p-2 border-b border-white/5 shrink-0 bg-black/20">
               <div className="relative">
@@ -95,7 +95,7 @@ export default function Select({ value, onChange, options, placeholder = 'Select
                   }}
                   className="w-full flex items-center justify-between px-3 py-2 text-sm transition-colors text-left text-accent-blue hover:bg-accent-blue/10 border-b border-white/5"
                 >
-                  <span className="truncate">Use "{searchQuery.trim()}"</span>
+                  <span className="break-words">Use "{searchQuery.trim()}"</span>
                 </button>
               )}
               
@@ -117,7 +117,7 @@ export default function Select({ value, onChange, options, placeholder = 'Select
                       ${value === option.value ? 'bg-accent-blue/20 text-accent-blue' : 'text-white hover:bg-white/5'}
                     `}
                   >
-                    <span className="truncate flex items-center gap-2">
+                    <span className="text-left flex items-center gap-2">
                       {option.icon && <span className="shrink-0 flex items-center">{option.icon}</span>}
                       {option.label}
                     </span>
