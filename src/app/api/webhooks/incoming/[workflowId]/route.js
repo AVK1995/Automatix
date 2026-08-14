@@ -27,17 +27,6 @@ async function handleRequest(request, { params }, method) {
     
     const headers = Object.fromEntries(request.headers);
 
-    // Signature Verification
-    if (headers['x-hub-signature-256']) {
-      if (!verifyMetaSignature(rawBody, headers['x-hub-signature-256'])) {
-        return NextResponse.json({ error: 'Invalid Meta Signature' }, { status: 401 });
-      }
-    } else if (headers['calendly-webhook-signature']) {
-      if (!verifyCalendlySignature(rawBody, headers['calendly-webhook-signature'])) {
-        return NextResponse.json({ error: 'Invalid Calendly Signature' }, { status: 401 });
-      }
-    }
-
     let body = {};
     if (method !== 'GET') {
       try {
@@ -46,14 +35,34 @@ async function handleRequest(request, { params }, method) {
         return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
       }
     } else {
-      // For GET requests, use searchParams as the payload
       body = Object.fromEntries(url.searchParams.entries());
-      
-      // Meta Webhook Verification Handshake
-      if (body['hub.mode'] === 'subscribe' && body['hub.challenge']) {
-        // We will verify the token later in the logic.
-        // For now, if this is a subscribe request, we MUST return the raw challenge.
+    }
+
+    // Signature Verification
+    if (headers['x-hub-signature-256']) {
+      if (!verifyMetaSignature(rawBody, headers['x-hub-signature-256'])) {
+        // Log the failure to DB so the user can see it in the UI!
+        try {
+          await prisma.executionLog.create({
+            data: {
+              workflowId,
+              status: 'ERROR',
+              currentNodeState: { step: 'TRIGGER', payload: body, error: 'Invalid Meta Signature' }
+            }
+          });
+        } catch (e) {}
+        return NextResponse.json({ error: 'Invalid Meta Signature' }, { status: 401 });
       }
+    } else if (headers['calendly-webhook-signature']) {
+      if (!verifyCalendlySignature(rawBody, headers['calendly-webhook-signature'])) {
+        return NextResponse.json({ error: 'Invalid Calendly Signature' }, { status: 401 });
+      }
+    }
+
+    // Meta Webhook Verification Handshake
+    if (method === 'GET' && body['hub.mode'] === 'subscribe' && body['hub.challenge']) {
+      // We will verify the token later in the logic.
+      // For now, if this is a subscribe request, we MUST return the raw challenge.
     }
     
     // Extract an external reference ID if one exists (e.g., from Calendly or Meta)
