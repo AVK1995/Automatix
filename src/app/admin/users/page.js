@@ -96,7 +96,7 @@ export default async function TenantProvisioningPage({ searchParams }) {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-white mb-2">User & Tenant Management</h1>
         <p className="text-sm text-text-secondary">Provision new tenants and manage existing client subscriptions.</p>

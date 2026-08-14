@@ -40,7 +40,7 @@ export default function SettingsClient({ initialSettings }) {
 
   return (
     <>
-      <div className="p-8 space-y-8 max-w-5xl mx-auto">
+      <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white mb-2">Master Control</h1>
