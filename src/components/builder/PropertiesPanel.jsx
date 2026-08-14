@@ -3384,7 +3384,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       <WebhookGuideModal 
         isOpen={isWebhookGuideOpen}
         onClose={() => setIsWebhookGuideOpen(false)}
-        integrationId={id}
+        integrationId={selectedNode?.integration?.id}
       />
     </div>
   );
