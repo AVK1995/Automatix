@@ -1325,24 +1325,57 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     No recent payloads found. Turn on Listening Mode and send a message!
                   </div>
                 ) : (
-                  <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                    {payloadHistory.map((h, i) => (
-                      <div 
-                        key={h.id} 
-                        className={`p-3 rounded-md border text-xs cursor-pointer transition-colors ${selectedHistoryId === h.id ? 'bg-accent-blue/10 border-accent-blue text-white' : 'bg-black/30 border-white/5 text-text-secondary hover:bg-black/50 hover:border-white/10'}`}
-                        onClick={() => handleSelectHistory(h)}
-                      >
-                        <div className="flex justify-between items-center mb-1.5">
-                          <span className="font-mono text-[10px] text-text-tertiary">{new Date(h.createdAt).toLocaleString()}</span>
-                          {selectedHistoryId === h.id && <CheckCircle2 className="w-3 h-3 text-accent-blue" />}
-                        </div>
-                        <pre className="font-mono text-[10px] overflow-x-auto whitespace-pre-wrap max-h-[100px] custom-scrollbar">
-                          {JSON.stringify(h.payload, null, 2)}
-                        </pre>
-                      </div>
-                    ))}
-                  </div>
+                  <Select
+                    value={config.selectedEventId || (config.capturedPayload ? payloadHistory.find(h => JSON.stringify(h.payload) === JSON.stringify(config.capturedPayload))?.id || 'custom' : '')}
+                    onChange={(val) => {
+                      const selected = payloadHistory.find(h => h.id === val);
+                      if (selected) {
+                        onUpdateNode(selectedNode.id, {
+                          ...selectedNode,
+                          config: {
+                            ...selectedNode.config,
+                            capturedPayload: selected.payload,
+                            selectedEventId: selected.id
+                          }
+                        });
+                      }
+                    }}
+                    options={payloadHistory.map((item) => ({
+                      value: item.id,
+                      label: `Request #${item.id.split('-')[0]} - ${new Date(item.createdAt).toLocaleString()}`
+                    }))}
+                  />
                 )}
+              </div>
+            )}
+
+            {id === 'instagram' && config.capturedPayload && (
+              <div className="bg-black/20 p-4 rounded-md border border-brand-primary/30 space-y-3 mb-4">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-medium text-brand-primary">Selected Payload Schema</label>
+                  <button
+                    onClick={() => {
+                      onUpdateNode(selectedNode.id, {
+                        ...selectedNode,
+                        config: {
+                          ...selectedNode.config,
+                          capturedPayload: null,
+                          clearedAt: Date.now(),
+                          selectedEventId: null,
+                          isListening: true
+                        }
+                      });
+                    }}
+                    className="text-[10px] text-text-tertiary hover:text-white transition-colors"
+                  >
+                    Clear Data
+                  </button>
+                </div>
+                <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                  <pre className="text-[10px] text-text-secondary font-mono whitespace-pre-wrap">
+                    {JSON.stringify(config.capturedPayload, null, 2)}
+                  </pre>
+                </div>
               </div>
             )}
             {id === 'instagram_action' ? (
