@@ -1,18 +1,20 @@
 'use client';
 
 import { signOut } from 'next-auth/react';
-import { LogOut, Download, Edit2, Check, Sparkles } from 'lucide-react';
+import { LogOut, Download, Edit2, Check, Sparkles, Upload } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { PremiumIcon } from './Icons';
-import * as htmlToImage from 'html-to-image';
-import jsPDF from 'jspdf';
 import Image from 'next/image';
 
 export default function ProfileDropdown({ user }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [customVideo, setCustomVideo] = useState(null);
+  
   const dropdownRef = useRef(null);
-  const cardRef = useRef(null);
+  const videoRef = useRef(null);
+  const hasShockwaved = useRef(false);
+  const fileInputRef = useRef(null);
 
   // Editable Admin Fields
   const [adminData, setAdminData] = useState({
@@ -34,33 +36,37 @@ export default function ProfileDropdown({ user }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const downloadCard = async (format) => {
-    if (!cardRef.current) return;
-    try {
-      const dataUrl = await htmlToImage.toPng(cardRef.current, { quality: 1, pixelRatio: 3 });
-      
-      if (format === 'pdf') {
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'px',
-          format: [cardRef.current.offsetWidth, cardRef.current.offsetHeight]
-        });
-        pdf.addImage(dataUrl, 'PNG', 0, 0, cardRef.current.offsetWidth, cardRef.current.offsetHeight);
-        pdf.save('automatix-admin-id.pdf');
-      } else if (format === 'gif') {
-        // Mock GIF generation using standard download of the high quality frame
-        const link = document.createElement('a');
-        link.download = `automatix-admin-id.gif`; // Using gif extension for the user requirement
-        link.href = dataUrl;
-        link.click();
-      } else {
-        const link = document.createElement('a');
-        link.download = `automatix-admin-id.${format}`;
-        link.href = dataUrl;
-        link.click();
-      }
-    } catch (err) {
-      console.error('Failed to download ID card', err);
+  const handleVideoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setCustomVideo(url);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(e => console.error("Autoplay blocked:", e));
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+    hasShockwaved.current = false;
+    document.body.classList.remove('animate-global-shockwave');
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current && videoRef.current.currentTime >= 6.0 && !hasShockwaved.current) {
+      hasShockwaved.current = true;
+      document.body.classList.add('animate-global-shockwave');
+      // Clean up the class after the animation completes (2.5s)
+      setTimeout(() => {
+        document.body.classList.remove('animate-global-shockwave');
+      }, 2500);
     }
   };
 
@@ -70,8 +76,8 @@ export default function ProfileDropdown({ user }) {
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className={`w-10 h-10 rounded-full border flex items-center justify-center font-semibold text-sm transition-all duration-300 focus:outline-none 
-          ${isAdmin ? 'bg-amber-500/10 text-amber-500 border-amber-500/50 hover:bg-amber-500/20 hover:shadow-[0_0_25px_rgba(245,158,11,0.4)]' : 'bg-accent-violet/10 text-accent-violet border-accent-violet/20 hover:bg-accent-violet/20 hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]'}
-          ${isOpen && isAdmin ? 'bg-amber-500/20 border-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.5)]' : ''}
+          ${isAdmin ? 'bg-purple-500/10 text-purple-500 border-purple-500/50 hover:bg-purple-500/20 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]' : 'bg-accent-violet/10 text-accent-violet border-accent-violet/20 hover:bg-accent-violet/20 hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]'}
+          ${isOpen && isAdmin ? 'bg-purple-500/20 border-purple-500 shadow-[0_0_25px_rgba(168,85,247,0.5)]' : ''}
           ${isOpen && !isAdmin ? 'bg-accent-violet/20 border-accent-violet/40 shadow-[0_0_20px_rgba(139,92,246,0.3)]' : ''}
         `}
       >
@@ -79,99 +85,72 @@ export default function ProfileDropdown({ user }) {
       </button>
 
       {/* Dropdown Menu - toggled by click */}
-      <div className={`absolute top-full right-0 w-[calc(100vw-2rem)] sm:w-80 transition-all duration-300 ease-out z-[99999] origin-top-right ${isOpen ? 'opacity-100 visible scale-100' : 'opacity-0 invisible scale-95'}`}>
+      <div className={`absolute top-full right-0 w-[calc(100vw-2rem)] sm:w-[448px] transition-all duration-300 ease-out z-[99999] origin-top-right ${isOpen ? 'opacity-100 visible scale-100' : 'opacity-0 invisible scale-95'}`}>
         
         {isAdmin ? (
-          /* Admin Ultra Ego ID Card */
-          <div className="bg-[#0a0a0a] border-2 border-amber-500/50 rounded-2xl shadow-[0_15px_50px_rgba(245,158,11,0.25)] overflow-hidden backdrop-blur-xl group">
+          /* Admin ID Card - Video Background */
+          <div className="bg-[#0a0a0a] border-2 border-purple-500/50 rounded-2xl shadow-[0_15px_50px_rgba(168,85,247,0.25)] overflow-hidden backdrop-blur-xl">
             
-            {/* The Downloadable Element */}
-            <div ref={cardRef} className="relative p-6 bg-gradient-to-br from-[#1a1a1a] via-[#0a0a0a] to-[#1a1000] overflow-hidden">
+            <div 
+              className="relative w-full aspect-video overflow-hidden group bg-black"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
               
-              {/* Shine Animation */}
-              <div className="absolute inset-0 translate-x-[-150%] skew-x-[-45deg] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent group-hover:animate-shine z-10 pointer-events-none"></div>
+              {/* The Video Background */}
+              <video 
+                ref={videoRef}
+                src={customVideo || "/assets/power up.mp4"}
+                className="absolute inset-0 w-full h-full object-cover z-0 brightness-75 group-hover:brightness-100 transition-all duration-500"
+                onTimeUpdate={handleTimeUpdate}
+                loop
+                muted={false} // Play with sound as requested
+              />
 
-              {/* Volcano & Lava Background Environment */}
-              <div className="absolute -bottom-10 -left-10 -right-10 h-32 bg-orange-600/20 rounded-full blur-[40px] group-hover:bg-orange-500/40 group-hover:animate-pulse transition-colors duration-700 pointer-events-none"></div>
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-32 bg-red-700/30 rounded-t-full blur-[50px] group-hover:bg-red-600/60 group-hover:scale-150 transition-all duration-1000 ease-out pointer-events-none"></div>
-
-              {/* Lightning Environment */}
-              <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/10 group-hover:animate-ping opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none mix-blend-overlay"></div>
-              
-              {/* Wind Effects */}
-              <div className="absolute inset-0 overflow-hidden opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none">
-                <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-white to-transparent -translate-y-full group-hover:animate-windfast"></div>
-                <div className="absolute top-0 left-2/4 w-px h-full bg-gradient-to-b from-transparent via-purple-300 to-transparent -translate-y-full group-hover:animate-windfast delay-100"></div>
-                <div className="absolute top-0 left-3/4 w-px h-full bg-gradient-to-b from-transparent via-amber-200 to-transparent -translate-y-full group-hover:animate-windfast delay-200"></div>
-              </div>
-
-              <div className="relative z-20 flex flex-col items-center">
+              {/* Content Overlay */}
+              <div className="relative z-10 w-full h-full p-6 flex flex-col justify-between bg-black/40 group-hover:bg-transparent transition-colors duration-500">
                 {/* Header Logo */}
-                <div className="w-full flex justify-between items-start mb-4">
-                  <div className="text-amber-500 font-bold tracking-widest text-xs uppercase flex items-center gap-1">
+                <div className="w-full flex justify-between items-start">
+                  <div className="text-purple-400 font-bold tracking-widest text-xs uppercase flex items-center gap-1 drop-shadow-md">
                     <Sparkles size={12} /> Automatix
                   </div>
-                  <div className="px-2 py-0.5 rounded border border-amber-500/50 bg-amber-500/10 text-amber-500 text-[9px] font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+                  <div className="px-2 py-0.5 rounded border border-purple-500/50 bg-purple-500/20 text-purple-300 text-[9px] font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(168,85,247,0.5)]">
                     Admin Level
                   </div>
                 </div>
 
-                {/* Dynamic Transparent Character with Aura */}
-                <div className="relative w-48 h-48 mb-4 flex-shrink-0 group/avatar">
-                  {/* Surrounding Dynamic Aura */}
-                  <div className="absolute inset-0 bg-purple-600/20 rounded-full blur-3xl mix-blend-screen group-hover/avatar:bg-purple-500/50 group-hover/avatar:scale-150 transition-all duration-500 ease-in-out pointer-events-none animate-pulse"></div>
-
-                  {/* Character Images (Black bg removed via mix-blend-screen) */}
-                  <div className="relative w-full h-full mix-blend-screen group-hover/avatar:drop-shadow-[0_0_30px_rgba(147,51,234,0.8)] transition-all duration-500 z-10">
-                    
-                    {/* Idle State: Breathing */}
-                    <img 
-                      src="/assets/vegeta_idle.jpg" 
-                      alt="Ultra Ego Idle" 
-                      className="absolute inset-0 object-contain w-full h-full opacity-100 group-hover/avatar:opacity-0 transition-opacity duration-300 animate-breathe" 
-                    />
-
-                    {/* Hover State: Screaming */}
-                    <img 
-                      src="/assets/vegeta_screaming.jpg" 
-                      alt="Ultra Ego Screaming" 
-                      className="absolute inset-0 object-contain w-full h-full opacity-0 group-hover/avatar:opacity-100 scale-95 group-hover/avatar:scale-110 group-hover/avatar:animate-shake transition-all duration-300 origin-bottom" 
-                    />
-                  </div>
-                </div>
-
-                {/* Details */}
-                <div className="w-full text-center space-y-2">
+                {/* Details positioned at the bottom */}
+                <div className="w-full text-center space-y-2 backdrop-blur-sm bg-black/30 p-3 rounded-xl border border-white/5">
                   {isEditing ? (
                     <div className="space-y-2 w-full">
                       <input 
                         type="text" 
                         value={adminData.name} 
                         onChange={(e) => setAdminData(prev => ({...prev, name: e.target.value}))}
-                        className="w-full bg-black/50 border border-amber-500/50 rounded text-center text-amber-400 font-bold px-2 py-1 focus:outline-none focus:border-amber-400" 
+                        className="w-full bg-black/70 border border-purple-500/50 rounded text-center text-purple-400 font-bold px-2 py-1 focus:outline-none focus:border-purple-400" 
                       />
                       <input 
                         type="text" 
                         value={adminData.profession} 
                         onChange={(e) => setAdminData(prev => ({...prev, profession: e.target.value}))}
-                        className="w-full bg-black/50 border border-amber-500/50 rounded text-center text-amber-200/70 text-xs px-2 py-1 focus:outline-none focus:border-amber-400" 
+                        className="w-full bg-black/70 border border-purple-500/50 rounded text-center text-purple-200/70 text-xs px-2 py-1 focus:outline-none focus:border-purple-400" 
                       />
                       <input 
                         type="text" 
                         value={adminData.age} 
                         onChange={(e) => setAdminData(prev => ({...prev, age: e.target.value}))}
-                        className="w-full bg-black/50 border border-amber-500/50 rounded text-center text-amber-200/50 text-[10px] px-2 py-1 focus:outline-none focus:border-amber-400" 
+                        className="w-full bg-black/70 border border-purple-500/50 rounded text-center text-purple-200/50 text-[10px] px-2 py-1 focus:outline-none focus:border-purple-400" 
                         placeholder="Age"
                       />
                     </div>
                   ) : (
                     <>
-                      <h2 className="text-xl font-bold bg-gradient-to-r from-amber-200 via-amber-400 to-amber-200 bg-clip-text text-transparent uppercase tracking-wider">
+                      <h2 className="text-xl font-bold bg-gradient-to-r from-purple-300 via-purple-100 to-purple-300 bg-clip-text text-transparent uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                         {adminData.name}
                       </h2>
                       <div className="flex flex-col items-center gap-1">
-                         <p className="text-xs text-amber-200/70 font-medium tracking-widest uppercase">{adminData.profession}</p>
-                         <p className="text-[10px] text-amber-200/50 font-mono">ID: {user?.email} • AGE: {adminData.age}</p>
+                         <p className="text-xs text-purple-200/90 font-medium tracking-widest uppercase drop-shadow-md">{adminData.profession}</p>
+                         <p className="text-[10px] text-purple-200/70 font-mono drop-shadow-md">ID: {user?.email} • AGE: {adminData.age}</p>
                       </div>
                     </>
                   )}
@@ -179,18 +158,26 @@ export default function ProfileDropdown({ user }) {
               </div>
             </div>
 
-            {/* Action Bar (Not part of downloadable card) */}
-            <div className="bg-black/80 border-t border-amber-500/20 p-3 flex items-center justify-between">
+            {/* Action Bar */}
+            <div className="bg-black/80 border-t border-purple-500/20 p-3 flex items-center justify-between">
               <div className="flex gap-2">
-                <button onClick={() => setIsEditing(!isEditing)} className="p-1.5 text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors">
+                <button onClick={() => setIsEditing(!isEditing)} className="p-1.5 text-purple-400/70 hover:text-purple-300 hover:bg-purple-500/10 rounded transition-colors" title="Edit Info">
                   {isEditing ? <Check size={16} /> : <Edit2 size={16} />}
                 </button>
-                <div className="h-6 w-px bg-amber-500/20 mx-1"></div>
-                <button onClick={() => downloadCard('png')} className="p-1.5 text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors" title="Download PNG">
-                  <Download size={16} />
-                </button>
-                <button onClick={() => downloadCard('gif')} className="p-1.5 text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors text-[10px] font-bold flex items-center" title="Download GIF Animation">
-                  GIF
+                <div className="h-6 w-px bg-purple-500/20 mx-1"></div>
+                
+                {/* Hidden File Input for Video */}
+                <input 
+                  type="file" 
+                  accept="video/*" 
+                  ref={fileInputRef} 
+                  onChange={handleVideoUpload} 
+                  className="hidden" 
+                />
+                
+                {/* Change Video Button */}
+                <button onClick={() => fileInputRef.current?.click()} className="p-1.5 text-purple-400/70 hover:text-purple-300 hover:bg-purple-500/10 rounded transition-colors text-[10px] font-bold flex items-center gap-1" title="Change Video">
+                  <Upload size={14} /> Video
                 </button>
               </div>
               <button
