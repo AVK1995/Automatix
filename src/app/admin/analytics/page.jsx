@@ -48,7 +48,7 @@ export default async function AdminAnalyticsPage() {
   );
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold text-white mb-2">Admin Analytics</h1>
       <p className="text-text-secondary text-sm">System-wide API consumption and rate limit monitoring.</p>
 

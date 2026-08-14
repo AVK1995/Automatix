@@ -1,5 +1,7 @@
 import AdminClientLayout from './AdminClientLayout';
+import { auth } from "@/auth";
 
-export default function AdminLayout({ children }) {
-  return <AdminClientLayout>{children}</AdminClientLayout>;
+export default async function AdminLayout({ children }) {
+  const session = await auth();
+  return <AdminClientLayout user={session?.user}>{children}</AdminClientLayout>;
 }

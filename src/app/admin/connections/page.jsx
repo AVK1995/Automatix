@@ -86,7 +86,7 @@ export default async function AdminConnectionsPage({ searchParams }) {
   ];
 
   return (
-    <div className="p-8 space-y-6 max-w-[1400px] mx-auto">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white mb-2">Global Connections</h1>
         <p className="text-text-secondary text-sm">Monitor and manage third-party integrations across all tenants.</p>

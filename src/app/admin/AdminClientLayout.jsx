@@ -5,8 +5,10 @@ import { usePathname } from 'next/navigation';
 import AdminSidebar from './AdminSidebar';
 import { Menu, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import NotificationDropdown from '@/components/layout/NotificationDropdown';
+import ProfileDropdown from '@/components/ProfileDropdown';
 
-export default function AdminClientLayout({ children }) {
+export default function AdminClientLayout({ children, user }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
@@ -29,12 +31,16 @@ export default function AdminClientLayout({ children }) {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-background z-20">
         <h1 className="text-foreground font-semibold">Automatix Admin</h1>
-        <button 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 -mr-2 text-text-secondary hover:text-foreground"
-        >
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationDropdown />
+          <ProfileDropdown user={user} />
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 -mr-2 text-text-secondary hover:text-foreground"
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {/* Desktop Sidebar (Hidden on mobile) */}
@@ -69,8 +75,12 @@ export default function AdminClientLayout({ children }) {
       {/* Main Content Area */}
       <main className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col">
         <header className="hidden md:flex h-14 items-center bg-background/80 backdrop-blur-md sticky top-0 z-10 border-b border-border-subtle">
-          <div className="max-w-7xl mx-auto w-full px-4 md:px-8">
+          <div className="max-w-7xl mx-auto w-full px-4 md:px-8 flex justify-between items-center">
             <h1 className="text-sm font-medium text-text-secondary">{getPageTitle(pathname)}</h1>
+            <div className="flex items-center gap-4">
+              <NotificationDropdown />
+              <ProfileDropdown user={user} />
+            </div>
           </div>
         </header>
         <div className="p-4 md:p-8 max-w-7xl mx-auto w-full flex-1">
