@@ -9,6 +9,7 @@ import Radio from '@/components/ui/Radio';
 import VariableInput from '@/components/ui/VariableInput';
 import GoogleSheetsGuideModal from './GoogleSheetsGuideModal';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
+import WebhookGuideModal from '@/components/builder/WebhookGuideModal';
 import { testNodeAction } from '@/actions/testNode';
 import { getWebhookPayloadHistory, simulateInstagramDM } from '@/actions/workflows';
 import { getRecentBookings } from '@/actions/bookings';
@@ -150,6 +151,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
   }, [isResizing]);
 
   const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
+  const [isWebhookGuideOpen, setIsWebhookGuideOpen] = useState(false);
   const [payloadHistory, setPayloadHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isConnectionGuideOpen, setIsConnectionGuideOpen] = useState(false);
@@ -1301,7 +1303,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       {copied ? 'Copied' : 'Copy'}
                     </button>
                   </div>
-                  <p className="text-[10px] text-text-tertiary mt-2">Paste this URL in your Meta App Webhook settings.</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-[10px] text-text-tertiary">Paste this URL in your Meta App Webhook settings.</p>
+                    <button 
+                      onClick={() => setIsWebhookGuideOpen(true)}
+                      className="text-[10px] text-accent-blue hover:underline flex items-center gap-1"
+                    >
+                      <Globe className="w-3 h-3" />
+                      Need help? View setup guide
+                    </button>
+                  </div>
                 </div>
 
                 <div className="pt-2 border-t border-white/5">
@@ -3369,6 +3380,11 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         isOpen={isConnectionGuideOpen}
         onClose={() => setIsConnectionGuideOpen(false)}
         providerName="Instagram"
+      />
+      <WebhookGuideModal 
+        isOpen={isWebhookGuideOpen}
+        onClose={() => setIsWebhookGuideOpen(false)}
+        integrationId={id}
       />
     </div>
   );
