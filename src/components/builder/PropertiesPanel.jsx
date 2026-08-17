@@ -1292,13 +1292,12 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   <div className="flex items-center mt-1">
                     <input 
                       readOnly 
-                      value={config.webhookToken ? `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}` : 'Generating link...'} 
+                      value={`${typeof window !== 'undefined' ? window.location.origin : 'https://automatix.com'}/api/webhooks/meta`} 
                       className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" 
                     />
                     <button 
-                      disabled={!config.webhookToken}
-                      onClick={() => handleCopy(`${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}`)} 
-                      className="bg-white/10 hover:bg-white/20 px-3 py-2 disabled:opacity-50 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center"
+                      onClick={() => handleCopy(`${typeof window !== 'undefined' ? window.location.origin : 'https://automatix.com'}/api/webhooks/meta`)} 
+                      className="bg-white/10 hover:bg-white/20 px-3 py-2 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center"
                     >
                       {copied ? 'Copied' : 'Copy'}
                     </button>
