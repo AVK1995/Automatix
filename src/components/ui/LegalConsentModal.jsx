@@ -35,7 +35,7 @@ export default function LegalConsentModal({ isOpen, onClose, onAccept, provider 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-bg-secondary border border-border-subtle rounded-xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
+              className="bg-card border border-border-subtle rounded-xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-6 pb-4 border-b border-white/5 flex items-start gap-4">
                 <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
