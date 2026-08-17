@@ -26,6 +26,7 @@ import { NODE_TYPES } from '@/constants';
 export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onUpdateNode, onSelectNode, onConfigureReminderStep, onSimulate, workflowId, isPublished }) {
   const [schemaValue, setSchemaValue] = useState(selectedNode?.config?.schema || '');
   const [copied, setCopied] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [activeChecklistVar, setActiveChecklistVar] = useState(null);
@@ -578,6 +579,12 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleTokenCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    setTokenCopied(true);
+    setTimeout(() => setTokenCopied(false), 2000);
   };
 
   const renderConfig = () => {
@@ -1311,10 +1318,10 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" 
                     />
                     <button 
-                      onClick={() => handleCopy(`automatix_secure_meta_token_123`)} 
+                      onClick={() => handleTokenCopy(`automatix_secure_meta_token_123`)} 
                       className="bg-white/10 hover:bg-white/20 px-3 py-2 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center"
                     >
-                      {copied ? 'Copied' : 'Copy'}
+                      {tokenCopied ? 'Copied' : 'Copy'}
                     </button>
                   </div>
                   <div className="mt-2 flex flex-col gap-1.5">
