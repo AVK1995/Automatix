@@ -57,14 +57,39 @@ export async function POST(request) {
         if (!senderId) continue;
         
         // Find the Integration associated with this Page ID
-        // The setup API will save the pageId as `accountEmail` or `providerName` metadata.
-        // Usually `accountEmail` is used for the identifier. Let's assume `accountEmail` = pageId for Meta integrations.
         const integration = await prisma.integration.findFirst({
           where: {
             providerName: { in: ['instagram', 'facebook'] },
             accountEmail: pageId
           }
         });
+
+        // --- DEBUG LOGGER FOR WEBHOOKS ---
+        try {
+          const firstWorkflow = await prisma.workflow.findFirst({ where: { isActive: true } });
+          if (firstWorkflow) {
+            await prisma.executionLog.create({
+              data: {
+                workflowId: firstWorkflow.id,
+                status: 'FAILED', // using FAILED so it stands out
+                startedAt: new Date(),
+                completedAt: new Date(),
+                durationMs: 0,
+                stepsRan: 0,
+                currentNodeState: {
+                  is_debug_dump: true,
+                  received_page_id: pageId,
+                  matched_integration: integration ? integration.id : null,
+                  raw_body: body,
+                  all_integrations: await prisma.integration.findMany({ select: { id: true, accountEmail: true, name: true } })
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.error("Debug logger failed", e);
+        }
+        // ---------------------------------
 
         if (!integration) {
            console.warn(`No integration found for Meta Page ID: ${pageId}`);
