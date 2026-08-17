@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 import { encrypt } from '@/lib/encryption';
 import { revalidatePath } from 'next/cache';
+import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 
 export async function getConnectionsByProvider(providerName) {
@@ -393,12 +394,21 @@ export async function deleteConnectionById(id) {
       const updatedNodes = [...workflow.nodesJson];
       
       for (const node of updatedNodes) {
-        if (node.config && node.config.connectionId === id) {
+        const matchesConnection = 
+          (node.config && node.config.connectionId === id) || 
+          node.integrationId === id || 
+          node.integration?.id === id;
+
+        if (matchesConnection) {
           hasIssue = true;
           issueNodeId = node.id;
           node.issue = 'Missing Connection';
           
-          if (node.type === 'trigger' || node.type === 'TRIGGER') {
+          if (!node.config) node.config = {};
+          node.config.deletedAccountEmail = connection.accountEmail;
+          node.config.deletedProviderName = connection.providerName;
+          
+          if (node.type === 'trigger' || node.type === 'TRIGGER' || node.type === 'trigger_instagram') {
             isTriggerIssue = true;
           }
         }
@@ -415,6 +425,7 @@ export async function deleteConnectionById(id) {
 
         await prisma.notification.create({
           data: {
+            id: crypto.randomUUID(),
             userId: session.user.id,
             type: 'WORKFLOW_ISSUE',
             message: `Connection deleted. Action required for workflow: ${workflow.name}`,

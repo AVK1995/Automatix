@@ -88,9 +88,9 @@ export async function POST(req) {
       },
       update: {
         name: connectionName,
-        apiKey: pageAccessToken, // The Page Access Token is needed for sending outgoing messages!
+        apiKey: pageAccessToken,
         privateKey: appSecret,
-        clientEmail: appId // Repurposing clientEmail for App ID to avoid schema changes
+        clientEmail: appId
       },
       create: {
         clientId: session.user.id,
@@ -102,6 +102,63 @@ export async function POST(req) {
         clientEmail: appId
       }
     });
+
+    // Auto-configure any broken workflows that were waiting for this connection
+    try {
+      const workflows = await prisma.workflow.findMany({
+        where: { clientId: session.user.id }
+      });
+
+      for (const workflow of workflows) {
+        if (!workflow.nodesJson || !Array.isArray(workflow.nodesJson)) continue;
+        let hasUpdate = false;
+        const updatedNodes = [...workflow.nodesJson];
+        let isTriggerFixed = false;
+
+        for (const node of updatedNodes) {
+          if (
+            node.issue === 'Missing Connection' && 
+            node.config?.deletedAccountEmail === pageId &&
+            (node.config?.deletedProviderName === (providerName || 'instagram') || !node.config?.deletedProviderName)
+          ) {
+            
+            // Auto-configure the new integration
+            if (node.config) {
+               node.config.connectionId = integration.id;
+               delete node.config.deletedAccountEmail;
+               delete node.config.deletedProviderName;
+            }
+            if (node.integration?.id) {
+               node.integration.id = integration.id;
+            }
+            if (node.integrationId) {
+               node.integrationId = integration.id;
+            }
+            
+            delete node.issue;
+            hasUpdate = true;
+            
+            if (node.type === 'trigger' || node.type === 'TRIGGER' || node.type === 'trigger_instagram') {
+               isTriggerFixed = true;
+            }
+          }
+        }
+
+        if (hasUpdate) {
+          await prisma.workflow.update({
+            where: { id: workflow.id },
+            data: { 
+              nodesJson: updatedNodes,
+              // If the trigger was fixed, we don't auto-activate, we let the user review it, 
+              // but we COULD auto-activate if they want. The prompt didn't specify auto-activating, 
+              // just auto-configuring steps so they don't have to reconfigure them.
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to auto-configure workflows:', e);
+    }
 
     return NextResponse.json({ success: true, integrationId: integration.id, pageName });
 
