@@ -62,7 +62,7 @@ export default async function CalendarsPage() {
                ))}
             </div>
 
-            <Link href="/dashboard/settings" className="inline-flex items-center justify-center gap-2 bg-white text-black hover:bg-white/90 font-semibold px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-white/20 hover:-translate-y-0.5 group">
+            <Link href="/pricing" className="inline-flex items-center justify-center gap-2 bg-white text-black hover:bg-white/90 font-semibold px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-white/20 hover:-translate-y-0.5 group">
               Upgrade to Professional <Sparkles size={18} className="group-hover:rotate-12 transition-transform" />
             </Link>
           </div>
