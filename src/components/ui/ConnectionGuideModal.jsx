@@ -68,8 +68,9 @@ const PROVIDER_GUIDES = {
           'Name your app and click "Create app".',
           'In the App Dashboard, go to "Use cases" in the sidebar.',
           'Find "Manage messaging & content on Instagram" and click "Customize".',
-          'Add your Facebook Page (linked to your Professional Instagram) and generate a Page Access Token.',
-          'Go to "App settings" -> "Basic" to find your App ID and App Secret.',
+          'In the left sidebar, click on "API setup with Facebook login".',
+          'Scroll down to the "Generate access tokens" section, add your Facebook Page (linked to your Professional Instagram) and generate a Page Access Token.',
+          'Go to "App settings" -> "Basic" in the main sidebar to find your App ID and App Secret.',
           'Paste the App ID, App Secret, and Page Access Token into the form below.',
           'Click Connect. Automatix will automatically subscribe the webhook for you!'
         ]

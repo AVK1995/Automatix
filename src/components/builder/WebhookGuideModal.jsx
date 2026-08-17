@@ -20,7 +20,7 @@ export default function WebhookGuideModal({ isOpen, onClose, integrationId }) {
       steps: [
         <>Go to your <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline font-medium">Meta App Dashboard</a> and click <strong>Use cases</strong> in the left sidebar.</>,
         <>Click <strong>Customize</strong> next to <strong>Manage messaging & content on Instagram</strong>.</>,
-        <>In the left sidebar menu of the Customize screen, click on <strong>API setup with Instagram login</strong>.</>,
+        <>In the left sidebar menu of the Customize screen, click on <strong>API setup with Facebook login</strong> (Do NOT use Instagram login).</>,
         <>Scroll down to section <strong>3. Configure webhooks</strong> and expand it.</>,
         <>Paste your Automatix Webhook URL into the <strong>Callback URL</strong> field.</>,
         <>If you have set a <code>META_APP_SECRET</code> in your Vercel environment variables, paste it into the <strong>Verify token</strong> field. (If you haven't, you can paste any random string like <code>automatix</code> just to pass verification).</>,
