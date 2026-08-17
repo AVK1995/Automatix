@@ -257,7 +257,10 @@ export default function WorkflowBuilder({ workflow }) {
     let parentId = explicitParentId || null;
     let pathId = explicitPathId || null;
     
-    if (!explicitParentId && insertionPoint) {
+    if (type === 'TRIGGER' || type === 'trigger') {
+      parentId = null;
+      pathId = null;
+    } else if (!explicitParentId && insertionPoint) {
       parentId = insertionPoint.parentId;
       pathId = insertionPoint.pathId;
     } else if (!explicitParentId && nodes.length > 0) {
@@ -324,6 +327,16 @@ export default function WorkflowBuilder({ workflow }) {
       }
       
       if (newNode.type === 'TRIGGER' || newNode.type === 'trigger') {
+        // If there is an orphaned node (like after a trigger was deleted), adopt it
+        const orphanedIndex = prevNodes.findIndex(n => n.parentId === null);
+        if (orphanedIndex !== -1) {
+          const updatedPrevNodes = [...prevNodes];
+          updatedPrevNodes[orphanedIndex] = {
+            ...updatedPrevNodes[orphanedIndex],
+            parentId: newNode.id
+          };
+          return [newNode, ...updatedPrevNodes];
+        }
         return [newNode, ...prevNodes];
       }
 
