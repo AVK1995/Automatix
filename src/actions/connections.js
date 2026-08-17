@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 import { encrypt } from '@/lib/encryption';
 import { revalidatePath } from 'next/cache';
-import crypto from 'crypto';
+
 import nodemailer from 'nodemailer';
 
 export async function getConnectionsByProvider(providerName) {
@@ -390,8 +390,19 @@ export async function deleteConnectionById(id) {
     let issueNodeId = null;
     let isTriggerIssue = false;
 
-    if (workflow.nodesJson && Array.isArray(workflow.nodesJson)) {
-      const updatedNodes = [...workflow.nodesJson];
+    let parsedNodes = [];
+    try {
+      if (typeof workflow.nodesJson === 'string') {
+        parsedNodes = JSON.parse(workflow.nodesJson);
+      } else if (Array.isArray(workflow.nodesJson)) {
+        parsedNodes = workflow.nodesJson;
+      }
+    } catch (e) {
+      console.error('Failed to parse nodesJson for workflow', workflow.id);
+    }
+
+    if (parsedNodes && Array.isArray(parsedNodes) && parsedNodes.length > 0) {
+      const updatedNodes = [...parsedNodes];
       
       for (const node of updatedNodes) {
         const matchesConnection = 
@@ -425,7 +436,7 @@ export async function deleteConnectionById(id) {
 
         await prisma.notification.create({
           data: {
-            id: crypto.randomUUID(),
+            id: `notif_${Date.now()}_${Math.random().toString(36).substring(7)}`,
             userId: session.user.id,
             type: 'WORKFLOW_ISSUE',
             message: `Connection deleted. Action required for workflow: ${workflow.name}`,
