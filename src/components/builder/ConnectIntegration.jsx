@@ -546,6 +546,13 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
             }} 
           />
         )}
+
+        <LegalConsentModal 
+          isOpen={isConsentModalOpen}
+          onClose={() => setIsConsentModalOpen(false)}
+          onAccept={handleConsentAccepted}
+          provider={provider === 'sheets' ? 'Google Sheets' : provider === 'calendly' ? 'Calendly' : provider === 'instagram' ? 'Instagram' : provider}
+        />
       </div>
     );
   }
