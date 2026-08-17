@@ -17,6 +17,7 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
     pageAccessToken: ''
   });
   const [error, setError] = useState(null);
+  const [metaSetupMode, setMetaSetupMode] = useState('self-serve');
   const router = useRouter();
 
   useEffect(() => {
@@ -24,6 +25,24 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
   }, []);
 
   if (!isOpen || !mounted) return null;
+
+  const handleConciergeRequest = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+       const { submitRefundRequest } = await import('@/actions/support');
+       const res = await submitRefundRequest(`Concierge Setup: Instagram`, `Client requested a white-glove setup for Instagram. Please contact them for Business Manager access.`);
+       if (res.success) {
+          alert('Request submitted! Our team will reach out to you shortly.');
+          onClose();
+       } else {
+          setError(res.error || 'Failed to submit request');
+       }
+    } catch (e) {
+       setError('Something went wrong');
+    }
+    setLoading(false);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -111,7 +130,27 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
-          <form id="instagram-form" onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 mb-4">
+             <button 
+               type="button" 
+               className={`p-3 text-left border rounded-lg transition-colors ${metaSetupMode === 'self-serve' ? 'border-accent-blue bg-accent-blue/10' : 'border-border-subtle hover:border-white/20'}`}
+               onClick={() => setMetaSetupMode('self-serve')}
+             >
+               <h5 className="text-sm font-semibold text-white mb-1">Self-Serve</h5>
+               <p className="text-xs text-text-tertiary">Provide your App ID & Secret.</p>
+             </button>
+             <button 
+               type="button" 
+               className={`p-3 text-left border rounded-lg transition-colors ${metaSetupMode === 'concierge' ? 'border-accent-blue bg-accent-blue/10' : 'border-border-subtle hover:border-white/20'}`}
+               onClick={() => setMetaSetupMode('concierge')}
+             >
+               <h5 className="text-sm font-semibold text-white mb-1">Concierge Setup</h5>
+               <p className="text-xs text-text-tertiary">We handle the technical setup.</p>
+             </button>
+          </div>
+
+          {metaSetupMode === 'self-serve' && (
+            <form id="instagram-form" onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Connection Name</label>
               <input
@@ -148,18 +187,25 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Page Access Token</label>
-              <input
-                type="password"
-                value={formData.pageAccessToken}
-                onChange={(e) => setFormData({...formData, pageAccessToken: e.target.value})}
-                placeholder="Paste your long-lived token here..."
-                className="w-full bg-[#111] border border-border-subtle rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors font-mono"
-                required
-              />
-            </div>
-          </form>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Page Access Token</label>
+                <input
+                  type="password"
+                  value={formData.pageAccessToken}
+                  onChange={(e) => setFormData({...formData, pageAccessToken: e.target.value})}
+                  placeholder="Paste your long-lived token here..."
+                  className="w-full bg-[#111] border border-border-subtle rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors font-mono"
+                  required
+                />
+              </div>
+            </form>
+          )}
+
+          {metaSetupMode === 'concierge' && (
+             <div className="p-4 bg-white/5 border border-white/10 rounded-lg text-center space-y-4">
+                <p className="text-sm text-text-secondary">By submitting a Concierge Request, our infrastructure team will reach out to you via your registered email to get partner access to your Meta Business Manager. We will handle all the webhooks, tokens, and app creation securely on your behalf.</p>
+             </div>
+          )}
         </div>
 
         <div className="p-4 sm:p-6 border-t border-border-subtle bg-[#151515] flex gap-3 justify-end">
@@ -171,18 +217,29 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            form="instagram-form"
-            className="bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 min-w-[100px] justify-center"
-            disabled={loading}
-          >
-            {loading ? (
-              <><Loader2 size={16} className="animate-spin" /> Connecting...</>
-            ) : (
-              'Connect Account'
-            )}
-          </button>
+          
+          {metaSetupMode === 'self-serve' ? (
+            <button
+              type="submit"
+              form="instagram-form"
+              className="bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 min-w-[100px] justify-center"
+              disabled={loading}
+            >
+              {loading ? (
+                <><Loader2 size={16} className="animate-spin" /> Connecting...</>
+              ) : (
+                'Connect Account'
+              )}
+            </button>
+          ) : (
+            <button 
+              onClick={handleConciergeRequest}
+              disabled={loading}
+              className="bg-accent-violet hover:bg-accent-violet/90 text-white font-medium px-4 py-2 rounded-md text-sm transition-colors flex items-center justify-center min-w-[100px]"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : 'Request Concierge'}
+            </button>
+          )}
         </div>
       </div>
 
