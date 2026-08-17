@@ -219,18 +219,18 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
           </button>
           
           {metaSetupMode === 'self-serve' ? (
-            <button
-              type="submit"
-              form="instagram-form"
-              className="bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 min-w-[100px] justify-center"
-              disabled={loading}
-            >
-              {loading ? (
-                <><Loader2 size={16} className="animate-spin" /> Connecting...</>
-              ) : (
-                'Connect Account'
-              )}
-            </button>
+              <button 
+                type="submit" 
+                form="instagram-form"
+                disabled={loading || !formData.connectionName || !formData.appId || !formData.appSecret || !formData.pageAccessToken}
+                className="w-full py-3 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Connecting...</span>
+                ) : (
+                  'Connect & Automate Setup'
+                )}
+              </button>
           ) : (
             <button 
               onClick={handleConciergeRequest}

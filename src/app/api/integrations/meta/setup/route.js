@@ -22,53 +22,66 @@ export async function POST(req) {
     const verifyToken = process.env.AUTOMATIX_META_VERIFY_TOKEN || 'automatix_secure_meta_token_123';
 
     // 1. Get Page ID using the Page Access Token
-    const pageRes = await fetch(`https://graph.facebook.com/v19.0/me?access_token=${pageAccessToken}`);
-    const pageData = await pageRes.json();
+    let pageRes = await fetch(`https://graph.facebook.com/v19.0/me?access_token=${pageAccessToken}`);
+    let pageData = await pageRes.json();
+    let isInstagramToken = false;
     
+    // Fallback to Instagram Graph API if it's an Instagram User Token
+    if (pageData.error && pageData.error.message.includes('Invalid OAuth access token')) {
+      pageRes = await fetch(`https://graph.instagram.com/v19.0/me?access_token=${pageAccessToken}`);
+      pageData = await pageRes.json();
+      isInstagramToken = true;
+    }
+
     if (pageData.error) {
-      return NextResponse.json({ error: `Invalid Page Access Token: ${pageData.error.message}` }, { status: 400 });
+      return NextResponse.json({ error: `Invalid Access Token: ${pageData.error.message}` }, { status: 400 });
     }
     
     const pageId = pageData.id;
-    const pageName = pageData.name || connectionName;
+    const pageName = pageData.name || pageData.username || connectionName;
 
     // 2. Generate App Access Token
     // Meta allows using the app_id|app_secret directly as the app access token for server-to-server calls
     const appAccessToken = `${appId}|${appSecret}`;
 
     // 3. Subscribe the App to the Webhook Endpoint
-    const appSubRes = await fetch(`https://graph.facebook.com/v19.0/${appId}/subscriptions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        access_token: appAccessToken,
-        object: 'page',
-        callback_url: callbackUrl,
-        fields: 'messages,messaging_postbacks,standby',
-        verify_token: verifyToken,
-      })
-    });
-    
-    const appSubData = await appSubRes.json();
-    if (appSubData.error) {
-      console.error('App Subscription Error:', appSubData.error);
-      return NextResponse.json({ error: `Failed to configure App Webhooks: ${appSubData.error.message}` }, { status: 400 });
-    }
+    try {
+      const appSubRes = await fetch(`https://graph.facebook.com/v19.0/${appId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          access_token: appAccessToken,
+          object: isInstagramToken ? 'instagram' : 'page',
+          callback_url: callbackUrl,
+          fields: isInstagramToken ? 'messages,messaging_postbacks,comments' : 'messages,messaging_postbacks,standby',
+          verify_token: verifyToken,
+        })
+      });
+      
+      const appSubData = await appSubRes.json();
+      if (appSubData.error) {
+        console.warn('App Subscription Warning:', appSubData.error);
+        // We log warning but don't strictly fail, as users can setup webhooks manually in the UI
+      }
 
-    // 4. Subscribe the Page to the App
-    const pageSubRes = await fetch(`https://graph.facebook.com/v19.0/${pageId}/subscribed_apps`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        access_token: pageAccessToken,
-        subscribed_fields: 'messages,messaging_postbacks,standby'
-      })
-    });
-    
-    const pageSubData = await pageSubRes.json();
-    if (pageSubData.error) {
-      console.error('Page Subscription Error:', pageSubData.error);
-      return NextResponse.json({ error: `Failed to subscribe Page to App: ${pageSubData.error.message}` }, { status: 400 });
+      // 4. Subscribe the Page to the App (Only applicable for Facebook Page tokens)
+      if (!isInstagramToken) {
+        const pageSubRes = await fetch(`https://graph.facebook.com/v19.0/${pageId}/subscribed_apps`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            access_token: pageAccessToken,
+            subscribed_fields: 'messages,messaging_postbacks,standby'
+          })
+        });
+        
+        const pageSubData = await pageSubRes.json();
+        if (pageSubData.error) {
+          console.warn('Page Subscription Warning:', pageSubData.error);
+        }
+      }
+    } catch (subscriptionError) {
+      console.warn('Webhook Subscription Error (can be done manually):', subscriptionError);
     }
 
     // 5. Save the Integration to the Database
