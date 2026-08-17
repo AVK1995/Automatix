@@ -43,6 +43,7 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [editingConfigConn, setEditingConfigConn] = useState(null);
   const [editName, setEditName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWorkflowFilter, setSelectedWorkflowFilter] = useState('all');
@@ -444,12 +445,22 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
                         </div>
                       </div>
                       {!isPseudo ? (
-                        <button 
-                          onClick={() => setConfirmDeleteId(conn.id)}
-                          className="p-2 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-sm transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => setEditingConfigConn(conn)}
+                            className="p-2 text-text-secondary hover:text-accent-blue hover:bg-accent-blue/10 rounded-sm transition-colors"
+                            title="Edit Configuration"
+                          >
+                            <SlidersHorizontal className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => setConfirmDeleteId(conn.id)}
+                            className="p-2 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-sm transition-colors"
+                            title="Delete Connection"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       ) : (
                         <div className="p-2 text-text-secondary/50" title="This is an action-only connection. Delete it by removing the step from the workflow.">
                           <Trash2 className="w-4 h-4" />
@@ -694,61 +705,91 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
       />
 
       <SmtpModal 
-        isOpen={isSmtpOpen}
-        onClose={() => setIsSmtpOpen(false)}
+        isOpen={isSmtpOpen || editingConfigConn?.providerName === 'smtp'}
+        initialData={editingConfigConn?.providerName === 'smtp' ? editingConfigConn : null}
+        onClose={() => {
+          setIsSmtpOpen(false);
+          setEditingConfigConn(null);
+        }}
         onSuccess={() => {
           setIsSmtpOpen(false);
+          setEditingConfigConn(null);
           setIsAdding(false);
           router.refresh();
         }}
       />
 
       <GoogleSheetsModal
-        isOpen={isSheetsOpen}
-        onClose={() => setIsSheetsOpen(false)}
+        isOpen={isSheetsOpen || editingConfigConn?.providerName === 'sheets'}
+        initialData={editingConfigConn?.providerName === 'sheets' ? editingConfigConn : null}
+        onClose={() => {
+          setIsSheetsOpen(false);
+          setEditingConfigConn(null);
+        }}
         onSuccess={() => {
           setIsSheetsOpen(false);
+          setEditingConfigConn(null);
           setIsAdding(false);
           router.refresh();
         }}
       />
 
       <InstagramModal
-        isOpen={isInstagramOpen}
-        onClose={() => setIsInstagramOpen(false)}
+        isOpen={isInstagramOpen || editingConfigConn?.providerName === 'instagram'}
+        initialData={editingConfigConn?.providerName === 'instagram' ? editingConfigConn : null}
+        onClose={() => {
+          setIsInstagramOpen(false);
+          setEditingConfigConn(null);
+        }}
         onSuccess={() => {
           setIsInstagramOpen(false);
+          setEditingConfigConn(null);
           setIsAdding(false);
           router.refresh();
         }}
       />
 
       <FacebookModal
-        isOpen={isFacebookOpen}
-        onClose={() => setIsFacebookOpen(false)}
+        isOpen={isFacebookOpen || editingConfigConn?.providerName === 'facebook'}
+        initialData={editingConfigConn?.providerName === 'facebook' ? editingConfigConn : null}
+        onClose={() => {
+          setIsFacebookOpen(false);
+          setEditingConfigConn(null);
+        }}
         onSuccess={() => {
           setIsFacebookOpen(false);
+          setEditingConfigConn(null);
           setIsAdding(false);
           router.refresh();
         }}
       />
 
       <WhatsappModal
-        isOpen={isWhatsappOpen}
-        onClose={() => setIsWhatsappOpen(false)}
+        isOpen={isWhatsappOpen || editingConfigConn?.providerName === 'whatsapp'}
+        initialData={editingConfigConn?.providerName === 'whatsapp' ? editingConfigConn : null}
+        onClose={() => {
+          setIsWhatsappOpen(false);
+          setEditingConfigConn(null);
+        }}
         onSuccess={() => {
           setIsWhatsappOpen(false);
+          setEditingConfigConn(null);
           setIsAdding(false);
           router.refresh();
         }}
       />
 
       <ApiKeyModal
-        isOpen={!!apiKeyProvider}
-        onClose={() => setApiKeyProvider(null)}
-        providerName={apiKeyProvider}
+        isOpen={!!apiKeyProvider || (editingConfigConn && !['instagram', 'facebook', 'whatsapp', 'smtp', 'sheets'].includes(editingConfigConn?.providerName))}
+        onClose={() => {
+          setApiKeyProvider(null);
+          setEditingConfigConn(null);
+        }}
+        providerName={apiKeyProvider || editingConfigConn?.providerName}
+        initialData={editingConfigConn && !['instagram', 'facebook', 'whatsapp', 'smtp', 'sheets'].includes(editingConfigConn?.providerName) ? editingConfigConn : null}
         onSuccess={() => {
           setApiKeyProvider(null);
+          setEditingConfigConn(null);
           setIsAdding(false);
           router.refresh();
         }}

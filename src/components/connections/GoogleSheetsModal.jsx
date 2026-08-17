@@ -5,7 +5,7 @@ import { addByokConnection, testSheetsConnection } from '@/actions/connections';
 import { X, Loader2, AlertTriangle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
-export default function GoogleSheetsModal({ isOpen, onClose, onSuccess }) {
+export default function GoogleSheetsModal({ isOpen, onClose, onSuccess, initialData = null }) {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -20,7 +20,15 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSuccess }) {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        email: initialData.accountEmail || '',
+        privateKey: initialData.privateKey || '',
+        testSheetId: ''
+      });
+    }
+  }, [initialData]);
 
   if (!isOpen || !mounted) return null;
 

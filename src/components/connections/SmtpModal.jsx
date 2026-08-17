@@ -5,7 +5,7 @@ import { saveConnection, testSmtpConnection } from '@/actions/connections';
 import { X, Loader2, AlertTriangle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
-export default function SmtpModal({ isOpen, onClose, onSuccess }) {
+export default function SmtpModal({ isOpen, onClose, onSuccess, initialData = null }) {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({

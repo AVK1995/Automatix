@@ -29,7 +29,7 @@ const PROVIDER_CONFIG = {
   }
 };
 
-export default function ApiKeyModal({ isOpen, onClose, onSuccess, providerName }) {
+export default function ApiKeyModal({ isOpen, onClose, onSuccess, providerName, initialData = null }) {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -42,12 +42,27 @@ export default function ApiKeyModal({ isOpen, onClose, onSuccess, providerName }
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        email: initialData.accountEmail || '',
+        apiKey: initialData.apiKey || ''
+      });
+    }
+  }, [initialData]);
 
   // Reset form when provider changes or modal opens
   useEffect(() => {
     if (isOpen) {
-      setFormData({ name: '', email: '', apiKey: '' });
+      if (initialData) {
+        setFormData({
+          name: initialData.name || '',
+          email: initialData.accountEmail || '',
+          apiKey: initialData.apiKey || ''
+        });
+      } else {
+        setFormData({ name: '', email: '', apiKey: '' });
+      }
       setError(null);
     }
   }, [isOpen, providerName]);

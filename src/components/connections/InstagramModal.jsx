@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 import { useRouter } from 'next/navigation';
 
-export default function InstagramModal({ isOpen, onClose, onSuccess }) {
+export default function InstagramModal({ isOpen, onClose, onSuccess, initialData = null }) {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -22,7 +22,15 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (initialData) {
+      setFormData({
+        connectionName: initialData.name || '',
+        appId: initialData.clientEmail || '',
+        appSecret: initialData.privateKey || '',
+        pageAccessToken: initialData.apiKey || ''
+      });
+    }
+  }, [initialData]);
 
   if (!isOpen || !mounted) return null;
 
