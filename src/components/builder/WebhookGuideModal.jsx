@@ -23,7 +23,7 @@ export default function WebhookGuideModal({ isOpen, onClose, integrationId }) {
         <>In the left sidebar menu of the Customize screen, click on <strong>API setup with Instagram login</strong>.</>,
         <>Scroll down to section <strong>3. Configure webhooks</strong> and expand it.</>,
         <>Paste your Automatix Webhook URL into the <strong>Callback URL</strong> field.</>,
-        <>If you have set a <code>META_APP_SECRET</code> in your Vercel environment variables, paste it into the <strong>Verify token</strong> field. (If you haven't, you can paste any random string like <code>automatix</code> just to pass verification).</>,
+        <>Paste <code>automatix_secure_meta_token_123</code> into the <strong>Verify token</strong> field.</>,
         <>Click the blue <strong>Verify and save</strong> button.</>
       ]
     },

@@ -1289,7 +1289,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
               <div className="bg-black/20 p-4 rounded-md border border-white/5 space-y-4 mb-4">
                 <div>
                   <label className="block text-xs text-text-secondary mb-1">Webhook URL</label>
-                  <div className="flex items-center mt-1">
+                  <div className="flex items-center mt-1 mb-3">
                     <input 
                       readOnly 
                       value={`${typeof window !== 'undefined' ? window.location.origin : 'https://automatix.com'}/api/webhooks/meta`} 
@@ -1297,6 +1297,21 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     />
                     <button 
                       onClick={() => handleCopy(`${typeof window !== 'undefined' ? window.location.origin : 'https://automatix.com'}/api/webhooks/meta`)} 
+                      className="bg-white/10 hover:bg-white/20 px-3 py-2 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center"
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+
+                  <label className="block text-xs text-text-secondary mb-1">Verify Token</label>
+                  <div className="flex items-center mt-1">
+                    <input 
+                      readOnly 
+                      value={`automatix_secure_meta_token_123`} 
+                      className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" 
+                    />
+                    <button 
+                      onClick={() => handleCopy(`automatix_secure_meta_token_123`)} 
                       className="bg-white/10 hover:bg-white/20 px-3 py-2 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center"
                     >
                       {copied ? 'Copied' : 'Copy'}
