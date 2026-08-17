@@ -10,6 +10,7 @@ import SmtpModal from '@/components/connections/SmtpModal';
 import LegalConsentModal from '@/components/ui/LegalConsentModal';
 
 export default function ConnectIntegration({ provider, selectedConnectionId, onConnectionSelect }) {
+  const providerKey = provider ? provider.toLowerCase() : '';
   const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState([]);
   const [disconnectId, setDisconnectId] = useState(null);
@@ -68,7 +69,7 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
 
   const handleConsentAccepted = () => {
     setIsConsentModalOpen(false);
-    if (provider.toLowerCase() === 'smtp') {
+    if (providerKey === 'smtp') {
       setIsSmtpModalOpen(true);
       return;
     }
@@ -123,7 +124,7 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
     }
   };
 
-  const isOAuthProvider = ['sheets', 'instagram', 'facebook', 'slack', 'gmail'].includes(provider);
+  const isOAuthProvider = ['sheets', 'instagram', 'facebook', 'slack', 'gmail'].includes(providerKey);
 
   const handleConnectOAuth = () => {
     setIsConnecting(true);
@@ -142,7 +143,7 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
     };
     window.addEventListener('message', messageListener);
 
-    let url = `/api/integrations/google/authorize?provider=${provider}`;
+    let url = `/api/integrations/google/authorize?provider=${providerKey}`;
     if (appId && appSecret) {
        url += `&app_id=${encodeURIComponent(appId)}&app_secret=${encodeURIComponent(appSecret)}&connection_name=${encodeURIComponent(connectionName)}`;
     }
@@ -170,7 +171,7 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
           appSecret,
           pageAccessToken,
           connectionName,
-          providerName: provider
+          providerName: providerKey
         })
       });
       
@@ -197,7 +198,7 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
     setIsSaving(true);
     try {
        const { submitRefundRequest } = await import('@/actions/support');
-       const res = await submitRefundRequest(`Concierge Setup: ${provider}`, `Client requested a white-glove setup for ${provider}. Please contact them for Business Manager access.`);
+       const res = await submitRefundRequest(`Concierge Setup: ${providerKey}`, `Client requested a white-glove setup for ${providerKey}. Please contact them for Business Manager access.`);
        if (res.success) {
           alert('Request submitted! Our team will reach out to you shortly.');
           setIsConnecting(false);
@@ -219,17 +220,14 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
   }
 
   if (isConnecting) {
-    if (provider === 'sheets' || provider === 'slack') {
+    if (providerKey === 'sheets' || providerKey === 'slack') {
       return (
         <div className="bg-[#0a0a0a] border border-border-subtle rounded-lg p-4 flex flex-col items-center justify-center text-center">
           <div className="w-10 h-10 rounded-full bg-accent-blue/10 flex items-center justify-center mb-3">
             <Link2 className="w-5 h-5 text-accent-blue" />
           </div>
-          <h4 className="text-sm font-medium text-white mb-1">Connect {provider === 'sheets' ? 'Google Sheets' : 'Slack'}</h4>
+          <h4 className="text-sm font-medium text-white mb-1">Connect {providerKey === 'sheets' ? 'Google Sheets' : 'Slack'}</h4>
           <p className="text-[10px] text-text-secondary mb-3">You will be redirected to securely log in.</p>
-          <button type="button" onClick={() => setIsGuideOpen(true)} className="text-[10px] text-accent-blue hover:underline mb-2 flex items-center justify-center gap-1">
-            <HelpCircle className="w-3 h-3" /> Learn how to connect
-          </button>
           
           <div className="flex gap-3 pt-4 w-full">
             <button 
@@ -243,28 +241,25 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
               onClick={handleConnectOAuth}
               className="flex-1 bg-accent-blue hover:bg-accent-blue/90 text-white font-medium px-3 py-2 rounded-md text-[11px] transition-colors flex items-center justify-center gap-2"
             >
-              Sign in with {provider === 'sheets' ? 'Google' : provider.charAt(0).toUpperCase() + provider.slice(1)}
+              Sign in with {providerKey === 'sheets' ? 'Google' : providerKey.charAt(0).toUpperCase() + providerKey.slice(1)}
             </button>
           </div>
 
           <ConnectionGuideModal
             isOpen={isGuideOpen}
             onClose={() => setIsGuideOpen(false)}
-            providerName={provider === 'sheets' ? 'Google Sheets' : provider}
+            providerName={providerKey === 'sheets' ? 'Google Sheets' : providerKey}
           />
         </div>
       );
     }
 
-    if (provider === 'instagram' || provider === 'facebook' || provider === 'whatsapp') {
+    if (providerKey === 'instagram' || providerKey === 'facebook' || providerKey === 'whatsapp') {
       return (
         <div className="bg-[#0a0a0a] border border-border-subtle rounded-lg p-4 space-y-4">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <h4 className="text-sm font-medium text-white capitalize">Connect {provider}</h4>
-              <button type="button" onClick={() => setIsGuideOpen(true)} className="text-[10px] text-accent-blue hover:underline flex items-center gap-1">
-                <HelpCircle className="w-3 h-3" /> Setup Guide
-              </button>
+              <h4 className="text-sm font-medium text-white capitalize">Connect {providerKey}</h4>
             </div>
             <p className="text-[10px] text-text-secondary">Choose how you want to securely connect your Meta account.</p>
           </div>
@@ -396,10 +391,7 @@ export default function ConnectIntegration({ provider, selectedConnectionId, onC
       <div className="bg-[#0a0a0a] border border-border-subtle rounded-lg p-4 space-y-4">
         <div>
           <div className="flex items-center justify-between mb-1">
-            <h4 className="text-sm font-medium text-white">Connect {provider === 'calendly' ? 'Calendly' : provider}</h4>
-            <button type="button" onClick={() => setIsGuideOpen(true)} className="text-[10px] text-accent-blue hover:underline flex items-center gap-1">
-              <HelpCircle className="w-3 h-3" /> Learn more
-            </button>
+            <h4 className="text-sm font-medium text-white">Connect {providerKey === 'calendly' ? 'Calendly' : provider}</h4>
           </div>
           <p className="text-[10px] text-text-secondary">Generate a Personal Access Token in your account settings and paste it below.</p>
         </div>
