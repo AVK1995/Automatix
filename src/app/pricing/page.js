@@ -4,8 +4,15 @@ import Footer from '@/components/ui/Footer';
 import Logo from '@/components/Logo';
 import { ArrowLeft } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
+import PublicHeader from '@/components/ui/PublicHeader';
+
+import { auth } from '@/auth';
 
 export default async function PricingPage() {
+  const session = await auth();
+  const userName = session?.user?.name || '[Your Full Name]';
+  const userEmail = session?.user?.email || '[Your Registered Email]';
+
   const settings = await prisma.platformSettings.findFirst() || {
     starterPlanEnabled: true,
     starterPlanPrice: 0,
@@ -21,8 +28,8 @@ export default async function PricingPage() {
 
 Please find my payment receipt attached.
 
-Name: [Your Full Name]
-Pre-existing Automatix Account Email: [Your Registered Email]
+Name: ${userName}
+Pre-existing Automatix Account Email: ${userEmail}
 
 (Note: You must have a pre-existing account in Automatix to get access, otherwise your payment cannot be processed and no refund will be provided.)
 
@@ -30,24 +37,16 @@ Thanks!`);
   const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${billingEmail}&su=${emailSubject}&body=${emailBody}`;
 
   return (
-    <div className="relative min-h-screen bg-[#0a0a0a] text-white overflow-hidden flex flex-col items-center py-20 px-4">
-      {/* Background Glows */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent-violet/10 rounded-full blur-[150px] pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent-blue/10 rounded-full blur-[150px] pointer-events-none"></div>
+    <div className="relative min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+      <PublicHeader showBack={true} />
 
-      <div className="absolute top-4 left-4 z-20">
-        <Link href="/" className="flex items-center gap-2 text-text-secondary hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-lg border border-white/10 hover:bg-white/10">
-          <ArrowLeft size={16} />
-          <span className="text-sm font-medium">Back to Home</span>
-        </Link>
-      </div>
+      {/* Main Container constrained to max-w-7xl like dashboard */}
+      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-20 flex flex-col items-center flex-1 relative overflow-hidden">
+        {/* Background Glows */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent-violet/10 rounded-full blur-[150px] pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent-blue/10 rounded-full blur-[150px] pointer-events-none"></div>
 
-      <div className="relative z-10 w-full max-w-3xl text-center mb-16">
-        <div className="inline-block mb-6">
-          <Link href="/">
-             <Logo size={48} className="mx-auto hover:scale-105 transition-transform" />
-          </Link>
-        </div>
+        <div className="relative z-10 w-full max-w-3xl text-center mb-16">
         <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent tracking-tight">Simple, transparent pricing</h1>
         <p className="text-text-secondary text-lg">No hidden fees. Scale your workflow automation effortlessly.</p>
       </div>
@@ -113,8 +112,10 @@ Thanks!`);
         </div>
       </div>
       
-      <div className="absolute bottom-0 w-full z-20 mt-12">
-        <Footer />
+      <div className="w-full mt-12 border-t border-border-subtle bg-background">
+        <div className="max-w-7xl mx-auto w-full px-4 md:px-8">
+          <Footer />
+        </div>
       </div>
     </div>
   );

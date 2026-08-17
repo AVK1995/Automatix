@@ -1,23 +1,17 @@
 import Link from 'next/link';
 import { auth } from '@/auth';
-import Logo from '@/components/Logo';
-import ProfileDropdown from '@/components/ProfileDropdown';
 import Footer from '@/components/ui/Footer';
+import PublicHeader from '@/components/ui/PublicHeader';
 
 export default async function Home() {
   const session = await auth();
 
   return (
-    <div className="relative min-h-screen bg-[#0a0a0a] text-white overflow-hidden flex flex-col items-center p-8">
-      {/* Header with Logo */}
-      <div className="w-full max-w-7xl flex items-center justify-between z-20 relative mb-24">
-        <Logo size={48} />
-        {session && (
-          <div className="flex items-center gap-4">
-            <ProfileDropdown user={session.user} />
-          </div>
-        )}
-      </div>
+    <div className="relative min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+      <PublicHeader showBack={false} />
+
+      {/* Main Container constrained to max-w-7xl like dashboard */}
+      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-20 flex flex-col items-center flex-1 relative overflow-hidden">
 
       {/* Background Glow Effects */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent-violet/20 rounded-full blur-[120px] mix-blend-screen pointer-events-none"></div>
@@ -59,9 +53,12 @@ export default async function Home() {
           )}
         </div>
       </div>
-
-      <div className="absolute bottom-0 w-full">
-        <Footer />
+      </div>
+      
+      <div className="w-full mt-12 border-t border-border-subtle bg-background">
+        <div className="max-w-7xl mx-auto w-full px-4 md:px-8">
+          <Footer />
+        </div>
       </div>
     </div>
   );

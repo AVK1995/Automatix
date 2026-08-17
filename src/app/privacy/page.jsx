@@ -1,19 +1,18 @@
 import React from 'react';
-import Link from 'next/link';
 import Footer from '@/components/ui/Footer';
-import { ArrowLeft, ShieldCheck, Database, Lock, Trash2, Mail } from 'lucide-react';
+import { ShieldCheck, Database, Lock, Trash2, Mail } from 'lucide-react';
+import PublicHeader from '@/components/ui/PublicHeader';
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20 flex flex-col">
+      <PublicHeader showBack={true} />
+      
       {/* Header section with subtle gradient */}
-      <div className="relative pt-16 pb-12 border-b border-border-subtle bg-gradient-to-b from-accent-blue/5 to-background overflow-hidden">
+      <div className="relative pt-12 pb-12 border-b border-border-subtle bg-gradient-to-b from-accent-blue/5 to-background overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent-blue/10 via-background to-background opacity-50"></div>
         <div className="max-w-4xl mx-auto px-6 lg:px-8 relative z-10">
-          <Link href="/" className="inline-flex items-center text-sm font-medium text-text-secondary hover:text-accent-blue transition-colors mb-6 group">
-            <ArrowLeft className="w-4 h-4 mr-2 transition-transform group-hover:-translate-x-1" /> Back to Home
-          </Link>
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4 mt-4">
             <div className="w-10 h-10 rounded-xl bg-accent-blue/20 flex items-center justify-center border border-accent-blue/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
               <ShieldCheck className="text-accent-blue w-5 h-5" />
             </div>
