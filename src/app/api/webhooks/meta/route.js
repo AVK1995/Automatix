@@ -32,6 +32,30 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
+    // --- UNCONDITIONAL DEBUG LOGGER ---
+    try {
+      const firstWorkflow = await prisma.workflow.findFirst({ where: { isActive: true } });
+      if (firstWorkflow) {
+        await prisma.executionLog.create({
+          data: {
+            workflowId: firstWorkflow.id,
+            status: 'FAILED',
+            startedAt: new Date(),
+            completedAt: new Date(),
+            durationMs: 0,
+            stepsRan: 0,
+            currentNodeState: {
+              is_debug_dump_v2: true,
+              raw_body: body
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Debug logger failed", e);
+    }
+    // ---------------------------------
+
     if (body.object !== 'page' && body.object !== 'instagram') {
       return NextResponse.json({ success: true, ignored: true, message: 'Not a page or instagram object' }, { status: 200 });
     }
@@ -114,8 +138,8 @@ export async function POST(request) {
 
           // Check if this workflow has a Meta trigger node
           const triggerNode = nodes.find(n => 
-             n.type === 'trigger_instagram' && 
-             (n.integrationId === integration.id || n.integration?.id === integration.id)
+             (n.type === 'trigger_instagram' || n.type === 'TRIGGER') && 
+             (n.config?.connectionId === integration.id || n.integrationId === integration.id || n.integration?.id === integration.id)
           );
 
           if (!triggerNode) continue;
