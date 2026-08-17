@@ -440,7 +440,8 @@ export async function deleteConnectionById(id) {
             userId: session.user.id,
             type: 'WORKFLOW_ISSUE',
             message: `Connection deleted. Action required for workflow: ${workflow.name}`,
-            metadata: { workflowId: workflow.id, nodeId: issueNodeId, isTriggerIssue }
+            metadata: { workflowId: workflow.id, nodeId: issueNodeId, isTriggerIssue },
+            updatedAt: new Date()
           }
         });
       }
