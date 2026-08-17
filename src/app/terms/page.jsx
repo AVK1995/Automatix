@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Footer from '@/components/ui/Footer';
 import { ArrowLeft, ScrollText, Scale, ShieldAlert, Cpu, AlertTriangle, XOctagon, Mail } from 'lucide-react';
 
 export default function TermsPage() {

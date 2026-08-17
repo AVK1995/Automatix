@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Footer from '@/components/ui/Footer';
 import { ArrowLeft, ShieldCheck, Database, Lock, Trash2, Mail } from 'lucide-react';
 
 export default function PrivacyPage() {
