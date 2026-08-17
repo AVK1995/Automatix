@@ -29,7 +29,7 @@ export default function LegalConsentModal({ isOpen, onClose, onAccept, provider 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -63,7 +63,7 @@ export default function LegalConsentModal({ isOpen, onClose, onAccept, provider 
 
               <div className="p-6 pt-4 border-t border-white/5 bg-black/20">
                 <label className="flex items-start gap-3 cursor-pointer group mb-6">
-                  <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors ${hasAgreed ? 'bg-accent-blue border-accent-blue' : 'bg-black/50 border-white/20 group-hover:border-white/40'}`}>
+                  <div className={`mt-0.5 shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${hasAgreed ? 'bg-accent-blue border-accent-blue' : 'bg-black/50 border-white/20 group-hover:border-white/40'}`}>
                     {hasAgreed && <Check className="w-3.5 h-3.5 text-white" />}
                   </div>
                   <input 

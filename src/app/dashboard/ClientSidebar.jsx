@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { LogOut, LayoutDashboard, Workflow, Network, Settings, Server, ExternalLink, XCircle, CalendarDays } from 'lucide-react';
+import { LogOut, LayoutDashboard, Workflow, Network, Settings, Server, ExternalLink, XCircle, CalendarDays, MoreHorizontal, ChevronRight, FileText, Shield, ScrollText, RefreshCw } from 'lucide-react';
 import { startInngestDevServer, stopInngestDevServer, checkInngestStatus } from '@/actions/dev';
 import Logo from '@/components/Logo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -13,6 +13,8 @@ export default function ClientSidebar({ isMobile, onClose }) {
   const pathname = usePathname();
   const [inngestRunning, setInngestRunning] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isLegalMenuOpen, setIsLegalMenuOpen] = useState(false);
+  const legalMenuRef = useRef(null);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production') {
@@ -24,6 +26,16 @@ export default function ClientSidebar({ isMobile, onClose }) {
       const interval = setInterval(check, 15000);
       return () => clearInterval(interval);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (legalMenuRef.current && !legalMenuRef.current.contains(event.target)) {
+        setIsLegalMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const navItems = [
@@ -113,7 +125,7 @@ export default function ClientSidebar({ isMobile, onClose }) {
       )}
 
       {/* Logout Button */}
-      <div className="p-4 border-t border-border-subtle">
+      <div className="px-4 pt-4 pb-2 border-t border-border-subtle">
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
           className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-sm transition-colors"
@@ -121,6 +133,48 @@ export default function ClientSidebar({ isMobile, onClose }) {
           <LogOut size={16} />
           <span>Sign Out</span>
         </button>
+      </div>
+
+      {/* Footer Links (Legal) */}
+      <div className="px-4 pb-4 relative" ref={legalMenuRef}>
+        <button 
+          onClick={() => setIsLegalMenuOpen(!isLegalMenuOpen)}
+          className="w-full flex items-center justify-between px-3 py-2 text-sm text-text-secondary hover:text-foreground hover:bg-card rounded-sm transition-colors border border-transparent"
+        >
+          <div className="flex items-center gap-3">
+            <MoreHorizontal size={16} />
+            <span>Legal & Info</span>
+          </div>
+          <ChevronRight size={14} className={`transition-transform ${isLegalMenuOpen ? 'rotate-90' : ''}`} />
+        </button>
+
+        {isLegalMenuOpen && (
+          <div className="absolute bottom-full left-4 mb-2 w-56 bg-card border border-border-subtle rounded-md shadow-xl shadow-black/50 overflow-hidden z-50">
+            <div className="p-1 flex flex-col">
+              <Link 
+                href="/privacy" 
+                onClick={() => setIsLegalMenuOpen(false)}
+                className="px-3 py-2.5 text-sm text-text-secondary hover:text-white hover:bg-white/5 rounded-sm flex items-center gap-3 transition-colors"
+              >
+                <Shield size={14} className="text-accent-blue" /> Privacy Policy
+              </Link>
+              <Link 
+                href="/terms" 
+                onClick={() => setIsLegalMenuOpen(false)}
+                className="px-3 py-2.5 text-sm text-text-secondary hover:text-white hover:bg-white/5 rounded-sm flex items-center gap-3 transition-colors"
+              >
+                <ScrollText size={14} className="text-accent-blue" /> Terms of Service
+              </Link>
+              <Link 
+                href="/refunds" 
+                onClick={() => setIsLegalMenuOpen(false)}
+                className="px-3 py-2.5 text-sm text-text-secondary hover:text-white hover:bg-white/5 rounded-sm flex items-center gap-3 transition-colors"
+              >
+                <RefreshCw size={14} className="text-accent-blue" /> Refund Policy
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
       <ConfirmModal
