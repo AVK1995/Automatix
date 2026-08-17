@@ -1,63 +1,111 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ScrollText, Scale, ShieldAlert, Cpu, AlertTriangle, XOctagon, Mail } from 'lucide-react';
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary p-8 md:p-16">
-      <div className="max-w-3xl mx-auto space-y-8">
-        <Link href="/" className="inline-flex items-center text-accent-blue hover:underline mb-8">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Home
-        </Link>
-        
-        <h1 className="text-3xl font-bold mb-4">Terms and Conditions</h1>
-        <p className="text-sm text-text-secondary">Last Updated: August 2026</p>
+    <div className="min-h-screen bg-background text-foreground pb-20">
+      {/* Header section with subtle gradient */}
+      <div className="relative pt-16 pb-12 border-b border-border-subtle bg-gradient-to-b from-accent-blue/5 to-background overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent-blue/10 via-background to-background opacity-50"></div>
+        <div className="max-w-4xl mx-auto px-6 lg:px-8 relative z-10">
+          <Link href="/" className="inline-flex items-center text-sm font-medium text-text-secondary hover:text-accent-blue transition-colors mb-6 group">
+            <ArrowLeft className="w-4 h-4 mr-2 transition-transform group-hover:-translate-x-1" /> Back to Home
+          </Link>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-accent-blue/20 flex items-center justify-center border border-accent-blue/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+              <ScrollText className="text-accent-blue w-5 h-5" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">Terms of Service</h1>
+          </div>
+          <p className="text-text-tertiary">Last Updated: August 17, 2026</p>
+        </div>
+      </div>
 
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold border-b border-white/10 pb-2">1. Introduction</h2>
-          <p className="text-text-secondary leading-relaxed">
-            Welcome to Automatix. These Terms and Conditions govern your use of our platform and services. By accessing or using Automatix, you agree to be bound by these terms. If you disagree with any part of the terms, you may not access our service.
-          </p>
-        </section>
+      {/* Main Content Area */}
+      <div className="max-w-4xl mx-auto px-6 lg:px-8 pt-12">
+        <div className="bg-card border border-border-subtle rounded-2xl p-6 md:p-10 shadow-lg relative overflow-hidden">
+          {/* Subtle glowing effect behind the card */}
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-accent-blue/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold border-b border-white/10 pb-2">2. Role of Automatix (The "Middle-Man" Clause)</h2>
-          <p className="text-text-secondary leading-relaxed">
-            Automatix acts strictly as an infrastructure provider and a technological "middle-man." Our platform facilitates automation and integration between various third-party services (such as Meta, Instagram, Facebook, and WhatsApp). 
-          </p>
-          <ul className="list-disc pl-5 text-text-secondary space-y-2">
-            <li>We do not own, operate, or control the third-party platforms you connect to.</li>
-            <li>We are completely isolated from and hold <strong>zero legal liability</strong> for any bans, suspensions, account restrictions, or policy violations applied to your accounts by Meta or any other third-party service.</li>
-            <li>You are solely responsible for ensuring that your automated workflows, messages, and content comply with the Terms of Service and Developer Policies of the respective platforms you use.</li>
-          </ul>
-        </section>
+          <div className="prose prose-invert prose-blue max-w-none space-y-10">
+            <p className="text-text-secondary leading-relaxed text-lg">
+              By accessing or using the Automatix web application, you agree to be bound by these Terms of Service.
+            </p>
 
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold border-b border-white/10 pb-2">3. "Bring Your Own Key" (BYOK) & Concierge Setup</h2>
-          <p className="text-text-secondary leading-relaxed">
-            Automatix offers a "Bring Your Own Key" architecture. You are responsible for creating your own Developer Apps and verifying your own businesses on third-party platforms.
-          </p>
-          <p className="text-text-secondary leading-relaxed">
-            If you utilize our optional "Concierge" white-glove setup service, you acknowledge that you are granting our administrators temporary access to your third-party accounts solely for the purpose of technical configuration. We act exclusively on your behalf and accept no liability for the resulting configurations, subsequent account reviews, or data exchanged via those configurations.
-          </p>
-        </section>
+            {/* Section 1 */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
+                <Cpu className="w-5 h-5 text-accent-blue" />
+                <h2 className="text-xl font-semibold text-white m-0">1. Service Description</h2>
+              </div>
+              <p className="text-text-secondary leading-relaxed mt-4">
+                Automatix is a software-as-a-service (SaaS) platform providing funnel building, automation logic, and webhook integration tools.
+              </p>
+            </section>
 
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold border-b border-white/10 pb-2">4. Limitation of Liability</h2>
-          <p className="text-text-secondary leading-relaxed">
-            To the maximum extent permitted by law, Automatix and its owner shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, goodwill, or business interruption, arising from your use of the service or any third-party integrations connected through the service.
-          </p>
-        </section>
+            {/* Section 2 */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
+                <Scale className="w-5 h-5 text-accent-blue" />
+                <h2 className="text-xl font-semibold text-white m-0">2. Acceptable Use and Meta Compliance</h2>
+              </div>
+              <p className="text-text-secondary leading-relaxed mt-4">
+                You agree not to use Automatix for any illegal or unauthorized purpose. If you utilize our WhatsApp or Meta API integrations, you agree to comply strictly with the Meta Business Messaging Policies and WhatsApp Commerce Policies. Any violation of Meta's terms that results in the suspension of our API access may result in the immediate termination of your Automatix account.
+              </p>
+            </section>
 
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold border-b border-white/10 pb-2">5. User Data and Security</h2>
-          <p className="text-text-secondary leading-relaxed">
-            While we utilize industry-standard AES-256 encryption to protect your sensitive credentials (such as App Secrets and Access Tokens), you acknowledge that providing this information is done at your own risk. Please refer to our Privacy Policy for more information on how we handle and protect your data.
-          </p>
-        </section>
+            {/* Section 3 */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
+                <ShieldAlert className="w-5 h-5 text-accent-blue" />
+                <h2 className="text-xl font-semibold text-white m-0">3. Intellectual Property</h2>
+              </div>
+              <p className="text-text-secondary leading-relaxed mt-4">
+                All code, design, and architecture of the Automatix platform are the exclusive property of Automatix. You retain full ownership of the content, text, and customer data you generate using our funnel builder.
+              </p>
+            </section>
 
-        <div className="pt-8 border-t border-white/10 text-sm text-text-tertiary">
-          If you have any questions about these Terms, please contact support.
+            {/* Section 4 */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
+                <AlertTriangle className="w-5 h-5 text-accent-blue" />
+                <h2 className="text-xl font-semibold text-white m-0">4. Limitation of Liability</h2>
+              </div>
+              <p className="text-text-secondary leading-relaxed mt-4">
+                Automatix provides its service "as is." We are not liable for any lost profits, lost data, or business interruption resulting from your use of our tools or from unexpected downtime in third-party APIs (such as Meta, Stripe, or Razorpay).
+              </p>
+            </section>
+
+            {/* Section 5 */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
+                <XOctagon className="w-5 h-5 text-accent-blue" />
+                <h2 className="text-xl font-semibold text-white m-0">5. Termination</h2>
+              </div>
+              <p className="text-text-secondary leading-relaxed mt-4">
+                We reserve the right to suspend or terminate your account at any time if you breach these terms.
+              </p>
+            </section>
+
+            {/* Section 6 */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
+                <Mail className="w-5 h-5 text-accent-blue" />
+                <h2 className="text-xl font-semibold text-white m-0">6. Contact</h2>
+              </div>
+              <div className="text-text-secondary leading-relaxed mt-4 bg-background/50 border border-border-subtle p-5 rounded-lg inline-block w-full">
+                <div className="font-medium">
+                  <p className="text-white">Automatix</p>
+                  <p>Solapur, Maharashtra, India</p>
+                  <p className="mt-1 flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    <a href="mailto:abhishekkamble0123@gmail.com" className="text-accent-blue hover:underline">abhishekkamble0123@gmail.com</a>
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>
