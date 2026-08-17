@@ -188,12 +188,12 @@ export default function InstagramModal({ isOpen, onClose, onSuccess }) {
             </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">Page Access Token</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Access Token</label>
                 <input
                   type="password"
                   value={formData.pageAccessToken}
                   onChange={(e) => setFormData({...formData, pageAccessToken: e.target.value})}
-                  placeholder="Paste your long-lived token here..."
+                  placeholder="Paste your generated token here..."
                   className="w-full bg-[#111] border border-border-subtle rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors font-mono"
                   required
                 />
