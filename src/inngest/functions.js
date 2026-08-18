@@ -66,6 +66,36 @@ export const executeWorkflow = inngest.createFunction(
       return { success: true, isolatedRun: true, runOnlyNodeId };
     }
 
+    const resolveVars = (str) => {
+      if (typeof str !== 'string') return str;
+      return str.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+        if (path.startsWith('trigger.body.')) {
+          const keyPath = path.replace('trigger.body.', '');
+          let current = execution.currentNodeState?.payload;
+          for (const k of keyPath.split('.')) {
+            if (current === undefined || current === null) return match;
+            current = current[k];
+          }
+          return current !== undefined ? current : match;
+        } else if (path.startsWith('steps.')) {
+          const parts = path.split('.');
+          if (parts.length >= 3) {
+            const sId = parts[1];
+            const keyPath = parts.slice(2);
+            let current = execution.currentNodeState?.stepOutputs?.[sId];
+            if (current) {
+              for (const k of keyPath) {
+                if (current === undefined || current === null) return match;
+                current = current[k];
+              }
+              return current !== undefined ? current : match;
+            }
+          }
+        }
+        return match;
+      });
+    };
+
     let hasFailedStep = false;
 
     const executeNodeTree = async (parentId = null, pathId = null) => {
@@ -326,37 +356,6 @@ export const executeWorkflow = inngest.createFunction(
               console.log(`Executing Action [${node.title}]:`, node.config);
               if (node.config?.simulateFailure) throw new Error("Simulated Failure");
                             let output = null;
-                
-                // Helper to resolve simple variables for live execution (basic implementation)
-                const resolveVars = (str) => {
-                  if (typeof str !== 'string') return str;
-                  return str.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
-                    if (path.startsWith('trigger.body.')) {
-                      const keyPath = path.replace('trigger.body.', '');
-                      let current = execution.currentNodeState?.payload;
-                      for (const k of keyPath.split('.')) {
-                        if (current === undefined || current === null) return match;
-                        current = current[k];
-                      }
-                      return current !== undefined ? current : match;
-                    } else if (path.startsWith('steps.')) {
-                      const parts = path.split('.');
-                      if (parts.length >= 3) {
-                        const sId = parts[1];
-                        const keyPath = parts.slice(2);
-                        let current = execution.currentNodeState?.stepOutputs?.[sId];
-                        if (current) {
-                          for (const k of keyPath) {
-                            if (current === undefined || current === null) return match;
-                            current = current[k];
-                          }
-                          return current !== undefined ? current : match;
-                        }
-                      }
-                    }
-                    return match;
-                  });
-                };
 
                 if (node.integrationId === 'formatter_text' || node.integration?.id === 'formatter_text') {
                   let rawInput = node.config.input ? resolveVars(node.config.input) : '';
@@ -582,8 +581,62 @@ export const executeWorkflow = inngest.createFunction(
            }
            await executeNodeTree(node.id, null);
         } else if (node.type === NODE_TYPES.CONDITION) {
-           await executeNodeTree(node.id, 'A');
-           await executeNodeTree(node.id, null);
+           const evalResult = await step.run(`Evaluate Condition (Node ${node.id})`, async () => {
+              const branches = node.config?.branches || [];
+              for (const branch of branches) {
+                  const varTmpl = node.config[`path${branch.id}Var`];
+                  const op = node.config[`path${branch.id}Op`] || 'contains';
+                  const valTmpl = node.config[`path${branch.id}Val`];
+                  
+                  if (!varTmpl) continue;
+                  
+                  const actualVar = resolveVars(varTmpl);
+                  
+                  if (op === 'exists') {
+                    if (actualVar !== undefined && actualVar !== null && actualVar !== '') return branch.id;
+                    continue;
+                  }
+                  if (op === 'not_exists') {
+                    if (actualVar === undefined || actualVar === null || actualVar === '') return branch.id;
+                    continue;
+                  }
+                  
+                  const valStr = resolveVars(valTmpl) || '';
+                  const possibleVals = valStr.split(',').map(s => s.trim().toLowerCase());
+                  const varLower = String(actualVar).toLowerCase();
+                  
+                  let matched = false;
+                  for (const v of possibleVals) {
+                    if (op === 'contains' && varLower.includes(v)) matched = true;
+                    if (op === 'not_contains' && !varLower.includes(v)) matched = true;
+                    if (op === 'equals' && varLower === v) matched = true;
+                    if (op === 'not_equals' && varLower !== v) matched = true;
+                    if (op === 'starts_with' && varLower.startsWith(v)) matched = true;
+                    if (op === 'ends_with' && varLower.endsWith(v)) matched = true;
+                    if (op === 'greater_than' && Number(actualVar) > Number(v)) matched = true;
+                    if (op === 'less_than' && Number(actualVar) < Number(v)) matched = true;
+                  }
+                  
+                  if (matched) {
+                    if (op === 'not_contains') {
+                       const containsAny = possibleVals.some(v => varLower.includes(v));
+                       if (!containsAny) return branch.id;
+                    } else if (op === 'not_equals') {
+                       const equalsAny = possibleVals.some(v => varLower === v);
+                       if (!equalsAny) return branch.id;
+                    } else {
+                       return branch.id;
+                    }
+                  }
+              }
+              return null;
+           });
+           
+           if (evalResult) {
+             await executeNodeTree(node.id, evalResult);
+           } else {
+             await executeNodeTree(node.id, null);
+           }
         } else {
            await executeNodeTree(node.id, null);
         }
