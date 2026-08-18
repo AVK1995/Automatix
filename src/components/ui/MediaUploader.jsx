@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Upload, X, Loader2, Image as ImageIcon, Film } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { upload } from '@vercel/blob/client';
 
 export default function MediaUploader({ value, onChange, nodeId, accept = "image/*,video/*" }) {
   const [isUploading, setIsUploading] = useState(false);
@@ -26,34 +27,25 @@ export default function MediaUploader({ value, onChange, nodeId, accept = "image
     }
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    if (nodeId) formData.append('nodeId', nodeId);
 
     try {
-      const res = await fetch('/api/media/upload', {
-        method: 'POST',
-        body: formData,
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/media/upload',
+        clientPayload: JSON.stringify({ nodeId, fileType: file.type, sizeMB })
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 403) {
-          // Quota error
-          toast.error(data.error || 'Storage limit reached', { duration: 5000 });
-          // We can dispatch an event or call a prop here to open the Upgrade Modal
-          window.dispatchEvent(new CustomEvent('open-quota-modal'));
-        } else {
-          toast.error(data.error || 'Failed to upload media');
-        }
-      } else {
-        toast.success('Media uploaded successfully');
-        onChange(data.url);
-      }
+      toast.success('Media uploaded successfully');
+      onChange(blob.url);
     } catch (error) {
       console.error(error);
-      toast.error('Network error during upload');
+      const msg = error.message || '';
+      if (msg.includes('QUOTA_EXCEEDED')) {
+        toast.error('Storage limit reached', { duration: 5000 });
+        window.dispatchEvent(new CustomEvent('open-quota-modal'));
+      } else {
+        toast.error(msg || 'Failed to upload media');
+      }
     } finally {
       setIsUploading(false);
       e.target.value = ''; // Reset input
