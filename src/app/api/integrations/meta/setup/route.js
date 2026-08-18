@@ -37,8 +37,20 @@ export async function POST(req) {
       return NextResponse.json({ error: `Invalid Access Token: ${pageData.error.message}` }, { status: 400 });
     }
     
-    const pageId = pageData.id;
+    let pageId = pageData.id;
+    const facebookPageId = pageId; // Save this for subscribing the page
     const pageName = pageData.name || pageData.username || connectionName;
+
+    // If provider is instagram and it's a FB page token, we MUST fetch the instagram_business_account ID!
+    if (providerName === 'instagram' && !isInstagramToken) {
+       const igRes = await fetch(`https://graph.facebook.com/v19.0/${facebookPageId}?fields=instagram_business_account&access_token=${pageAccessToken}`);
+       const igData = await igRes.json();
+       if (igData.instagram_business_account?.id) {
+           pageId = igData.instagram_business_account.id; // Use IGID for the integration accountEmail
+       } else {
+           return NextResponse.json({ error: `This Facebook Page is not connected to an Instagram Business Account.` }, { status: 400 });
+       }
+    }
 
     // 2. Generate App Access Token
     // Meta allows using the app_id|app_secret directly as the app access token for server-to-server calls
@@ -66,7 +78,7 @@ export async function POST(req) {
 
       // 4. Subscribe the Page to the App (Only applicable for Facebook Page tokens)
       if (!isInstagramToken) {
-        const pageSubRes = await fetch(`https://graph.facebook.com/v19.0/${pageId}/subscribed_apps`, {
+        const pageSubRes = await fetch(`https://graph.facebook.com/v19.0/${facebookPageId}/subscribed_apps`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams({

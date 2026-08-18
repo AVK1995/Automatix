@@ -90,13 +90,9 @@ export async function POST(request) {
           if (firstWorkflow) {
             await prisma.executionLog.create({
               data: {
-                workflowId: firstWorkflow.id,
-                status: 'FAILED', // using FAILED so it stands out
-                startedAt: new Date(),
-                completedAt: new Date(),
-                durationMs: 0,
-                stepsRan: 0,
-                currentNodeState: {
+              workflowId: firstWorkflow.id,
+              status: 'FAILED', // using FAILED so it stands out
+              currentNodeState: {
                   is_debug_dump: true,
                   received_page_id: pageId,
                   matched_integration: integration ? integration.id : null,
