@@ -1460,15 +1460,31 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                 </div>
                 
                 {config.messageType === 'media' && (
-                  <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1">Media URL (Image or Video)</label>
-                    <MediaUploader 
-                      value={config.mediaUrl || ''} 
-                      onChange={(val) => handleChange('mediaUrl', val)} 
-                      nodeId={selectedNode.id} 
-                    />
-                    <div className="mt-2 text-[10px] text-text-tertiary px-1 border-l-2 border-accent-blue/30 pl-2">
-                      <span className="text-white/80 font-medium">Or use a Variable:</span> If you are fetching an image dynamically from another step, switch Message Type to 'text', and paste the URL variable in the text box.
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-text-secondary mb-2">Upload File</label>
+                      <MediaUploader 
+                        value={config.mediaUrl || ''} 
+                        onChange={(val) => handleChange('mediaUrl', val)} 
+                        nodeId={selectedNode.id} 
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-white/10" />
+                      <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">OR</span>
+                      <div className="flex-1 h-px bg-white/10" />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-text-secondary mb-1">Paste Link or Variable</label>
+                      <VariableInput 
+                        placeholder="https://example.com/image.jpg" 
+                        value={config.mediaUrl || ''} 
+                        onChange={(val) => handleChange('mediaUrl', val)} 
+                        variables={variableGroups} 
+                      />
+                      <p className="text-[10px] text-text-tertiary mt-1">If you upload a file, the URL will automatically appear here.</p>
                     </div>
                   </div>
                 )}
