@@ -22,6 +22,10 @@ model User {
   address               String?
   phone                 String?
   quotaTier             String              @default("free")
+  maxImages             Int                 @default(10)
+  maxImageMB            Int                 @default(1)
+  maxVideos             Int                 @default(5)
+  maxVideoMB            Int                 @default(25)
   accounts              Account[]
   automatixCalendars    AutomatixCalendar[]
   integrations          Integration[]
@@ -29,6 +33,32 @@ model User {
   sessions              Session[]
   workflows             Workflow[]
   supportTickets        SupportTicket[]
+  media                 Media[]
+  quotaRequests         QuotaRequest[]
+}
+
+model Media {
+  id          String   @id @default(uuid())
+  url         String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nodeId      String?
+  sizeMB      Float
+  type        String   @default("IMAGE") // IMAGE or VIDEO
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model QuotaRequest {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestedPlan String
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Integration {

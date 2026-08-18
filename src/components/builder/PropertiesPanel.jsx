@@ -7,6 +7,8 @@ import Select from '@/components/ui/Select';
 import Toggle from '@/components/ui/Toggle';
 import Radio from '@/components/ui/Radio';
 import VariableInput from '@/components/ui/VariableInput';
+import MediaUploader from '@/components/ui/MediaUploader';
+import QuotaUpgradeModal from '@/components/ui/QuotaUpgradeModal';
 import GoogleSheetsGuideModal from './GoogleSheetsGuideModal';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 import WebhookGuideModal from '@/components/builder/WebhookGuideModal';
@@ -1460,7 +1462,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                 {config.messageType === 'media' && (
                   <div>
                     <label className="block text-xs font-medium text-text-secondary mb-1">Media URL (Image or Video)</label>
-                    <VariableInput placeholder="https://example.com/image.jpg" value={config.mediaUrl || ''} onChange={(val) => handleChange('mediaUrl', val)} variables={variableGroups} />
+                    <MediaUploader 
+                      value={config.mediaUrl || ''} 
+                      onChange={(val) => handleChange('mediaUrl', val)} 
+                      nodeId={selectedNode.id} 
+                    />
+                    <div className="mt-2 text-[10px] text-text-tertiary px-1 border-l-2 border-accent-blue/30 pl-2">
+                      <span className="text-white/80 font-medium">Or use a Variable:</span> If you are fetching an image dynamically from another step, switch Message Type to 'text', and paste the URL variable in the text box.
+                    </div>
                   </div>
                 )}
                 
@@ -3380,6 +3389,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         onClose={() => setIsWebhookGuideOpen(false)}
         integrationId={selectedNode?.integration?.id}
       />
+      <QuotaUpgradeModal />
     </div>
   );
 }

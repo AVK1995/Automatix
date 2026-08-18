@@ -12,7 +12,7 @@ export async function PUT(request, { params }) {
     }
 
     const { id } = await params;
-    const { tier, cycle } = await request.json();
+    const { tier, cycle, maxImages, maxImageMB, maxVideos, maxVideoMB } = await request.json();
 
     if (!tier || !cycle) {
       return NextResponse.json({ error: 'Tier and cycle are required' }, { status: 400 });
@@ -22,13 +22,20 @@ export async function PUT(request, { params }) {
     const daysToAdd = cycle === 'yearly' ? 365 : 30;
     const subscriptionExpiresAt = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000);
 
+    const data = {
+      subscriptionTier: tier,
+      subscriptionCycle: cycle,
+      subscriptionExpiresAt,
+    };
+
+    if (maxImages !== undefined) data.maxImages = Number(maxImages);
+    if (maxImageMB !== undefined) data.maxImageMB = Number(maxImageMB);
+    if (maxVideos !== undefined) data.maxVideos = Number(maxVideos);
+    if (maxVideoMB !== undefined) data.maxVideoMB = Number(maxVideoMB);
+
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: {
-        subscriptionTier: tier,
-        subscriptionCycle: cycle,
-        subscriptionExpiresAt,
-      }
+      data
     });
 
     return NextResponse.json({ success: true, user: updatedUser });
