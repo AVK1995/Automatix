@@ -67,6 +67,8 @@ export async function testNodeAction(node) {
         return await executeInstagramActionTest(config, session.user.id);
         
       case 'condition':
+        return await executeConditionTest(config);
+
       case 'slack':
       case 'twilio':
         return { 
@@ -100,6 +102,70 @@ export async function testNodeAction(node) {
       fix: 'Check the server logs or ensure your configuration parameters are completely valid.'
     };
   }
+}
+
+async function executeConditionTest(config) {
+  const branches = config?.branches || [];
+  
+  for (const branch of branches) {
+      const varTmpl = config[`path${branch.id}Var`];
+      const op = config[`path${branch.id}Op`] || 'contains';
+      const valTmpl = config[`path${branch.id}Val`];
+      
+      if (!varTmpl) continue;
+      
+      const actualVar = applyTestVariables(varTmpl);
+      
+      if (op === 'exists') {
+        if (actualVar !== undefined && actualVar !== null && actualVar !== '') return { success: true, data: { result: `Would route to Path ${branch.id}`, evaluated_variable: actualVar }};
+        continue;
+      }
+      if (op === 'not_exists') {
+        if (actualVar === undefined || actualVar === null || actualVar === '') return { success: true, data: { result: `Would route to Path ${branch.id}`, evaluated_variable: actualVar }};
+        continue;
+      }
+      
+      const valStr = applyTestVariables(valTmpl) || '';
+      const isCaseSensitive = config[`path${branch.id}Case`] === true;
+      const possibleVals = valStr.split(',').map(s => s.trim());
+      const varString = String(actualVar);
+      
+      let matched = false;
+      for (const v of possibleVals) {
+         const andParts = v.split('&&').map(s => s.trim());
+         let allAndsMatch = true;
+         
+         for (const part of andParts) {
+            const p = isCaseSensitive ? part : part.toLowerCase();
+            const a = isCaseSensitive ? varString : varString.toLowerCase();
+            
+            let partMatched = false;
+            if (op === 'contains' && a.includes(p)) partMatched = true;
+            if (op === 'not_contains' && !a.includes(p)) partMatched = true;
+            if (op === 'equals' && a === p) partMatched = true;
+            if (op === 'not_equals' && a !== p) partMatched = true;
+            if (op === 'starts_with' && a.startsWith(p)) partMatched = true;
+            if (op === 'ends_with' && a.endsWith(p)) partMatched = true;
+            if (op === 'greater_than' && Number(actualVar) > Number(part)) partMatched = true;
+            if (op === 'less_than' && Number(actualVar) < Number(part)) partMatched = true;
+            
+            if (!partMatched) {
+               allAndsMatch = false;
+               break;
+            }
+         }
+         
+         if (allAndsMatch) {
+            matched = true;
+            break;
+         }
+      }
+      
+      if (matched) {
+         return { success: true, data: { result: `Would route to Path ${branch.id}`, evaluated_variable: actualVar }};
+      }
+  }
+  return { success: true, data: { result: `Would route to Fallback (ELSE) path` }};
 }
 
 async function executeCustomVariableTest(config) {
