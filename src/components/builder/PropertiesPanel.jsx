@@ -2925,19 +2925,29 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                         onChange={(val) => handleChange(`path${branch.id}Op`, val)}
                         options={[
                           { value: 'contains', label: 'Contains' },
+                          { value: 'not_contains', label: 'Does Not Contain' },
                           { value: 'equals', label: 'Equals Exactly' },
-                          { value: 'exists', label: 'Exists' }
+                          { value: 'not_equals', label: 'Does Not Equal' },
+                          { value: 'greater_than', label: 'Greater Than' },
+                          { value: 'less_than', label: 'Less Than' },
+                          { value: 'starts_with', label: 'Starts With' },
+                          { value: 'ends_with', label: 'Ends With' },
+                          { value: 'exists', label: 'Exists' },
+                          { value: 'not_exists', label: 'Does Not Exist' }
                         ]}
                      />
                    </div>
                    <div>
                      <label className="block text-[10px] font-semibold text-text-secondary uppercase tracking-widest mb-1">Value</label>
                      <VariableInput 
-                       placeholder="e.g. gmail.com" 
+                       placeholder="e.g. Yes, Sure, Alright" 
                        value={config[`path${branch.id}Val`] || ''} 
                        onChange={(val) => handleChange(`path${branch.id}Val`, val)} 
                        variables={variableGroups}
                      />
+                     <p className="text-[10px] text-text-tertiary mt-1 leading-snug">
+                       Use commas to match multiple possible values (e.g. "Yes, Sure, OK").
+                     </p>
                    </div>
                  </div>
               </div>
