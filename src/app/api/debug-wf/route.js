@@ -6,5 +6,8 @@ export async function GET(req) {
     orderBy: { createdAt: 'desc' },
     take: 10
   });
-  return NextResponse.json({ logs });
+  const workflows = await prisma.workflow.findMany();
+  const integrations = await prisma.integration.findMany();
+  
+  return NextResponse.json({ logs, workflows, integrations });
 }
