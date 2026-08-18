@@ -462,6 +462,10 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         }
         group.variables.push({ id: `steps.${anc.id}.output`, label: 'Step Output', example: exampleStr });
       }
+    } else if (anc.type === 'DELAY' && anc.config?.delayType === 'wait_for_reply') {
+      group.variables.push(
+        { id: `steps.${anc.id}.reply_text`, label: 'reply_text', example: 'John' }
+      );
     }
 
     if (group.variables.length > 0) {
@@ -1553,7 +1557,8 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   { value: 'find', label: 'Find in Text' },
                   { value: 'html_to_markdown', label: 'HTML to Markdown' },
                   { value: 'parse', label: 'Text Parser (Match Before/After)' },
-                  { value: 'truncate', label: 'Truncate Text' }
+                  { value: 'truncate', label: 'Truncate Text' },
+                  { value: 'extract_data', label: 'Extract Data (Email, Phone, Name)' }
                 ]}
               />
             </div>
@@ -1611,7 +1616,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1">Max Length</label>
-                  <input type="number" placeholder="e.g. 50" value={config.maxLength || ''} onChange={(e) => handleChange('maxLength', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" />
+                  <input type="number" value={config.maxLength || 50} onChange={(e) => handleChange('maxLength', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1">Append Ellipsis</label>
@@ -1621,6 +1626,27 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     options={[{ value: 'yes', label: 'Yes (...)' }, { value: 'no', label: 'No' }]}
                   />
                 </div>
+              </div>
+            )}
+            {config.operation === 'extract_data' && (
+              <div className="mt-2">
+                <label className="block text-xs font-medium text-text-secondary mb-1">Data to Extract</label>
+                <Select 
+                  value={config.extractType || 'email'} 
+                  onChange={(val) => handleChange('extractType', val)}
+                  options={[
+                    { value: 'email', label: 'Email Address' },
+                    { value: 'phone', label: 'Phone Number' },
+                    { value: 'name', label: 'Name (Smart Match)' },
+                    { value: 'url', label: 'URL / Link' },
+                    { value: 'number', label: 'Any Number' }
+                  ]}
+                />
+                <p className="text-[10px] text-text-tertiary mt-2">
+                  {config.extractType === 'name' && "Attempts to find a name following common phrases like 'I am', 'My name is', etc. If it fails, it returns the original text."}
+                  {config.extractType === 'email' && "Finds the first valid email address in the text."}
+                  {config.extractType === 'phone' && "Finds the first valid phone number format in the text."}
+                </p>
               </div>
             )}
           </div>

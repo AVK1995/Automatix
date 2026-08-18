@@ -201,6 +201,25 @@ export const executeWorkflow = inngest.createFunction(
               });
             });
             
+            if (resumeEvent && resumeEvent.data && resumeEvent.data.payload) {
+              if (!execution.currentNodeState) execution.currentNodeState = {};
+              execution.currentNodeState.payload = resumeEvent.data.payload;
+              
+              const text = resumeEvent.data.payload?.entry?.[0]?.messaging?.[0]?.message?.text || '';
+              if (!execution.currentNodeState.stepOutputs) execution.currentNodeState.stepOutputs = {};
+              execution.currentNodeState.stepOutputs[node.id] = { 
+                output: resumeEvent.data.payload,
+                reply_text: text 
+              };
+              
+              await step.run(`Update State Payload (Node ${node.id})`, async () => {
+                await prisma.executionLog.update({
+                  where: { id: executionLogId },
+                  data: { currentNodeState: execution.currentNodeState }
+                });
+              });
+            }
+
             await step.run(`Log Delay Complete (Node ${node.id})`, async () => {
               await prisma.analyticsEvent.create({
                 data: { executionLogId, eventType: `NODE_DELAY_COMPLETE`, metadata: { nodeId: node.id, type: 'wait_for_reply', duration: sleepDuration, bypassed: !!resumeEvent } }
@@ -306,9 +325,79 @@ export const executeWorkflow = inngest.createFunction(
 
               console.log(`Executing Action [${node.title}]:`, node.config);
               if (node.config?.simulateFailure) throw new Error("Simulated Failure");
-              
-              let output = null;
-              if (node.integrationId === 'custom_variable' || node.integration?.id === 'custom_variable') {
+                            let output = null;
+                
+                // Helper to resolve simple variables for live execution (basic implementation)
+                const resolveVars = (str) => {
+                  if (typeof str !== 'string') return str;
+                  return str.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+                    if (path.startsWith('trigger.body.')) {
+                      const keyPath = path.replace('trigger.body.', '');
+                      let current = execution.currentNodeState?.payload;
+                      for (const k of keyPath.split('.')) {
+                        if (current === undefined || current === null) return match;
+                        current = current[k];
+                      }
+                      return current !== undefined ? current : match;
+                    } else if (path.startsWith('steps.')) {
+                      const parts = path.split('.');
+                      if (parts.length >= 3) {
+                        const sId = parts[1];
+                        const keyPath = parts.slice(2);
+                        let current = execution.currentNodeState?.stepOutputs?.[sId];
+                        if (current) {
+                          for (const k of keyPath) {
+                            if (current === undefined || current === null) return match;
+                            current = current[k];
+                          }
+                          return current !== undefined ? current : match;
+                        }
+                      }
+                    }
+                    return match;
+                  });
+                };
+
+                if (node.integrationId === 'formatter_text' || node.integration?.id === 'formatter_text') {
+                  let rawInput = node.config.input ? resolveVars(node.config.input) : '';
+                  if (typeof rawInput !== 'string') rawInput = String(rawInput);
+                  let result = rawInput;
+                  
+                  const op = node.config.operation;
+                  if (op === 'extract_data') {
+                    const type = node.config.extractType || 'email';
+                    if (type === 'email') {
+                      const match = rawInput.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+                      result = match ? match[0] : null;
+                    } else if (type === 'phone') {
+                      const match = rawInput.match(/(?:(?:\+|00)\d{1,3}[\s-]?)?(?:\d{2,4}[\s-]?){2,4}\d{2,4}/);
+                      result = match ? match[0] : null;
+                    } else if (type === 'url') {
+                      const match = rawInput.match(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/);
+                      result = match ? match[0] : null;
+                    } else if (type === 'number') {
+                      const match = rawInput.match(/\d+/);
+                      result = match ? match[0] : null;
+                    } else if (type === 'name') {
+                      const match = rawInput.match(/(?:my name is|i am|i'm|this is|it is|it's|call me|name is)\s+([a-zA-Z]+)/i);
+                      if (match && match[1]) {
+                        result = match[1];
+                      } else {
+                        if (rawInput.split(' ').length <= 2) result = rawInput.trim();
+                        else result = rawInput;
+                      }
+                    }
+                  } else if (op === 'uppercase') {
+                    result = rawInput.toUpperCase();
+                  } else if (op === 'lowercase') {
+                    result = rawInput.toLowerCase();
+                  } else if (op === 'capitalize') {
+                    result = rawInput.replace(/\b\w/g, c => c.toUpperCase());
+                  } else if (op === 'trim') {
+                    result = rawInput.trim();
+                  }
+                  output = result;
+                } else if (node.integrationId === 'custom_variable' || node.integration?.id === 'custom_variable') {
                  const { varType, varValue, useCurrentTime, varFormat, varTimezone } = node.config || {};
                  if (varType === 'timestamp') {
                    const tz = varTimezone || 'UTC';
@@ -376,27 +465,41 @@ export const executeWorkflow = inngest.createFunction(
                       }
                    }
                  }
-              } else if (node.integrationId === 'instagram_action' || node.integration?.id === 'instagram_action') {
-                 const { messageType, message, mediaUrl, questionType, options } = node.config || {};
-                 
-                 let finalMessageText = message || '';
-                 if (messageType === 'quiz' && questionType === 'multiple_choice' && options) {
-                   const opts = options.split(',').map(o => o.trim()).filter(Boolean);
-                   if (opts.length > 0) {
-                     finalMessageText += '\n\n' + opts.map((opt, i) => `${i + 1}. ${opt}`).join('\n');
+                } else if (node.integrationId === 'instagram_action' || node.integration?.id === 'instagram_action') {
+                   const { messageType, message, mediaUrl, questionType, options } = node.config || {};
+                   
+                   let finalMessageText = message ? resolveVars(message) : '';
+                   if (messageType === 'quiz' && questionType === 'multiple_choice' && options) {
+                     const opts = options.split(',').map(o => o.trim()).filter(Boolean);
+                     if (opts.length > 0) {
+                       finalMessageText += '\n\n' + opts.map((opt, i) => `${i + 1}. ${opt}`).join('\n');
+                     }
                    }
+                   
+                   output = {
+                     recipientType: node.config?.recipientType,
+                     recipient: node.config?.recipient ? resolveVars(node.config.recipient) : null,
+                     messageType,
+                     mediaUrl: messageType === 'media' ? (mediaUrl ? resolveVars(mediaUrl) : undefined) : undefined,
+                     sentText: finalMessageText
+                   };
                  }
-                 
-                 output = {
-                   recipientType: node.config?.recipientType,
-                   recipient: node.config?.recipient,
-                   messageType,
-                   mediaUrl: messageType === 'media' ? mediaUrl : undefined,
-                   sentText: finalMessageText
-                 };
-               }
-              
-              return { success: true, output };
+                
+                // Save output to stepOutputs
+                if (output !== null && output !== undefined) {
+                  if (!execution.currentNodeState) execution.currentNodeState = {};
+                  if (!execution.currentNodeState.stepOutputs) execution.currentNodeState.stepOutputs = {};
+                  execution.currentNodeState.stepOutputs[node.id] = { output };
+                  
+                  await step.run(`Save Step Output (Node ${node.id})`, async () => {
+                    await prisma.executionLog.update({
+                      where: { id: executionLogId },
+                      data: { currentNodeState: execution.currentNodeState }
+                    });
+                  });
+                }
+                
+                return { success: true, output };
             } catch (error) {
               if (node.config?.autoRetry && !(error instanceof RateLimitExceeded)) {
                 try {

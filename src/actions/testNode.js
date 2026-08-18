@@ -206,8 +206,37 @@ async function executeTextFormatterTest(config) {
       case 'uppercase':
         result = rawInput.toUpperCase();
         break;
-      case 'trim':
-        result = rawInput.trim();
+      case 'extract_data':
+        try {
+          const type = config.extractType || 'email';
+          if (type === 'email') {
+            const match = rawInput.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+            result = match ? match[0] : null;
+          } else if (type === 'phone') {
+            const match = rawInput.match(/(?:(?:\+|00)\d{1,3}[\s-]?)?(?:\d{2,4}[\s-]?){2,4}\d{2,4}/);
+            result = match ? match[0] : null;
+          } else if (type === 'url') {
+            const match = rawInput.match(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/);
+            result = match ? match[0] : null;
+          } else if (type === 'number') {
+            const match = rawInput.match(/\d+/);
+            result = match ? match[0] : null;
+          } else if (type === 'name') {
+            const match = rawInput.match(/(?:my name is|i am|i'm|this is|it is|it's|call me|name is)\s+([a-zA-Z]+)/i);
+            if (match && match[1]) {
+              result = match[1];
+            } else {
+              // If no common prefix is found, just take the first word, or return the whole thing if it's short.
+              if (rawInput.split(' ').length <= 2) {
+                result = rawInput.trim();
+              } else {
+                result = rawInput; // "take answer as it is"
+              }
+            }
+          }
+        } catch (e) {
+          result = null;
+        }
         break;
       case 'replace':
         const findVal = applyTestVariables(find || '');
@@ -1405,6 +1434,7 @@ async function executeDelayTest(config) {
         success: true,
         data: {
           reply_timeout: targetDate.format('YYYY-MM-DD HH:mm:ss [UTC]'),
+          reply_text: "Mock user reply text for testing",
           message: `Workflow will pause until a reply arrives. If no reply, it times out at ${targetDate.format('YYYY-MM-DD HH:mm:ss [UTC]')}`
         }
       };
