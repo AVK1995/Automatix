@@ -2908,28 +2908,37 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                      className={`bg-transparent border-b border-transparent hover:border-${branch.color}/30 focus:border-${branch.color} focus:outline-none text-[11px] font-semibold text-${branch.color} px-1 py-0.5 w-[140px] text-right transition-colors placeholder:opacity-50`}
                    />
                  </div>
-                 <div className="space-y-2 p-3 bg-black/30 border border-white/5 rounded-md">
-                   <VariableInput 
-                     placeholder="Variable e.g. {{trigger.email}}" 
-                     value={config[`path${branch.id}Var`] || ''} 
-                     onChange={(val) => handleChange(`path${branch.id}Var`, val)} 
-                     variables={variableGroups}
-                   />
-                   <Select 
-                      value={config[`path${branch.id}Op`] || 'contains'} 
-                      onChange={(val) => handleChange(`path${branch.id}Op`, val)}
-                      options={[
-                        { value: 'contains', label: 'Contains' },
-                        { value: 'equals', label: 'Equals Exactly' },
-                        { value: 'exists', label: 'Exists' }
-                      ]}
-                   />
-                   <VariableInput 
-                     placeholder="Value e.g. gmail.com" 
-                     value={config[`path${branch.id}Val`] || ''} 
-                     onChange={(val) => handleChange(`path${branch.id}Val`, val)} 
-                     variables={variableGroups}
-                   />
+                 <div className="space-y-3 p-3 bg-black/30 border border-white/5 rounded-md">
+                   <div>
+                     <label className="block text-[10px] font-semibold text-text-secondary uppercase tracking-widest mb-1">Variable</label>
+                     <VariableInput 
+                       placeholder="e.g. {{trigger.email}}" 
+                       value={config[`path${branch.id}Var`] || ''} 
+                       onChange={(val) => handleChange(`path${branch.id}Var`, val)} 
+                       variables={variableGroups}
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-[10px] font-semibold text-text-secondary uppercase tracking-widest mb-1">Operator</label>
+                     <Select 
+                        value={config[`path${branch.id}Op`] || 'contains'} 
+                        onChange={(val) => handleChange(`path${branch.id}Op`, val)}
+                        options={[
+                          { value: 'contains', label: 'Contains' },
+                          { value: 'equals', label: 'Equals Exactly' },
+                          { value: 'exists', label: 'Exists' }
+                        ]}
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-[10px] font-semibold text-text-secondary uppercase tracking-widest mb-1">Value</label>
+                     <VariableInput 
+                       placeholder="e.g. gmail.com" 
+                       value={config[`path${branch.id}Val`] || ''} 
+                       onChange={(val) => handleChange(`path${branch.id}Val`, val)} 
+                       variables={variableGroups}
+                     />
+                   </div>
                  </div>
               </div>
             ))}
