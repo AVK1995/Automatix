@@ -34,7 +34,7 @@ export async function POST(request) {
 
     // --- UNCONDITIONAL DEBUG LOGGER ---
     try {
-      const firstWorkflow = await prisma.workflow.findFirst({ where: { isActive: true } });
+      const firstWorkflow = await prisma.workflow.findFirst();
       if (firstWorkflow) {
         await prisma.executionLog.create({
           data: {
