@@ -112,6 +112,19 @@ export async function POST(request) {
            continue; // Skip processing if we don't own this page
         }
 
+        // --- ENRICH SENDER PROFILE ---
+        try {
+           if (integration.apiKey && senderId) {
+             const profileRes = await fetch(`https://graph.facebook.com/v19.0/${senderId}?fields=name,username,profile_pic&access_token=${integration.apiKey}`);
+             if (profileRes.ok) {
+                const profileData = await profileRes.json();
+                item.sender_profile = profileData; // Modifies the object within the 'body' reference
+             }
+           }
+        } catch (e) {
+           console.error("Failed to fetch sender profile", e);
+        }
+
         // Find all active workflows for this client that use this integration
         const activeWorkflows = await prisma.workflow.findMany({
           where: {
