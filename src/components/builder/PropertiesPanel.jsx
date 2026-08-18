@@ -2909,12 +2909,11 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                    />
                  </div>
                  <div className="space-y-2 p-3 bg-black/30 border border-white/5 rounded-md">
-                   <input 
-                     type="text" 
+                   <VariableInput 
                      placeholder="Variable e.g. {{trigger.email}}" 
                      value={config[`path${branch.id}Var`] || ''} 
-                     onChange={(e) => handleChange(`path${branch.id}Var`, e.target.value)} 
-                     className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue font-mono" 
+                     onChange={(val) => handleChange(`path${branch.id}Var`, val)} 
+                     variables={variableGroups}
                    />
                    <Select 
                       value={config[`path${branch.id}Op`] || 'contains'} 
@@ -2925,12 +2924,11 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                         { value: 'exists', label: 'Exists' }
                       ]}
                    />
-                   <input 
-                     type="text" 
+                   <VariableInput 
                      placeholder="Value e.g. gmail.com" 
                      value={config[`path${branch.id}Val`] || ''} 
-                     onChange={(e) => handleChange(`path${branch.id}Val`, e.target.value)} 
-                     className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue" 
+                     onChange={(val) => handleChange(`path${branch.id}Val`, val)} 
+                     variables={variableGroups}
                    />
                  </div>
               </div>
