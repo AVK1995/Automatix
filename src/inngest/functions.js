@@ -602,31 +602,43 @@ export const executeWorkflow = inngest.createFunction(
                   }
                   
                   const valStr = resolveVars(valTmpl) || '';
-                  const possibleVals = valStr.split(',').map(s => s.trim().toLowerCase());
-                  const varLower = String(actualVar).toLowerCase();
+                  const isCaseSensitive = node.config[`path${branch.id}Case`] === true;
+                  const possibleVals = valStr.split(',').map(s => s.trim());
+                  const varString = String(actualVar);
                   
                   let matched = false;
                   for (const v of possibleVals) {
-                    if (op === 'contains' && varLower.includes(v)) matched = true;
-                    if (op === 'not_contains' && !varLower.includes(v)) matched = true;
-                    if (op === 'equals' && varLower === v) matched = true;
-                    if (op === 'not_equals' && varLower !== v) matched = true;
-                    if (op === 'starts_with' && varLower.startsWith(v)) matched = true;
-                    if (op === 'ends_with' && varLower.endsWith(v)) matched = true;
-                    if (op === 'greater_than' && Number(actualVar) > Number(v)) matched = true;
-                    if (op === 'less_than' && Number(actualVar) < Number(v)) matched = true;
+                     const andParts = v.split('&&').map(s => s.trim());
+                     let allAndsMatch = true;
+                     
+                     for (const part of andParts) {
+                        const p = isCaseSensitive ? part : part.toLowerCase();
+                        const a = isCaseSensitive ? varString : varString.toLowerCase();
+                        
+                        let partMatched = false;
+                        if (op === 'contains' && a.includes(p)) partMatched = true;
+                        if (op === 'not_contains' && !a.includes(p)) partMatched = true;
+                        if (op === 'equals' && a === p) partMatched = true;
+                        if (op === 'not_equals' && a !== p) partMatched = true;
+                        if (op === 'starts_with' && a.startsWith(p)) partMatched = true;
+                        if (op === 'ends_with' && a.endsWith(p)) partMatched = true;
+                        if (op === 'greater_than' && Number(actualVar) > Number(part)) partMatched = true;
+                        if (op === 'less_than' && Number(actualVar) < Number(part)) partMatched = true;
+                        
+                        if (!partMatched) {
+                           allAndsMatch = false;
+                           break;
+                        }
+                     }
+                     
+                     if (allAndsMatch) {
+                        matched = true;
+                        break;
+                     }
                   }
                   
                   if (matched) {
-                    if (op === 'not_contains') {
-                       const containsAny = possibleVals.some(v => varLower.includes(v));
-                       if (!containsAny) return branch.id;
-                    } else if (op === 'not_equals') {
-                       const equalsAny = possibleVals.some(v => varLower === v);
-                       if (!equalsAny) return branch.id;
-                    } else {
-                       return branch.id;
-                    }
+                     return branch.id;
                   }
               }
               return null;

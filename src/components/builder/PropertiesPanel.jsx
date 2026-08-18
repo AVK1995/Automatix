@@ -2946,8 +2946,21 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                        variables={variableGroups}
                      />
                      <p className="text-[10px] text-text-tertiary mt-1 leading-snug">
-                       Use commas to match multiple possible values (e.g. "Yes, Sure, OK").
+                       Use commas for OR (e.g. "Yes, Sure") and && for AND (e.g. "Yes && Sure").
                      </p>
+                     
+                     <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5">
+                        <input 
+                           type="checkbox" 
+                           id={`caseSens-${branch.id}`}
+                           checked={config[`path${branch.id}Case`] || false}
+                           onChange={(e) => handleChange(`path${branch.id}Case`, e.target.checked)}
+                           className="w-3.5 h-3.5 rounded border-white/10 bg-black/50 text-accent-blue focus:ring-accent-blue focus:ring-offset-background"
+                        />
+                        <label htmlFor={`caseSens-${branch.id}`} className="text-[11px] text-text-secondary cursor-pointer hover:text-white transition-colors">
+                           Case Sensitive Matching
+                        </label>
+                     </div>
                    </div>
                  </div>
               </div>
