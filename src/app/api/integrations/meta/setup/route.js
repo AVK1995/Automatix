@@ -45,6 +45,7 @@ export async function POST(req) {
     if (providerName === 'instagram' && !isInstagramToken) {
        const igRes = await fetch(`https://graph.facebook.com/v19.0/${facebookPageId}?fields=instagram_business_account&access_token=${pageAccessToken}`);
        const igData = await igRes.json();
+       console.log('--- SETUP LOG igData ---', igData);
        if (igData.instagram_business_account?.id) {
            pageId = igData.instagram_business_account.id; // Use IGID for the integration accountEmail
        } else {
