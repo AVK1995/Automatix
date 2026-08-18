@@ -98,7 +98,8 @@ export default function VariableInput({
       : "text-orange-400 bg-orange-400/10 border-orange-400/20";
       
     // Using zero-width space (\u200B) so cursor can move past contenteditable=false
-    return `<span class="pill inline-flex items-center max-w-[200px] overflow-hidden ${colorClass} px-1.5 py-0.5 rounded border mx-[2px] align-middle select-all" contenteditable="false" data-var="${varId}"><span class="font-semibold text-[9px] uppercase tracking-wider mr-1.5 opacity-70 shrink-0">${label}:</span><span class="truncate text-xs font-mono">${exampleValue}</span></span>\u200B`;
+    // Adding title attribute so hovering shows the full text
+    return `<span class="pill inline-flex items-center max-w-[200px] overflow-hidden ${colorClass} px-1.5 py-0.5 rounded border mx-[2px] align-middle select-all" contenteditable="false" data-var="${varId}" title="{{${varId}}}\nExample: ${exampleValue}"><span class="font-semibold text-[9px] uppercase tracking-wider mr-1.5 opacity-70 shrink-0">${label}:</span><span class="truncate text-xs font-mono">${exampleValue}</span></span>\u200B`;
   };
 
   const valueToHtml = (val) => {

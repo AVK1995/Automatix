@@ -1515,31 +1515,57 @@ async function executeInstagramActionTest(config, userId) {
     }
   }
 
-  const payload = {
-    recipient: { id: recipientId },
-    message: { text: applyTestVariables(config.message) }
-  };
-
   const url = `https://graph.facebook.com/v20.0/me/messages?access_token=${accessToken}`;
-
   const startTime = Date.now();
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const elapsed = Date.now() - startTime;
+  let data;
 
-  const data = await res.json();
-
-  if (!res.ok) {
-    return {
-      success: false,
-      error: data.error?.message || 'Meta API Error',
-      fix: 'The Instagram API requires an IGSID (not a username) to send messages, and the user must have interacted with you within 24 hours. Check your payload and token.',
-      data
+  // 1. Send Media if present
+  if (config.messageType === 'media' && config.mediaUrl) {
+    const mediaPayload = {
+      recipient: { id: recipientId },
+      message: {
+        attachment: {
+          type: "image",
+          payload: { url: applyTestVariables(config.mediaUrl) }
+        }
+      }
     };
+    
+    const mediaRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(mediaPayload)
+    });
+    data = await mediaRes.json();
+    if (!mediaRes.ok) {
+      return { success: false, error: data.error?.message || 'Meta API Error (Media)', fix: 'Check your image URL.', data };
+    }
   }
 
-  return { success: true, data, time: elapsed };
+  // 2. Send Text if present
+  const msgText = applyTestVariables(config.message);
+  if (msgText) {
+    const textPayload = {
+      recipient: { id: recipientId },
+      message: { text: msgText }
+    };
+    
+    const textRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(textPayload)
+    });
+    data = await textRes.json();
+    if (!textRes.ok) {
+      return { success: false, error: data.error?.message || 'Meta API Error (Text)', fix: 'Check your payload.', data };
+    }
+  }
+  
+  const elapsed = Date.now() - startTime;
+  
+  return {
+    success: true,
+    data: data,
+    time: elapsed
+  };
 }
