@@ -16,23 +16,13 @@ export default function MediaUploader({ value, onChange, nodeId, accept = "image
     const isVideo = file.type.startsWith('video/');
     const sizeMB = file.size / (1024 * 1024);
     
-    // Default hard limits to prevent massive uploads before hitting the server
-    if (isVideo && sizeMB > 150) {
-      toast.error('Video is too large. Max allowed is 150MB.');
-      return;
-    }
-    if (!isVideo && sizeMB > 20) {
-      toast.error('Image is too large. Max allowed is 20MB.');
-      return;
-    }
-
     setIsUploading(true);
 
     try {
       const blob = await upload(file.name, file, {
         access: 'public',
         handleUploadUrl: '/api/media/upload',
-        clientPayload: JSON.stringify({ nodeId, fileType: file.type, sizeMB })
+        clientPayload: JSON.stringify({ nodeId, fileType: file.type, sizeMB, originalName: file.name })
       });
 
       toast.success('Media uploaded successfully');

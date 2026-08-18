@@ -26,6 +26,7 @@ model User {
   maxImageMB            Int                 @default(1)
   maxVideos             Int                 @default(5)
   maxVideoMB            Int                 @default(25)
+  maxStorageMB          Float               @default(1000)
   accounts              Account[]
   automatixCalendars    AutomatixCalendar[]
   integrations          Integration[]
@@ -59,6 +60,19 @@ model QuotaRequest {
   createdAt     DateTime @default(now())
 
   @@index([userId])
+}
+
+model StoragePlan {
+  id              String   @id @default(uuid())
+  name            String
+  priceRs         Int
+  maxVideos       Int
+  maxVideoMB      Int
+  maxImages       Int
+  maxImageMB      Int
+  maxStorageMB    Float    // Total storage limit in MB (e.g., 10000 for 10GB)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
 }
 
 model Integration {

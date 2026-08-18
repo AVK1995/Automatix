@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { updatePlatformSettings } from '@/actions/settings';
-import { Loader2, Save, Users, Settings2, CreditCard } from 'lucide-react';
+import { Save, Users, Settings2, CreditCard, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import StoragePlans from './StoragePlans';
 
 export default function SettingsClient({ initialSettings }) {
   const [settings, setSettings] = useState(initialSettings);
@@ -193,6 +195,11 @@ export default function SettingsClient({ initialSettings }) {
                 </div>
              </div>
           </div>
+        </div>
+
+        {/* Storage Plans */}
+        <div className="mt-8">
+          <StoragePlans />
         </div>
       </div>
     </>

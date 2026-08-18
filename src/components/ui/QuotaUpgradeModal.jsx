@@ -8,7 +8,9 @@ import toast from 'react-hot-toast';
 export default function QuotaUpgradeModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedTier, setSelectedTier] = useState('tier1');
+  const [selectedPlan, setSelectedPlan] = useState('');
+  const [plans, setPlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
 
   useEffect(() => {
     const handleOpen = () => setIsOpen(true);
@@ -16,13 +18,33 @@ export default function QuotaUpgradeModal() {
     return () => window.removeEventListener('open-quota-modal', handleOpen);
   }, []);
 
+  useEffect(() => {
+    if (isOpen && plans.length === 0) {
+      fetchPlans();
+    }
+  }, [isOpen]);
+
+  const fetchPlans = async () => {
+    setLoadingPlans(true);
+    try {
+      const res = await fetch('/api/media/plans');
+      const data = await res.json();
+      setPlans(data);
+      if (data.length > 0) setSelectedPlan(data[0].name);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/media/quota-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: selectedTier })
+        body: JSON.stringify({ plan: selectedPlan })
       });
       if (!res.ok) throw new Error('Failed to submit request');
       
@@ -75,74 +97,54 @@ export default function QuotaUpgradeModal() {
 
           {/* Content */}
           <div className="p-5 overflow-y-auto">
-            <div className="space-y-4">
-              {/* Tier 1 */}
-              <div 
-                className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  selectedTier === 'tier1' 
-                    ? 'border-accent-blue bg-accent-blue/5' 
-                    : 'border-white/10 hover:border-white/20 bg-black/20'
-                }`}
-                onClick={() => setSelectedTier('tier1')}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                      Basic Boost
-                      {selectedTier === 'tier1' && <CheckCircle2 size={14} className="text-accent-blue" />}
-                    </h3>
-                    <p className="text-xs text-text-tertiary">Perfect for small campaigns.</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-lg font-bold text-white">50 Rs</span>
-                  </div>
-                </div>
-                <ul className="space-y-1.5 mt-3">
-                  <li className="text-xs text-text-secondary flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent-blue/50" />
-                    +1 Video Upload (Max 25MB)
-                  </li>
-                  <li className="text-xs text-text-secondary flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent-blue/50" />
-                    +5 Image Uploads (Max 1MB each)
-                  </li>
-                </ul>
+            {loadingPlans ? (
+              <div className="flex justify-center py-8">
+                <Loader2 size={24} className="animate-spin text-accent-blue" />
               </div>
+            ) : plans.length === 0 ? (
+              <p className="text-sm text-text-secondary text-center py-8">No upgrade plans available at the moment. Please contact support.</p>
+            ) : (
+              <div className="space-y-4">
+                {plans.map((plan, idx) => {
+                  const isSelected = selectedPlan === plan.name;
+                  const colorClass = idx % 2 === 0 ? 'accent-blue' : 'emerald';
+                  const borderClass = isSelected && colorClass === 'accent-blue' ? 'border-accent-blue bg-accent-blue/5' :
+                                      isSelected && colorClass === 'emerald' ? 'border-emerald-500 bg-emerald-500/5' :
+                                      'border-white/10 hover:border-white/20 bg-black/20';
 
-              {/* Tier 2 */}
-              <div 
-                className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  selectedTier === 'tier2' 
-                    ? 'border-emerald-500 bg-emerald-500/5' 
-                    : 'border-white/10 hover:border-white/20 bg-black/20'
-                }`}
-                onClick={() => setSelectedTier('tier2')}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                      Pro Storage
-                      <Zap size={14} className="text-emerald-400" />
-                      {selectedTier === 'tier2' && <CheckCircle2 size={14} className="text-emerald-500" />}
-                    </h3>
-                    <p className="text-xs text-text-tertiary">For heavy media workflows.</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-lg font-bold text-white">100 Rs</span>
-                  </div>
-                </div>
-                <ul className="space-y-1.5 mt-3">
-                  <li className="text-xs text-text-secondary flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
-                    +5 Video Uploads (Max 100MB each)
-                  </li>
-                  <li className="text-xs text-text-secondary flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
-                    +10 Image Uploads (Max 5MB each)
-                  </li>
-                </ul>
+                  return (
+                    <div 
+                      key={plan.id}
+                      className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${borderClass}`}
+                      onClick={() => setSelectedPlan(plan.name)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                            {plan.name}
+                            {colorClass === 'emerald' && <Zap size={14} className="text-emerald-400" />}
+                            {isSelected && <CheckCircle2 size={14} className={`text-${colorClass === 'emerald' ? 'emerald-500' : 'accent-blue'}`} />}
+                          </h3>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-bold text-white">{plan.priceRs} Rs</span>
+                        </div>
+                      </div>
+                      <ul className="space-y-1.5 mt-3">
+                        <li className="text-xs text-text-secondary flex items-center gap-2">
+                          <span className={`w-1.5 h-1.5 rounded-full bg-${colorClass === 'emerald' ? 'emerald-500/50' : 'accent-blue/50'}`} />
+                          Max {plan.maxVideos} Videos (Up to {plan.maxVideoMB}MB each)
+                        </li>
+                        <li className="text-xs text-text-secondary flex items-center gap-2">
+                          <span className={`w-1.5 h-1.5 rounded-full bg-${colorClass === 'emerald' ? 'emerald-500/50' : 'accent-blue/50'}`} />
+                          Total Bucket Limit: {(plan.maxStorageMB / 1024).toFixed(1)} GB
+                        </li>
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            )}
             
             <p className="text-[11px] text-text-tertiary text-center mt-5">
               By submitting this request, an admin will review your account and apply the expanded storage limits.
@@ -159,7 +161,7 @@ export default function QuotaUpgradeModal() {
             </button>
             <button 
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || plans.length === 0}
               className="px-5 py-2 rounded-md text-xs font-medium text-white bg-accent-blue hover:bg-accent-blue/90 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}

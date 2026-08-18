@@ -11,6 +11,7 @@ export default function TenantEditForm({ tenant }) {
   const [maxImageMB, setMaxImageMB] = useState(tenant.maxImageMB || 1);
   const [maxVideos, setMaxVideos] = useState(tenant.maxVideos || 5);
   const [maxVideoMB, setMaxVideoMB] = useState(tenant.maxVideoMB || 25);
+  const [maxStorageMB, setMaxStorageMB] = useState(tenant.maxStorageMB || 1000);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -37,7 +38,7 @@ export default function TenantEditForm({ tenant }) {
       const res = await fetch(`/api/admin/users/${tenant.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, cycle, maxImages, maxImageMB, maxVideos, maxVideoMB })
+        body: JSON.stringify({ tier, cycle, maxImages, maxImageMB, maxVideos, maxVideoMB, maxStorageMB })
       });
 
       if (!res.ok) {
@@ -99,8 +100,8 @@ export default function TenantEditForm({ tenant }) {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Access Configuration */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      {/* LEFT COLUMN: Access Configuration */}
       <section className="bg-card border border-border-subtle p-6 rounded-sm">
         <h3 className="text-base font-medium text-foreground mb-4">Access & Subscription Configuration</h3>
         
@@ -181,6 +182,15 @@ export default function TenantEditForm({ tenant }) {
                   className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
                 />
               </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-text-secondary mb-1">Total Storage Limit (MB) - e.g. 10000 = 10GB</label>
+                <input 
+                  type="number" 
+                  value={maxStorageMB}
+                  onChange={(e) => setMaxStorageMB(e.target.value)}
+                  className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
+                />
+              </div>
             </div>
           </div>
 
@@ -200,8 +210,10 @@ export default function TenantEditForm({ tenant }) {
         </form>
       </section>
 
-      {/* Direct Password Reset */}
-      <section className="bg-card border border-border-subtle p-6 rounded-sm">
+      {/* RIGHT COLUMN: Password & Security Actions */}
+      <div className="flex flex-col gap-8">
+        {/* Direct Password Reset */}
+        <section className="bg-card border border-border-subtle p-6 rounded-sm">
         <div className="mb-4">
           <h3 className="text-base font-medium text-foreground">Direct Password Reset</h3>
           <p className="text-xs text-text-secondary mt-1">
@@ -273,6 +285,7 @@ export default function TenantEditForm({ tenant }) {
           </div>
         )}
       </section>
+      </div>
 
       <ConfirmModal
         isOpen={confirmPasswordResetOpen}

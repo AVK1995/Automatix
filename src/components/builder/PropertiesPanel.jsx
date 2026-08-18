@@ -1468,6 +1468,9 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                         onChange={(val) => handleChange('mediaUrl', val)} 
                         nodeId={selectedNode.id} 
                       />
+                      <div className="mt-2 text-[10px] text-red-400 px-1 border-l-2 border-red-500/30 pl-2">
+                        <span className="font-semibold">META LIMITS:</span> Instagram DMs only support attachments up to <span className="font-bold">25MB for Videos</span> and <span className="font-bold">8MB for Images</span>. Exceeding this will cause a Meta upload failure.
+                      </div>
                     </div>
                     
                     <div className="flex items-center gap-3">

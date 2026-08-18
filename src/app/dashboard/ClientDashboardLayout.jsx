@@ -7,6 +7,7 @@ import { Menu, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import NotificationDropdown from '@/components/layout/NotificationDropdown';
 import ProfileDropdown from '@/components/ProfileDropdown';
+import Chatbot from '@/components/ui/Chatbot';
 
 export default function ClientDashboardLayout({ children, user }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -86,6 +87,8 @@ export default function ClientDashboardLayout({ children, user }) {
           {children}
         </div>
       </main>
+      
+      <Chatbot />
     </div>
   );
 }

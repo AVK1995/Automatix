@@ -47,6 +47,9 @@ export async function POST(request, { params }) {
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
     const setupLink = `${baseUrl}/setup-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
 
+    // 4. Send email
+    await import('@/lib/mail').then(m => m.sendResetEmail(user.email, setupLink));
+
     return NextResponse.json({ success: true, setupLink });
 
   } catch (error) {

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { LogOut, LayoutDashboard, Workflow, Network, Settings, Server, ExternalLink, XCircle, CalendarDays, MoreHorizontal, ChevronRight, FileText, Shield, ScrollText, RefreshCw } from 'lucide-react';
+import { LogOut, LayoutDashboard, Workflow, Network, Settings, Server, ExternalLink, XCircle, CalendarDays, MoreHorizontal, ChevronRight, FileText, Shield, ScrollText, RefreshCw, Database, Link as LinkIcon } from 'lucide-react';
 import { startInngestDevServer, stopInngestDevServer, checkInngestStatus } from '@/actions/dev';
 import Logo from '@/components/Logo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -39,10 +39,11 @@ export default function ClientSidebar({ isMobile, onClose }) {
   }, []);
 
   const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
+    { name: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} />, exact: true },
     { name: 'Workflows', href: '/dashboard/workflows', icon: <Workflow size={16} /> },
     { name: 'Calendars', href: '/dashboard/calendars', icon: <CalendarDays size={16} /> },
-    { name: 'Connections', href: '/dashboard/connections', icon: <Network size={16} /> },
+    { name: 'Connections', href: '/dashboard/connections', icon: <LinkIcon size={16} /> },
+    { name: 'Storage Bucket', href: '/dashboard/storage', icon: <Database size={16} /> },
     { name: 'Settings', href: '/dashboard/settings', icon: <Settings size={16} /> },
   ];
 
@@ -52,7 +53,7 @@ export default function ClientSidebar({ isMobile, onClose }) {
   };
 
   return (
-    <aside className={`w-64 border-r border-border-subtle bg-background flex flex-col ${isMobile ? 'h-full' : 'min-h-screen sticky top-0'}`}>
+    <aside className={`w-72 border-r border-border-subtle bg-background flex flex-col ${isMobile ? 'h-full' : 'min-h-screen sticky top-0'}`}>
       <div className="p-4 flex items-center justify-center">
         <Logo size={24} />
       </div>

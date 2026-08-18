@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { signOut } from 'next-auth/react';
-import { LogOut, LayoutDashboard, Users, Workflow, Settings, Server, ExternalLink, XCircle, Link as LinkIcon, Activity, Globe, MoreHorizontal, ChevronRight, FileText, Shield, ScrollText, RefreshCw } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Workflow, Settings, Server, ExternalLink, XCircle, Link as LinkIcon, Activity, Globe, MoreHorizontal, ChevronRight, FileText, Shield, ScrollText, RefreshCw, Database, Bell } from 'lucide-react';
 import { startInngestDevServer, stopInngestDevServer, checkInngestStatus } from '@/actions/dev';
 import Logo from '@/components/Logo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -42,8 +42,10 @@ export default function AdminSidebar({ isMobile, onClose }) {
   const navItems = [
     { name: 'Dashboard', href: '/admin', icon: <LayoutDashboard size={16} /> },
     { name: 'Users & Tenants', href: '/admin/users', icon: <Users size={16} /> },
+    { name: 'Global Notifications', href: '/admin/notifications', icon: <Bell size={16} /> },
+    { name: 'Global Storage', href: '/admin/storage', icon: <Database size={16} /> },
     { name: 'Global Connections', href: '/admin/connections', icon: <LinkIcon size={16} /> },
-    { name: 'Concierge Requests', href: '/admin/concierge', icon: <Globe size={16} /> },
+    { name: 'Tenants/Users Requests', href: '/admin/requests', icon: <Globe size={16} /> },
     { name: 'Usage Analytics', href: '/admin/analytics', icon: <Activity size={16} /> },
     { name: 'System Workflows', href: '/admin/workflows', icon: <Workflow size={16} /> },
     { name: 'Platform Settings', href: '/admin/settings', icon: <Settings size={16} /> },
@@ -55,7 +57,7 @@ export default function AdminSidebar({ isMobile, onClose }) {
   };
 
   return (
-    <aside className={`w-64 border-r border-border-subtle bg-background flex flex-col ${isMobile ? 'h-full' : 'min-h-screen sticky top-0'}`}>
+    <aside className={`w-72 border-r border-border-subtle bg-background flex flex-col ${isMobile ? 'h-full' : 'min-h-screen sticky top-0'}`}>
       <div className="p-4 flex items-center justify-center">
         <Logo size={24} />
       </div>

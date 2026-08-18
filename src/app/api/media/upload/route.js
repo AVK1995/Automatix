@@ -19,36 +19,51 @@ export async function POST(request) {
         
         const userId = session.user.id;
         const payload = JSON.parse(clientPayload || '{}');
-        const { nodeId, fileType, sizeMB } = payload;
+        const { nodeId, fileType, sizeMB, originalName } = payload;
         const type = fileType?.startsWith('video/') ? 'VIDEO' : 'IMAGE';
 
         // Check user limits
         const user = await prisma.user.findUnique({
           where: { id: userId },
-          select: { maxImages: true, maxImageMB: true, maxVideos: true, maxVideoMB: true }
+          select: { maxImages: true, maxImageMB: true, maxVideos: true, maxVideoMB: true, maxStorageMB: true }
         });
 
         if (!user) throw new Error('User not found');
 
+        // 1. Individual Size Check
         if (type === 'VIDEO' && sizeMB > user.maxVideoMB) {
-          throw new Error(`Video exceeds maximum size of ${user.maxVideoMB}MB`);
+          throw new Error(`QUOTA_EXCEEDED:Video exceeds maximum size of ${user.maxVideoMB}MB`);
         }
         if (type === 'IMAGE' && sizeMB > user.maxImageMB) {
-          throw new Error(`Image exceeds maximum size of ${user.maxImageMB}MB`);
+          throw new Error(`QUOTA_EXCEEDED:Image exceeds maximum size of ${user.maxImageMB}MB`);
         }
 
-        const currentCount = await prisma.media.count({
-          where: { userId, type }
+        // Fetch current media usage
+        const userMedia = await prisma.media.findMany({
+          where: { userId },
+          select: { sizeMB: true, type: true }
         });
 
-        if (type === 'VIDEO' && currentCount >= user.maxVideos) {
-          throw new Error(`QUOTA_EXCEEDED:Video limit reached. Please upgrade your storage.`);
+        const currentVideoCount = userMedia.filter(m => m.type === 'VIDEO').length;
+        const currentImageCount = userMedia.filter(m => m.type === 'IMAGE').length;
+        const totalStorageUsedMB = userMedia.reduce((sum, media) => sum + media.sizeMB, 0);
+
+        // 2. Count Check
+        if (type === 'VIDEO' && currentVideoCount >= user.maxVideos) {
+          throw new Error(`QUOTA_EXCEEDED:Video limit reached (${currentVideoCount}/${user.maxVideos}).`);
         }
-        if (type === 'IMAGE' && currentCount >= user.maxImages) {
-          throw new Error(`QUOTA_EXCEEDED:Image limit reached. Please upgrade your storage.`);
+        if (type === 'IMAGE' && currentImageCount >= user.maxImages) {
+          throw new Error(`QUOTA_EXCEEDED:Image limit reached (${currentImageCount}/${user.maxImages}).`);
         }
 
-        const filename = `${userId}/${Date.now()}-${pathname}`;
+        // 3. Total Storage Check
+        if (totalStorageUsedMB + sizeMB > user.maxStorageMB) {
+          throw new Error(`QUOTA_EXCEEDED:Total storage limit reached. You have ${(user.maxStorageMB - totalStorageUsedMB).toFixed(1)}MB remaining.`);
+        }
+
+        // Sanitize filename
+        const safeName = (originalName || pathname).replace(/[^a-zA-Z0-9.]/g, '_');
+        const filename = `${userId}/${Date.now()}-${safeName}`;
 
         // Return token parameters
         return {
