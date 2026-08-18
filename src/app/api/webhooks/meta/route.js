@@ -40,10 +40,6 @@ export async function POST(request) {
           data: {
             workflowId: firstWorkflow.id,
             status: 'FAILED',
-            startedAt: new Date(),
-            completedAt: new Date(),
-            durationMs: 0,
-            stepsRan: 0,
             currentNodeState: {
               is_debug_dump_v2: true,
               raw_body: body
