@@ -204,7 +204,7 @@ export default function SettingsClient({ initialSettings }) {
           <div className="space-y-4 relative z-10">
             <div>
               <label className="block text-sm font-medium text-white mb-1">Password Reset Email (HTML)</label>
-              <p className="text-[11px] text-text-tertiary mb-3">Customize the HTML template sent to users when they request a password reset. Use `{{SETUP_LINK}}` for the link URL and `{{USER_EMAIL}}` for their email address.</p>
+              <p className="text-[11px] text-text-tertiary mb-3">Customize the HTML template sent to users when they request a password reset. Use <code>{'{'}{'{'}SETUP_LINK{'}'}{'}'}</code> for the link URL and <code>{'{'}{'{'}USER_EMAIL{'}'}{'}'}</code> for their email address.</p>
               <textarea 
                 value={settings.resetEmailTemplate || ''}
                 onChange={(e) => handleChange('resetEmailTemplate', e.target.value)}
