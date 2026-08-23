@@ -1587,12 +1587,23 @@ async function executeInstagramActionTest(config, userId) {
 
   // 1. Send Media if present
   if (config.messageType === 'media' && config.mediaUrl) {
+    const rawMediaUrl = applyTestVariables(config.mediaUrl);
+    const cleanUrl = (rawMediaUrl || '').split('?')[0].toLowerCase();
+    let attachmentType = 'image';
+    if (cleanUrl.match(/\.(mp4|mov|avi|webm|mkv|m4v)$/)) {
+      attachmentType = 'video';
+    } else if (cleanUrl.match(/\.(mp3|wav|ogg|m4a|aac)$/)) {
+      attachmentType = 'audio';
+    } else if (cleanUrl.match(/\.(pdf|doc|docx|zip|rar|tar|txt|csv)$/)) {
+      attachmentType = 'file';
+    }
+
     const mediaPayload = {
       recipient: { id: recipientId },
       message: {
         attachment: {
-          type: "image",
-          payload: { url: applyTestVariables(config.mediaUrl) }
+          type: attachmentType,
+          payload: { url: rawMediaUrl, is_reusable: true }
         }
       }
     };
@@ -1604,7 +1615,7 @@ async function executeInstagramActionTest(config, userId) {
     });
     data = await mediaRes.json();
     if (!mediaRes.ok) {
-      return { success: false, error: data.error?.message || 'Meta API Error (Media)', fix: 'Check your image URL.', data };
+      return { success: false, error: data.error?.message || 'Meta API Error (Media)', fix: 'Check your media URL.', data };
     }
   }
 

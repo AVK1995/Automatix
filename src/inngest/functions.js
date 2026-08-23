@@ -801,9 +801,19 @@ export const executeWorkflow = inngest.createFunction(
                     // 1. Send Media if present
                     if (messageType === 'media' && mediaUrl) {
                       const mUrl = resolveVars(mediaUrl);
+                      const cleanUrl = (mUrl || '').split('?')[0].toLowerCase();
+                      let attachmentType = 'image';
+                      if (cleanUrl.match(/\.(mp4|mov|avi|webm|mkv|m4v)$/)) {
+                        attachmentType = 'video';
+                      } else if (cleanUrl.match(/\.(mp3|wav|ogg|m4a|aac)$/)) {
+                        attachmentType = 'audio';
+                      } else if (cleanUrl.match(/\.(pdf|doc|docx|zip|rar|tar|txt|csv)$/)) {
+                        attachmentType = 'file';
+                      }
+
                       const mediaPayload = {
                         recipient: { id: recipientId },
-                        message: { attachment: { type: "image", payload: { url: mUrl } } }
+                        message: { attachment: { type: attachmentType, payload: { url: mUrl, is_reusable: true } } }
                       };
                       const mediaRes = await fetch(url, {
                         method: 'POST',
