@@ -69,7 +69,7 @@ export default function Select({ value, onChange, options, placeholder = 'Select
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 min-w-full w-max mt-1 bg-[#111] backdrop-blur-xl border border-white/10 rounded-md shadow-2xl overflow-hidden max-h-72 flex flex-col"
+            className="absolute z-50 w-full mt-1 bg-[#111] backdrop-blur-xl border border-white/10 rounded-md shadow-2xl overflow-hidden max-h-72 flex flex-col"
           >
             <div className="p-2 border-b border-white/5 shrink-0 bg-black/20">
               <div className="relative">

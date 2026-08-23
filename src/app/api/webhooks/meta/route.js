@@ -32,25 +32,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
-    // --- UNCONDITIONAL DEBUG LOGGER ---
-    try {
-      const firstWorkflow = await prisma.workflow.findFirst();
-      if (firstWorkflow) {
-        await prisma.executionLog.create({
-          data: {
-            workflowId: firstWorkflow.id,
-            status: 'FAILED',
-            currentNodeState: {
-              is_debug_dump_v2: true,
-              raw_body: body
-            }
-          }
-        });
-      }
-    } catch (e) {
-      console.error("Debug logger failed", e);
-    }
-    // ---------------------------------
+
 
     if (body.object !== 'page' && body.object !== 'instagram') {
       return NextResponse.json({ success: true, ignored: true, message: 'Not a page or instagram object' }, { status: 200 });
@@ -83,29 +65,6 @@ export async function POST(request) {
             accountEmail: pageId
           }
         });
-
-        // --- DEBUG LOGGER FOR WEBHOOKS ---
-        try {
-          const firstWorkflow = await prisma.workflow.findFirst({ where: { isActive: true } });
-          if (firstWorkflow) {
-            await prisma.executionLog.create({
-              data: {
-              workflowId: firstWorkflow.id,
-              status: 'FAILED', // using FAILED so it stands out
-              currentNodeState: {
-                  is_debug_dump: true,
-                  received_page_id: pageId,
-                  matched_integration: integration ? integration.id : null,
-                  raw_body: body,
-                  all_integrations: await prisma.integration.findMany({ select: { id: true, accountEmail: true, name: true } })
-                }
-              }
-            });
-          }
-        } catch (e) {
-          console.error("Debug logger failed", e);
-        }
-        // ---------------------------------
 
         if (!integration) {
            console.warn(`No integration found for Meta Page ID: ${pageId}`);

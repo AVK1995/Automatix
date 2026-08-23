@@ -464,7 +464,7 @@ export const executeWorkflow = inngest.createFunction(
                       }
                    }
                  }
-                } else if (node.integrationId === 'instagram_action' || node.integration?.id === 'instagram_action') {
+                } else if (node.integrationId === 'instagram_action' || node.integration?.id === 'instagram_action' || node.integrationId === 'interactive_prompt' || node.integration?.id === 'interactive_prompt') {
                    const { messageType, message, mediaUrl, questionType, options } = node.config || {};
                    
                    let finalMessageText = message ? resolveVars(message) : '';
@@ -474,13 +474,67 @@ export const executeWorkflow = inngest.createFunction(
                        finalMessageText += '\n\n' + opts.map((opt, i) => `${i + 1}. ${opt}`).join('\n');
                      }
                    }
+
+                   let recipientId = node.config?.recipient ? resolveVars(node.config.recipient) : null;
+                   if (node.config?.recipientType === 'link' && recipientId) {
+                     const usernameMatch = recipientId.match(/(?:instagram\.com\/)([a-zA-Z0-9_.]+)/i);
+                     if (usernameMatch) recipientId = usernameMatch[1];
+                   }
+                   
+                   // Fetch connection for API key
+                   const connectionId = node.config?.connectionId || node.integrationId || node.id;
+                   const connection = await prisma.integration.findUnique({
+                     where: { id: connectionId }
+                   });
+                   if (!connection) throw new Error("Instagram connection not found");
+
+                   let accessToken = connection.apiKey;
+                   try {
+                     const parsed = JSON.parse(connection.apiKey);
+                     if (parsed.access_token) accessToken = parsed.access_token;
+                   } catch(e) {}
+
+                   const url = `https://graph.facebook.com/v20.0/me/messages?access_token=${accessToken}`;
+                   let apiData = null;
+
+                   // 1. Send Media if present
+                   if (messageType === 'media' && mediaUrl) {
+                     const mUrl = resolveVars(mediaUrl);
+                     const mediaPayload = {
+                       recipient: { id: recipientId },
+                       message: { attachment: { type: "image", payload: { url: mUrl } } }
+                     };
+                     const mediaRes = await fetch(url, {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify(mediaPayload)
+                     });
+                     apiData = await mediaRes.json();
+                     if (!mediaRes.ok) throw new Error(apiData.error?.message || 'Meta API Error (Media)');
+                   }
+
+                   // 2. Send Text if present
+                   if (finalMessageText) {
+                     const textPayload = {
+                       recipient: { id: recipientId },
+                       message: { text: finalMessageText }
+                     };
+                     const textRes = await fetch(url, {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify(textPayload)
+                     });
+                     apiData = await textRes.json();
+                     if (!textRes.ok) throw new Error(apiData.error?.message || 'Meta API Error (Text)');
+                   }
                    
                    output = {
                      recipientType: node.config?.recipientType,
-                     recipient: node.config?.recipient ? resolveVars(node.config.recipient) : null,
+                     recipient: recipientId,
                      messageType,
                      mediaUrl: messageType === 'media' ? (mediaUrl ? resolveVars(mediaUrl) : undefined) : undefined,
-                     sentText: finalMessageText
+                     sentText: finalMessageText,
+                     apiResponse: apiData
                    };
                  }
                 

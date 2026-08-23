@@ -48,8 +48,6 @@ import { X } from 'lucide-react';
 export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIsMobileOpen, mobileInsertionTarget, setMobileInsertionTarget, insertionPoint }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
-  const [isPinned, setIsPinned] = useState(false);
-  const hoverTimeout = useRef(null);
   
   const [panelWidth, setPanelWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
@@ -74,28 +72,9 @@ export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIs
     };
   }, [isResizing]);
 
-  const handleMouseEnter = () => {
-    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-    setIsExpanded(true);
-  };
-
-  const handleMouseLeave = () => {
-    if (isPinned) return;
-    hoverTimeout.current = setTimeout(() => {
-      setIsExpanded(false);
-    }, 2000);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-    };
-  }, []);
-
   useEffect(() => {
     if (insertionPoint) {
       setIsExpanded(true);
-      if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
     }
   }, [insertionPoint]);
 
@@ -139,11 +118,11 @@ export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIs
             <p className="text-xs text-text-secondary mt-1 mb-3">Select blocks to build your flow</p>
           </div>
           <button 
-            onClick={() => setIsPinned(!isPinned)}
-            className={`p-1.5 rounded-md transition-colors ${isPinned ? 'bg-accent-blue/20 text-accent-blue' : 'text-text-secondary hover:text-white hover:bg-white/10'}`}
-            title={isPinned ? "Unpin panel" : "Pin panel open"}
+            onClick={() => setIsExpanded(false)}
+            className="p-1.5 rounded-md transition-colors text-text-secondary hover:text-white hover:bg-white/10 hidden md:flex"
+            title="Close panel"
           >
-            {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+            <X className="w-4 h-4" />
           </button>
         </div>
         <div className="relative">
@@ -341,8 +320,6 @@ export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIs
 
       {/* Desktop Panel */}
       <motion.div 
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         initial={false}
         animate={{ width: isExpanded ? panelWidth : 48 }}
         transition={{ type: isResizing ? "tween" : "spring", duration: isResizing ? 0 : undefined, stiffness: 300, damping: 30 }}

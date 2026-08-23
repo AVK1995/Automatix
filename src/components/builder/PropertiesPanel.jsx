@@ -1415,8 +1415,8 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     Clear Data
                   </button>
                 </div>
-                <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
-                  <pre className="text-[10px] text-text-secondary font-mono whitespace-pre-wrap">
+                <div className="max-h-[200px] overflow-y-auto overflow-x-hidden custom-scrollbar">
+                  <pre className="text-[10px] text-text-secondary font-mono whitespace-pre-wrap break-all">
                     {JSON.stringify(config.capturedPayload, null, 2)}
                   </pre>
                 </div>
