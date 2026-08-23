@@ -544,11 +544,9 @@ export const executeWorkflow = inngest.createFunction(
                   if (!execution.currentNodeState.stepOutputs) execution.currentNodeState.stepOutputs = {};
                   execution.currentNodeState.stepOutputs[node.id] = { output };
                   
-                  await step.run(`Save Step Output (Node ${node.id})`, async () => {
-                    await prisma.executionLog.update({
-                      where: { id: executionLogId },
-                      data: { currentNodeState: execution.currentNodeState }
-                    });
+                  await prisma.executionLog.update({
+                    where: { id: executionLogId },
+                    data: { currentNodeState: execution.currentNodeState }
                   });
                 }
                 
