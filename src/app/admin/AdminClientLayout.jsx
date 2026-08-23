@@ -29,7 +29,7 @@ export default function AdminClientLayout({ children, user }) {
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-background z-20">
+      <div className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-background relative z-[50]">
         <h1 className="text-foreground font-semibold">Automatix Admin</h1>
         <div className="flex items-center gap-2">
           <NotificationDropdown />
@@ -74,7 +74,7 @@ export default function AdminClientLayout({ children, user }) {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col">
-        <header className="hidden md:flex h-14 items-center bg-background/80 backdrop-blur-md sticky top-0 z-10 border-b border-border-subtle">
+        <header className="hidden md:flex h-14 items-center bg-background/80 backdrop-blur-md sticky top-0 z-[50] border-b border-border-subtle">
           <div className="w-full px-4 md:px-8 flex justify-between items-center">
             <h1 className="text-sm font-medium text-text-secondary">{getPageTitle(pathname)}</h1>
             <div className="flex items-center gap-4">
