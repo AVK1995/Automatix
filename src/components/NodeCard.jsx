@@ -139,7 +139,7 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
           <span className="relative flex items-center justify-center w-4 h-4 rounded-full bg-accent-blue/20 text-accent-blue">
             <User className="w-2.5 h-2.5" />
           </span>
-          <span className="relative">{waitingCount} {waitingCount === 1 ? 'Waiting' : 'Waiting'}</span>
+          <span className="relative">{waitingCount} {waitingCount === 1 ? 'User' : 'Users'}</span>
         </button>
       )}
       {isActiveSimulation && (

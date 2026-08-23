@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { NODE_TYPES } from '@/constants';
-import { updateWorkflow, toggleWorkflowPublish, clearSimulations } from '@/actions/workflows';
+import { updateWorkflow, toggleWorkflowPublish, clearSimulations, getWaitingCounts } from '@/actions/workflows';
 import { INTEGRATIONS } from '@/components/builder/NodeLibrary';
 
 export default function WorkflowBuilder({ workflow }) {
@@ -137,6 +137,26 @@ export default function WorkflowBuilder({ workflow }) {
   }, [workflow.id]);
 
   const [waitingCounts, setWaitingCounts] = useState({});
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchWaiting = async () => {
+      try {
+        const counts = await getWaitingCounts(workflow.id);
+        if (isMounted && counts) {
+          setWaitingCounts(counts);
+        }
+      } catch (err) {
+        console.error("Failed to load waiting counts", err);
+      }
+    };
+    fetchWaiting();
+    const interval = setInterval(fetchWaiting, 4000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [workflow.id]);
   const [simulationTime, setSimulationTime] = useState(0);
   const [simulationPath, setSimulationPath] = useState(null);
 

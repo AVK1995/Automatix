@@ -115,6 +115,7 @@ export async function POST(request) {
           });
           
           const waitingLog = waitingLogs.find(log => {
+            if (log.externalReferenceId === senderId) return true;
             const payload = log.currentNodeState?.payload;
             const waitingEntry = payload?.entry?.[0];
             const waitingItem = waitingEntry?.messaging?.[0] || waitingEntry?.standby?.[0];
