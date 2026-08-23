@@ -68,7 +68,8 @@ export const executeWorkflow = inngest.createFunction(
 
     const resolveVars = (str) => {
       if (typeof str !== 'string') return str;
-      return str.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+      return str.replace(/\{\{([^}]+)\}\}/g, (match, rawPath) => {
+        const path = rawPath.trim();
         if (path.startsWith('trigger.body.')) {
           const keyPath = path.replace('trigger.body.', '').replace(/\[/g, '.').replace(/\]/g, '');
           let current = execution.currentNodeState?.payload;
@@ -79,16 +80,31 @@ export const executeWorkflow = inngest.createFunction(
           return current !== undefined ? current : match;
         } else if (path.startsWith('steps.')) {
           const parts = path.split('.');
-          if (parts.length >= 3) {
+          if (parts.length >= 2) {
             const sId = parts[1];
-            const keyPath = parts.slice(2).join('.').replace(/\[/g, '.').replace(/\]/g, '').split('.');
             let current = execution.currentNodeState?.stepOutputs?.[sId];
+            if (parts.length === 2) {
+              return current !== undefined ? (typeof current === 'object' ? (current.result ?? current.output ?? current.reply_text ?? JSON.stringify(current)) : current) : match;
+            }
+            const keyPath = parts.slice(2).join('.').replace(/\[/g, '.').replace(/\]/g, '').split('.');
             if (current) {
               for (const k of keyPath) {
                 if (current === undefined || current === null) return match;
                 current = current[k];
               }
               return current !== undefined ? current : match;
+            }
+          }
+        } else if (path.includes(':')) {
+          const [titlePart, propPart] = path.split(':').map(s => s.trim());
+          const targetNode = nodes.find(n => (n.title || '').trim().toLowerCase() === titlePart.toLowerCase());
+          if (targetNode) {
+            const current = execution.currentNodeState?.stepOutputs?.[targetNode.id];
+            if (current && current[propPart] !== undefined) {
+              return current[propPart];
+            }
+            if (current && typeof current === 'object' && current.output && current.output[propPart] !== undefined) {
+              return current.output[propPart];
             }
           }
         }
@@ -347,10 +363,13 @@ export const executeWorkflow = inngest.createFunction(
 
           const actionResult = await step.run(`Execute Action (Node ${node.id})`, async () => {
             try {
-              const trackingId = node.config?.connectionId || node.integrationId || node.id;
-              if (!['http', 'sheets', 'formatter_text', 'formatter_math', 'formatter_datetime', 'json_parser', 'custom_variable', 'date_formatter', 'code', 'delay', 'condition'].includes(trackingId)) {
-                 const wfOwner = await prisma.user.findUnique({ where: { id: execution.workflow.clientId }});
-                 await checkAndLogUsage(trackingId, wfOwner?.quotaTier || 'free');
+              const trackingId = node.config?.connectionId || node.integrationId;
+              if (trackingId && !['http', 'sheets', 'formatter_text', 'formatter_math', 'formatter_datetime', 'json_parser', 'custom_variable', 'date_formatter', 'code', 'delay', 'condition'].includes(trackingId)) {
+                 const connection = await prisma.integration.findUnique({ where: { id: trackingId } });
+                 if (connection) {
+                   const wfOwner = await prisma.user.findUnique({ where: { id: execution.workflow.clientId }});
+                   await checkAndLogUsage(trackingId, wfOwner?.quotaTier || 'free');
+                 }
               }
 
               console.log(`Executing Action [${node.title}]:`, node.config);
@@ -542,7 +561,10 @@ export const executeWorkflow = inngest.createFunction(
                 if (output !== null && output !== undefined) {
                   if (!execution.currentNodeState) execution.currentNodeState = {};
                   if (!execution.currentNodeState.stepOutputs) execution.currentNodeState.stepOutputs = {};
-                  execution.currentNodeState.stepOutputs[node.id] = { output };
+                  execution.currentNodeState.stepOutputs[node.id] = { 
+                    result: typeof output === 'object' && output !== null && output.result !== undefined ? output.result : output, 
+                    output 
+                  };
                   
                   await prisma.executionLog.update({
                     where: { id: executionLogId },
