@@ -32,8 +32,14 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
          output: null
        }));
     } else {
+       // Extract trigger payload if available
+       let triggerPayload = {};
+       if (log.currentNodeState && typeof log.currentNodeState === 'object') {
+          triggerPayload = log.currentNodeState.payload || {};
+       }
+       
        steps = [
-         { id: 'start', name: 'Trigger', status: 'COMPLETED', input: {}, output: {} }
+         { id: 'start', name: 'Trigger', status: 'COMPLETED', input: triggerPayload, output: triggerPayload }
        ];
        if (log.status === 'FAILED') {
          steps.push({ id: 'fail', name: 'Error', status: 'FAILED', error: 'Execution failed', input: {}, output: {} });
@@ -101,9 +107,13 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${
-                  run.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                  run.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' : 
+                  (run.status === 'ACTIVE' || run.status === 'WAITING') ? 'bg-accent-blue/10 text-accent-blue' : 
+                  'bg-red-500/10 text-red-400'
                 }`}>
-                  {run.status === 'COMPLETED' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                  {run.status === 'COMPLETED' ? <CheckCircle2 className="w-3 h-3" /> : 
+                   (run.status === 'ACTIVE' || run.status === 'WAITING') ? <Clock className="w-3 h-3" /> :
+                   <XCircle className="w-3 h-3" />}
                   {run.status}
                 </span>
                 <span className="text-[10px] text-text-secondary flex items-center gap-1">
