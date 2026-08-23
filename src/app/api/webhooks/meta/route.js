@@ -53,6 +53,8 @@ export async function POST(request) {
       }
 
       for (const item of messagingItems) {
+        if (item.message?.is_echo || item.sender?.id === pageId) continue;
+
         const senderId = item.sender?.id;
         const messageText = item.message?.text || '';
         
