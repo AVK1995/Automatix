@@ -221,6 +221,7 @@ export default function SettingsClient({ initialSettings }) {
           <StoragePlans />
         </div>
       </div>
+      </div>
     </>
   );
 }

@@ -62,7 +62,7 @@ export async function sendResetEmail(toEmail, setupLink) {
     from: process.env.SMTP_FROM || '"Automatix" <support@automatix.com>',
     to: toEmail,
     subject: 'Password Reset - Automatix',
-    text: \`You have requested to reset your password. Please copy and paste this link to set a new password: \${setupLink}\`,
+    text: `You have requested to reset your password. Please copy and paste this link to set a new password: ${setupLink}`,
     html: finalHtml,
   });
 }
