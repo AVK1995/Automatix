@@ -70,7 +70,7 @@ export const executeWorkflow = inngest.createFunction(
       if (typeof str !== 'string') return str;
       return str.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
         if (path.startsWith('trigger.body.')) {
-          const keyPath = path.replace('trigger.body.', '');
+          const keyPath = path.replace('trigger.body.', '').replace(/\[/g, '.').replace(/\]/g, '');
           let current = execution.currentNodeState?.payload;
           for (const k of keyPath.split('.')) {
             if (current === undefined || current === null) return match;
@@ -81,7 +81,7 @@ export const executeWorkflow = inngest.createFunction(
           const parts = path.split('.');
           if (parts.length >= 3) {
             const sId = parts[1];
-            const keyPath = parts.slice(2);
+            const keyPath = parts.slice(2).join('.').replace(/\[/g, '.').replace(/\]/g, '').split('.');
             let current = execution.currentNodeState?.stepOutputs?.[sId];
             if (current) {
               for (const k of keyPath) {

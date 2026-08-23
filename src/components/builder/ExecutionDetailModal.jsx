@@ -30,7 +30,9 @@ export default function ExecutionDetailModal({ isOpen, onClose, execution, onRet
               <h2 className="text-xl font-semibold text-foreground flex items-center gap-3">
                 Execution Details
                 <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                  execution.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                  execution.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' : 
+                  (execution.status === 'ACTIVE' || execution.status === 'WAITING') ? 'bg-accent-blue/10 text-accent-blue' : 
+                  'bg-red-500/10 text-red-400'
                 }`}>
                   {execution.status}
                 </span>

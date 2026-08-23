@@ -29,15 +29,17 @@ export default function LightningOverlay({ isActive }) {
   
   useEffect(() => {
     if (isActive) {
-      // Generate 7 main lightning branches radiating from the profile dropdown area
-      const startX = window.innerWidth > 768 ? window.innerWidth - 200 : window.innerWidth - 50;
-      const startY = 100;
+      // Mobile: center of the top screen where card is, Desktop: near the top right
+      const isMobile = window.innerWidth <= 768;
+      const startX = isMobile ? window.innerWidth / 2 : window.innerWidth - 200;
+      const startY = isMobile ? 120 : 100;
       
       const newPaths = [];
-      for (let i = 0; i < 9; i++) {
+      const numLines = Math.floor(Math.random() * 2) + 3; // 3 or 4 lines
+      for (let i = 0; i < numLines; i++) {
         // Random end points scattering across the screen to the left and bottom
-        const endX = Math.random() * (window.innerWidth * 0.7);
-        const endY = window.innerHeight * (0.2 + Math.random() * 0.8);
+        const endX = isMobile ? Math.random() * window.innerWidth : Math.random() * (window.innerWidth * 0.7);
+        const endY = window.innerHeight * (0.3 + Math.random() * 0.7);
         newPaths.push(generateLightningPath(startX, startY, endX, endY));
       }
       setPaths(newPaths);
@@ -49,7 +51,7 @@ export default function LightningOverlay({ isActive }) {
   if (!isActive) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999999] pointer-events-none overflow-hidden mix-blend-screen">
+    <div className="fixed inset-0 z-[99999] pointer-events-none overflow-hidden mix-blend-screen">
       <svg className="w-full h-full">
         <defs>
           <filter id="lightning-glow" x="-50%" y="-50%" width="200%" height="200%">
