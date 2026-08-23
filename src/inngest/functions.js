@@ -15,7 +15,7 @@ export const executeWorkflow = inngest.createFunction(
   { 
     id: "execute-workflow", 
     name: "Execute Workflow Engine",
-    triggers: [{ event: "engine/workflow.start" }]
+    triggers: { event: "engine/workflow.start" }
   },
   async ({ event, step }) => {
     const { executionLogId, skipNodes = [], runOnlyNodeId = null } = event.data;

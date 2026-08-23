@@ -9,7 +9,7 @@ export const pollGoogleSheets = inngest.createFunction(
   { 
     id: "poll-google-sheets", 
     name: "Poll Google Sheets",
-    triggers: [{ cron: "* * * * *" }]
+    triggers: { cron: "* * * * *" }
   },
   async ({ step }) => {
     
