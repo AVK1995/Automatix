@@ -8,9 +8,9 @@ import { NODE_TYPES, SYSTEM_STATUS } from "@/constants";
 export const pollGoogleSheets = inngest.createFunction(
   { 
     id: "poll-google-sheets", 
-    name: "Poll Google Sheets",
-    triggers: [{ cron: "* * * * *" }]
+    name: "Poll Google Sheets"
   },
+  { cron: "* * * * *" },
   async ({ step }) => {
     
     // 1. Find all active workflows that have a Google Sheets Trigger configured for Polling
