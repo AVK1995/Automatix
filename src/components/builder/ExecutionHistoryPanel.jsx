@@ -3,52 +3,52 @@ import { X, History, CheckCircle2, XCircle, Clock, Search } from 'lucide-react';
 import { useState } from 'react';
 import ExecutionDetailModal from './ExecutionDetailModal';
 
-export default function ExecutionHistoryPanel({ onClose }) {
+import useSWR from 'swr';
+import { Loader2 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+
+export default function ExecutionHistoryPanel({ onClose, workflowId }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExecution, setSelectedExecution] = useState(null);
 
-  // Mock data for execution history with step-by-step details
-  const history = [
-    { 
-      id: 'ex_1', 
-      status: 'COMPLETED', 
-      time: 'Just now', 
-      duration: '1.2s',
-      steps: [
-        { id: 'step_1', name: 'Catch Webhook', status: 'COMPLETED', input: {}, output: { email: 'test@gmail.com' } },
-        { id: 'step_2', name: 'API by Automatix', status: 'COMPLETED', input: { email: 'test@gmail.com' }, output: { success: true } }
-      ]
-    },
-    { 
-      id: 'ex_2', 
-      status: 'FAILED', 
-      time: '2 hours ago', 
-      duration: '0.8s', 
-      error: 'Invalid webhook payload structure',
-      steps: [
-        { id: 'step_1', name: 'Catch Webhook', status: 'COMPLETED', input: {}, output: { email: null } },
-        { id: 'step_2', name: 'API by Automatix', status: 'FAILED', error: 'Missing email', input: { email: null }, output: null }
-      ]
-    },
-    { 
-      id: 'ex_3', 
-      status: 'COMPLETED', 
-      time: 'Yesterday', 
-      duration: '1.5s',
-      steps: [
-        { id: 'step_1', name: 'Catch Webhook', status: 'COMPLETED', input: {}, output: { email: 'user@example.com' } }
-      ]
-    },
-    { 
-      id: 'ex_4', 
-      status: 'COMPLETED', 
-      time: '2 days ago', 
-      duration: '1.1s',
-      steps: [
-        { id: 'step_1', name: 'Catch Webhook', status: 'COMPLETED', input: {}, output: { email: 'hello@world.com' } }
-      ]
-    },
-  ];
+  const fetcher = (url) => fetch(url).then((res) => res.json());
+  const { data, error, isLoading } = useSWR(`/api/workflows/${workflowId}/history`, fetcher, {
+    refreshInterval: 5000 // auto-refresh every 5s
+  });
+
+  const history = data?.logs?.map(log => {
+    // Parse duration if we have startedAt/finishedAt, etc.
+    let timeAgo = 'Just now';
+    try { timeAgo = formatDistanceToNow(new Date(log.createdAt), { addSuffix: true }); } catch(e) {}
+    
+    // Attempt to reconstruct steps from currentNodeState or analyticsEvents if they existed, but fallback to empty for now
+    let steps = [];
+    if (log.analyticsEvents?.length > 0) {
+       steps = log.analyticsEvents.map(e => ({
+         id: e.id,
+         name: e.eventType,
+         status: 'COMPLETED',
+         input: e.metadata,
+         output: null
+       }));
+    } else {
+       steps = [
+         { id: 'start', name: 'Trigger', status: 'COMPLETED', input: {}, output: {} }
+       ];
+       if (log.status === 'FAILED') {
+         steps.push({ id: 'fail', name: 'Error', status: 'FAILED', error: 'Execution failed', input: {}, output: {} });
+       }
+    }
+
+    return {
+      id: log.id,
+      status: log.status,
+      time: timeAgo,
+      duration: 'N/A', // Update if we track duration later
+      error: log.status === 'FAILED' ? 'Execution failed' : null,
+      steps
+    };
+  }) || [];
 
   const filteredHistory = history.filter(run => 
     run.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,8 +56,11 @@ export default function ExecutionHistoryPanel({ onClose }) {
   );
 
   const handleRetry = (execution) => {
-    // In a real app, this would trigger an API call to re-run from the failed step
-    alert(`Retrying execution ${execution.id} starting from failed steps.`);
+    fetch(`/api/workflows/rerun`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workflowId, executionLogId: execution.id })
+    }).then(() => alert(`Retrying execution ${execution.id}`));
   };
 
   return (

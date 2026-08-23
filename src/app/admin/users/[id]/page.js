@@ -1,9 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
-import TenantEditForm from './TenantEditForm';
+import ManageTenantClient from './ManageTenantClient';
 import Link from 'next/link';
-import StorageBucketClient from '@/app/dashboard/storage/StorageBucketClient';
-import AdminTicketList from './AdminTicketList';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,18 +30,7 @@ export default async function ManageTenantPage({ params }) {
         <p className="text-sm text-text-secondary">Edit subscription settings or generate setup links for {tenant.name || tenant.email}.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <div className="lg:col-span-2">
-          <TenantEditForm tenant={tenant} />
-        </div>
-        
-        <div className="space-y-4 lg:col-span-1">
-          <h3 className="text-base font-medium text-foreground">User Storage Bucket</h3>
-          <StorageBucketClient user={tenant} mediaFiles={tenant.media} isAdminView={true} />
-          
-          <AdminTicketList tenantId={tenant.id} />
-        </div>
-      </div>
+      <ManageTenantClient tenant={tenant} mediaFiles={tenant.media} />
     </div>
   );
 }

@@ -991,15 +991,9 @@ export default function WorkflowBuilder({ workflow }) {
         {/* Right Pane: Execution History (Animated slide in) */}
         <AnimatePresence>
           {isHistoryOpen && (
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute right-0 top-0 bottom-0 z-30"
-            >
-              <ExecutionHistoryPanel onClose={() => setIsHistoryOpen(false)} />
-            </motion.div>
+            <div className="absolute inset-y-0 right-0 z-20 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
+              <ExecutionHistoryPanel onClose={() => setIsHistoryOpen(false)} workflowId={workflow.id} />
+            </div>
           )}
         </AnimatePresence>
 

@@ -143,7 +143,7 @@ export async function POST(request) {
 
           // Check if this workflow has a Meta trigger node
           const triggerNode = nodes.find(n => 
-             (n.type === 'trigger_instagram' || n.type === 'TRIGGER') && 
+             (n.type === 'instagram' || n.type === 'trigger_instagram' || n.type === 'TRIGGER') && 
              (n.config?.connectionId === integration.id || n.integrationId === integration.id || n.integration?.id === integration.id)
           );
 
