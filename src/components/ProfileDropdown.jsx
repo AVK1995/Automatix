@@ -90,7 +90,7 @@ export default function ProfileDropdown({ user }) {
       </button>
 
       {/* Dropdown Menu - toggled by click */}
-      <div className={`fixed top-[72px] left-4 right-4 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:w-[448px] transition-all duration-300 ease-out z-[99999] sm:origin-top-right ${isOpen ? 'opacity-100 visible scale-100' : 'opacity-0 invisible scale-95'}`}>
+      <div className={`fixed top-[72px] left-4 right-4 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:w-[448px] transition-all duration-300 ease-out z-40 sm:origin-top-right ${isOpen ? 'opacity-100 visible scale-100' : 'opacity-0 invisible scale-95'}`}>
         
         {isAdmin ? (
           /* Admin ID Card - Video Background */

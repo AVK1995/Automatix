@@ -51,7 +51,7 @@ export default function LightningOverlay({ isActive }) {
   if (!isActive) return null;
 
   return (
-    <div className="fixed inset-0 z-[99999] pointer-events-none overflow-hidden mix-blend-screen">
+    <div className="fixed inset-0 z-40 pointer-events-none overflow-hidden mix-blend-screen">
       <svg className="w-full h-full">
         <defs>
           <filter id="lightning-glow" x="-50%" y="-50%" width="200%" height="200%">
