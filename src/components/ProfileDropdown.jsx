@@ -5,6 +5,7 @@ import { LogOut, Download, Edit2, Check, Sparkles, Upload } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { PremiumIcon } from './Icons';
 import Image from 'next/image';
+import LightningOverlay from './ui/LightningOverlay';
 
 export default function ProfileDropdown({ user }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +14,7 @@ export default function ProfileDropdown({ user }) {
   
   const dropdownRef = useRef(null);
   const videoRef = useRef(null);
+  const [isLightningActive, setIsLightningActive] = useState(false);
   const hasShockwaved = useRef(false);
   const fileInputRef = useRef(null);
 
@@ -57,15 +59,18 @@ export default function ProfileDropdown({ user }) {
     }
     hasShockwaved.current = false;
     document.body.classList.remove('animate-global-shockwave');
+    setIsLightningActive(false);
   };
 
   const handleTimeUpdate = () => {
     if (videoRef.current && videoRef.current.currentTime >= 6.0 && !hasShockwaved.current) {
       hasShockwaved.current = true;
+      setIsLightningActive(true);
       document.body.classList.add('animate-global-shockwave');
       // Clean up the class after the animation completes (2.5s)
       setTimeout(() => {
         document.body.classList.remove('animate-global-shockwave');
+        setIsLightningActive(false);
       }, 2500);
     }
   };
@@ -220,6 +225,8 @@ export default function ProfileDropdown({ user }) {
           </div>
         )}
       </div>
+      
+      <LightningOverlay isActive={isLightningActive} />
     </div>
   );
 }

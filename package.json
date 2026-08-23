@@ -45,6 +45,14 @@
     "swr": "^2.5.1",
     "uuid": "^14.0.1"
   },
+  "allowScripts": {
+    "@prisma/engines": true,
+    "core-js": true,
+    "prisma": true,
+    "protobufjs": true,
+    "sharp": true,
+    "unrs-resolver": true
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",

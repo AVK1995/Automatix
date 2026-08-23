@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { format } from 'date-fns';
-import { Search, Filter, Loader2, MessageSquare, Clock, CheckCircle2 } from 'lucide-react';
+import { Search, Filter, Loader2, MessageSquare, Clock, CheckCircle2, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 
 export default function GlobalSupportTicketsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -23,7 +24,7 @@ export default function GlobalSupportTicketsPage() {
   const { data, error, isLoading } = useSWR(`/api/admin/support?status=${statusFilter}&search=${debouncedSearch}`, fetcher, { refreshInterval: 10000 });
 
   return (
-    <div className="max-w-6xl space-y-8">
+    <div className="w-full space-y-8">
       <div>
         <h2 className="text-xl font-medium text-foreground mb-1">Global Support Tickets</h2>
         <p className="text-sm text-text-secondary">View and manage all user support requests.</p>
@@ -43,17 +44,47 @@ export default function GlobalSupportTicketsPage() {
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Filter className="w-4 h-4 text-text-secondary" />
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-black/50 border border-white/10 rounded-sm px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="OPEN">Open</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="RESOLVED">Resolved</option>
-            <option value="CLOSED">Closed</option>
-          </select>
+          <div className="relative">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="bg-black/50 border border-white/10 rounded-sm px-3 py-2 text-sm text-white focus:outline-none hover:border-white/20 transition-colors min-w-[140px] text-left flex justify-between items-center"
+            >
+              <span>
+                {statusFilter === 'ALL' ? 'All Statuses' : 
+                 statusFilter === 'OPEN' ? 'Open' : 
+                 statusFilter === 'IN_PROGRESS' ? 'In Progress' : 
+                 statusFilter === 'RESOLVED' ? 'Resolved' : 
+                 'Closed'}
+              </span>
+              <ChevronDown className={`w-4 h-4 ml-2 opacity-50 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                <div className="absolute right-0 mt-1 w-full bg-[#111111] border border-white/10 rounded-sm shadow-xl z-50 py-1 overflow-hidden">
+                  {[
+                    { value: 'ALL', label: 'All Statuses' },
+                    { value: 'OPEN', label: 'Open' },
+                    { value: 'IN_PROGRESS', label: 'In Progress' },
+                    { value: 'RESOLVED', label: 'Resolved' },
+                    { value: 'CLOSED', label: 'Closed' }
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setStatusFilter(opt.value);
+                        setIsDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-white/5 transition-colors ${statusFilter === opt.value ? 'text-accent-blue bg-accent-blue/5' : 'text-text-secondary hover:text-white'}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

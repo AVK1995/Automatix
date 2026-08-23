@@ -20,7 +20,7 @@ export default async function ManageTenantPage({ params }) {
   if (!tenant) return notFound();
 
   return (
-    <div className="max-w-5xl space-y-8">
+    <div className="w-full space-y-8">
       <div className="flex items-center gap-2 mb-2">
         <Link href="/admin/users" className="text-sm text-text-secondary hover:text-foreground">&larr; Back to Users & Tenants</Link>
       </div>
