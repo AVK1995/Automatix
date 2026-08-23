@@ -8,5 +8,6 @@ if (process.env.NODE_ENV === 'development') {
 // Create a client to send and receive events
 export const inngest = new Inngest({ 
   id: "automatix-engine",
-  eventKey: process.env.INNGEST_EVENT_KEY || 'local'
+  eventKey: process.env.INNGEST_EVENT_KEY,
+  signingKey: process.env.INNGEST_SIGNING_KEY,
 });
