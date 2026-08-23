@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import NotificationDropdown from '@/components/layout/NotificationDropdown';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import Chatbot from '@/components/ui/Chatbot';
+import QuotaUpgradeModal from '@/components/ui/QuotaUpgradeModal';
 
 export default function ClientDashboardLayout({ children, user }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -89,6 +90,7 @@ export default function ClientDashboardLayout({ children, user }) {
       </main>
       
       <Chatbot />
+      <QuotaUpgradeModal />
     </div>
   );
 }
