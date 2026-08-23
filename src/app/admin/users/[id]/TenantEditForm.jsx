@@ -12,6 +12,12 @@ export default function TenantEditForm({ tenant }) {
   const [maxVideos, setMaxVideos] = useState(tenant.maxVideos || 5);
   const [maxVideoMB, setMaxVideoMB] = useState(tenant.maxVideoMB || 25);
   const [maxStorageMB, setMaxStorageMB] = useState(tenant.maxStorageMB || 1000);
+  
+  // Support Ticket Settings
+  const [maxSupportTickets, setMaxSupportTickets] = useState(tenant.maxSupportTickets || 5);
+  const [supportTicketsRemaining, setSupportTicketsRemaining] = useState(tenant.supportTicketsRemaining ?? 5);
+  const [ticketCooldownHours, setTicketCooldownHours] = useState(tenant.ticketCooldownHours ?? 24);
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -38,7 +44,11 @@ export default function TenantEditForm({ tenant }) {
       const res = await fetch(`/api/admin/users/${tenant.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, cycle, maxImages, maxImageMB, maxVideos, maxVideoMB, maxStorageMB })
+        body: JSON.stringify({ 
+          tier, cycle, maxImages, maxImageMB, maxVideos, maxVideoMB, maxStorageMB,
+          maxSupportTickets: parseInt(maxSupportTickets),
+          ticketCooldownHours: parseInt(ticketCooldownHours)
+        })
       });
 
       if (!res.ok) {
@@ -191,6 +201,55 @@ export default function TenantEditForm({ tenant }) {
                   className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-border-subtle mt-4">
+            <h4 className="text-sm font-medium text-foreground mb-3">Support Ticket Limits</h4>
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Max Tickets</label>
+                <input 
+                  type="number" 
+                  value={maxSupportTickets}
+                  onChange={(e) => setMaxSupportTickets(e.target.value)}
+                  className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Cooldown Duration (Hours)</label>
+                <input 
+                  type="number" 
+                  value={ticketCooldownHours}
+                  onChange={(e) => setTicketCooldownHours(e.target.value)}
+                  className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 p-3 rounded-md">
+              <div>
+                <div className="text-xs font-medium text-white mb-0.5">Current Quota Status</div>
+                <div className="text-[10px] text-text-secondary">
+                  {supportTicketsRemaining} of {maxSupportTickets} tickets remaining
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/admin/users/${tenant.id}/reset-quota`, { method: 'POST' });
+                    if (!res.ok) throw new Error('Failed to reset quota');
+                    setSupportTicketsRemaining(maxSupportTickets);
+                    toast?.success?.('Quota reset successfully') || alert('Quota reset successfully');
+                  } catch(e) {
+                    toast?.error?.(e.message) || alert(e.message);
+                  }
+                }}
+                className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded transition-colors"
+              >
+                Reset Quota Now
+              </button>
             </div>
           </div>
 

@@ -98,11 +98,12 @@ export default function QuotaUpgradeModal() {
           {/* Content */}
           <div className="p-5 overflow-y-auto">
             {loadingPlans ? (
-              <div className="flex justify-center py-8">
-                <Loader2 size={24} className="animate-spin text-accent-blue" />
-              </div>
+              <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-accent-blue" /></div>
             ) : plans.length === 0 ? (
-              <p className="text-sm text-text-secondary text-center py-8">No upgrade plans available at the moment. Please contact support.</p>
+              <div className="text-center py-8">
+                <p className="text-text-secondary text-sm">No upgrade plans are currently available.</p>
+                <p className="text-text-tertiary text-xs mt-2">If you are an admin, you can create plans in the Master Settings.</p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {plans.map((plan, idx) => {

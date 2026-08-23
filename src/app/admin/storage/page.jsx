@@ -9,7 +9,7 @@ export default async function AdminGlobalStoragePage() {
   if (!session || session.user.role !== 'ADMIN') redirect('/dashboard');
 
   const users = await prisma.user.findMany({
-    where: { role: 'USER' },
+    where: { role: 'CLIENT' },
     include: {
       media: true
     },

@@ -86,17 +86,35 @@ export default function Chatbot() {
       {!isMinimized && (
         <>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                  msg.role === 'user' 
-                    ? 'bg-accent-blue text-white rounded-br-sm' 
-                    : 'bg-white/10 text-white rounded-bl-sm'
-                }`}>
-                  {msg.content}
+            {messages.map((msg, i) => {
+              const hasTicketAction = msg.content.includes('[ACTION:RAISE_TICKET]');
+              const cleanContent = msg.content.replace('[ACTION:RAISE_TICKET]', '').trim();
+              
+              return (
+                <div key={i} className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  {cleanContent && (
+                    <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                      msg.role === 'user' 
+                        ? 'bg-accent-blue text-white rounded-br-sm' 
+                        : 'bg-white/10 text-white rounded-bl-sm'
+                    }`}>
+                      {cleanContent}
+                    </div>
+                  )}
+                  {hasTicketAction && (
+                    <div className="max-w-[85%] bg-accent-violet/20 border border-accent-violet/30 rounded-xl p-3 flex flex-col gap-2 mt-1">
+                      <p className="text-xs text-white">Need more help? Open a support ticket.</p>
+                      <button 
+                        onClick={() => window.location.href = '/dashboard/support'}
+                        className="text-xs font-semibold bg-white text-black py-1.5 rounded-lg hover:bg-white/90 transition-colors"
+                      >
+                        Go to Support Tickets
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-white/10 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2">

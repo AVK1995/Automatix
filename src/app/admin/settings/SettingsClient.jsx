@@ -195,6 +195,25 @@ export default function SettingsClient({ initialSettings }) {
                 </div>
              </div>
           </div>
+        {/* Email Templates */}
+        <div className="bg-[#111] border border-border-subtle rounded-xl p-6 shadow-xl relative overflow-hidden mt-8">
+          <div className="flex items-center gap-2 mb-6 border-b border-border-subtle pb-4">
+            <h2 className="text-lg font-semibold text-white">Email Templates</h2>
+          </div>
+          
+          <div className="space-y-4 relative z-10">
+            <div>
+              <label className="block text-sm font-medium text-white mb-1">Password Reset Email (HTML)</label>
+              <p className="text-[11px] text-text-tertiary mb-3">Customize the HTML template sent to users when they request a password reset. Use `{{SETUP_LINK}}` for the link URL and `{{USER_EMAIL}}` for their email address.</p>
+              <textarea 
+                value={settings.resetEmailTemplate || ''}
+                onChange={(e) => handleChange('resetEmailTemplate', e.target.value)}
+                rows={12}
+                className="w-full bg-black/40 border border-border-subtle rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                placeholder="<html>...</html>"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Storage Plans */}

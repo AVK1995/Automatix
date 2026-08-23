@@ -36,6 +36,13 @@ model User {
   supportTickets        SupportTicket[]
   media                 Media[]
   quotaRequests         QuotaRequest[]
+  resetEmailCount       Int                 @default(0)
+  lastResetEmailAt      DateTime?
+  lastPasswordUpdatedAt DateTime?
+  maxSupportTickets     Int                 @default(5)
+  supportTicketsRemaining Int               @default(5)
+  ticketCooldownHours   Int                 @default(24)
+  ticketQuotaResetAt    DateTime?
 }
 
 model Media {
@@ -242,9 +249,19 @@ model SupportTicket {
   type      String   @default("GENERAL") // "REFUND", "CONCIERGE", "GENERAL"
   subject   String
   message   String
-  status    String   @default("OPEN")    // "OPEN", "IN_PROGRESS", "RESOLVED"
+  status    String   @default("OPEN")    // "OPEN", "IN_PROGRESS", "RESOLVED", "DISMISSED", "CLOSED"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  messages  TicketMessage[]
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId  String   // User ID or ADMIN ID
+  content   String   @db.Text
+  createdAt DateTime @default(now())
 }
 
 model PlatformSettings {
@@ -256,6 +273,7 @@ model PlatformSettings {
   proPlanEnabled     Boolean  @default(true)
   proPlanPrice       Int      @default(499)
   proPlanDesc        String   @default("For businesses automating at scale.")
+  resetEmailTemplate String?  @db.Text
   updatedAt          DateTime @updatedAt
 }
 

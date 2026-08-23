@@ -178,7 +178,7 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
                 onClick={() => window.dispatchEvent(new CustomEvent('open-quota-modal'))}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md bg-white text-black text-sm font-semibold hover:bg-white/90 transition-colors relative z-10 shadow-[0_0_15px_rgba(255,255,255,0.2)]"
               >
-                Upgrade to Pro <ArrowUpRight size={16} />
+                Upgrade Storage Quota <ArrowUpRight size={16} />
               </button>
             </div>
           )}
