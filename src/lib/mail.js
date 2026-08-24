@@ -66,3 +66,28 @@ export async function sendResetEmail(toEmail, setupLink) {
     html: finalHtml,
   });
 }
+
+export async function sendMail({ to, subject, text, html }) {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+    console.warn('SMTP credentials not configured. Skipping email send.');
+    return { skipped: true };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: Number(process.env.SMTP_PORT) === 465,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  return await transporter.sendMail({
+    from: process.env.SMTP_FROM || '"Automatix" <support@automatix.com>',
+    to,
+    subject,
+    text: text || '',
+    html: html || '',
+  });
+}

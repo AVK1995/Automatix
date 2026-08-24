@@ -51,18 +51,19 @@ Thanks!`);
         <p className="text-text-secondary text-lg">No hidden fees. Scale your workflow automation effortlessly.</p>
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl">
-        {/* Free Tier */}
+      <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
+        {/* Starter Free Tier */}
         <div className="bg-[#111] border border-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-xl flex flex-col hover:border-white/20 transition-colors">
           <h2 className="text-2xl font-semibold text-white mb-2">Starter</h2>
           <p className="text-text-secondary text-sm mb-6">{settings.starterPlanDesc}</p>
-          <div className="text-5xl font-bold mb-8">₹{settings.starterPlanPrice}<span className="text-xl text-text-secondary font-medium">/mo</span></div>
+          <div className="text-5xl font-bold mb-8">₹0<span className="text-xl text-text-secondary font-medium">/mo</span></div>
           
-          <ul className="space-y-5 mb-8 flex-1">
-            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3" /> Up to 3 Workflows</li>
-            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3" /> 100 Executions per month</li>
-            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3" /> Standard Integrations</li>
-            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3" /> Community Support</li>
+          <ul className="space-y-4 mb-8 flex-1">
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> Up to 3 Workflows</li>
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> 100 Executions / month</li>
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> 50 MB Cloud Storage</li>
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> 10 Images & 1 Video</li>
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> Standard Integrations</li>
           </ul>
 
           {settings.starterPlanEnabled ? (
@@ -76,39 +77,106 @@ Thanks!`);
           )}
         </div>
 
-        {/* Pro Tier */}
+        {/* Professional Tier */}
         <div className="bg-gradient-to-b from-[#1a1a2e] to-[#111] border border-accent-violet/30 backdrop-blur-xl rounded-2xl p-8 flex flex-col relative shadow-[0_0_50px_rgba(139,92,246,0.15)] hover:shadow-[0_0_80px_rgba(139,92,246,0.25)] transition-shadow">
-          <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-accent-violet to-accent-blue text-white text-[11px] font-bold tracking-widest px-4 py-1.5 rounded-full shadow-lg">
-            RECOMMENDED
+          <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-accent-violet to-accent-blue text-white text-[11px] font-bold tracking-widest px-4 py-1.5 rounded-full shadow-lg uppercase">
+            POPULAR
           </div>
           
           <h2 className="text-2xl font-semibold text-white mb-2">Professional</h2>
           <p className="text-white/70 text-sm mb-6">{settings.proPlanDesc}</p>
           <div className="text-5xl font-bold mb-8 text-white">₹{settings.proPlanPrice}<span className="text-xl text-white/50 font-medium">/mo</span></div>
           
-          <ul className="space-y-5 mb-8 flex-1">
-            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3" /> Unlimited Workflows</li>
-            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3" /> 50,000 Executions per month</li>
-            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3" /> Premium Integrations (Meta, Calendly)</li>
-            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3" /> Smart Delay Engine</li>
-            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3" /> Priority Email Support</li>
+          <ul className="space-y-4 mb-8 flex-1">
+            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3 shrink-0" /> Unlimited Workflows</li>
+            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3 shrink-0" /> 50,000 Executions / month</li>
+            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3 shrink-0" /> 200 MB Storage Allowance</li>
+            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3 shrink-0" /> 30 Images & 4 Videos</li>
+            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3 shrink-0" /> Smart Delay & Branching Router</li>
+            <li className="flex items-center text-sm text-white"><CheckIcon className="w-5 h-5 text-accent-violet mr-3 shrink-0" /> Priority Support</li>
           </ul>
 
-          <div className="p-5 bg-black/40 border border-white/10 rounded-xl text-xs text-white/80 mb-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-accent-violet to-accent-blue"></div>
-            <strong className="block text-white mb-2 text-sm ml-2">Manual Provisioning Only</strong>
-            <span className="ml-2 block text-accent-violet font-medium mb-2">⚠️ IMPORTANT: You MUST have a pre-existing free account before upgrading. We cannot process upgrades or refunds for unregistered users.</span>
-            <span className="ml-2 block">To purchase this plan:</span>
-            <ol className="list-decimal ml-8 mt-3 space-y-2 text-white/60">
-              <li>Send <strong className="text-white">₹{settings.proPlanPrice}</strong> via UPI to <strong className="text-white">{process.env.PAYMENT_UPI_ID || 'your-upi@bank'}</strong> or via Bank Transfer to <strong className="text-white">{process.env.PAYMENT_BANK_DETAILS || 'Acc: 123456789, IFSC: XXXX00000'}</strong></li>
-              <li>Click the button below to email a screenshot of the receipt, your name, and your pre-existing account email.</li>
-              <li>We will provision your isolated tenant account within 12 hours.</li>
-            </ol>
+          <a href={gmailUrl} target="_blank" rel="noopener noreferrer" className="block text-center w-full py-4 rounded-xl bg-white text-black font-semibold hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-300">
+            Upgrade to Professional
+          </a>
+        </div>
+
+        {/* Enterprise Tier */}
+        <div className="bg-[#111] border border-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-xl flex flex-col hover:border-white/20 transition-colors">
+          <h2 className="text-2xl font-semibold text-white mb-2">Enterprise</h2>
+          <p className="text-text-secondary text-sm mb-6">For high-volume brands, agencies, and custom capacity.</p>
+          <div className="text-5xl font-bold mb-8">₹1,499<span className="text-xl text-text-secondary font-medium">/mo</span></div>
+          
+          <ul className="space-y-4 mb-8 flex-1">
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> Unlimited Workflows & Triggers</li>
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> Unlimited Workflow Executions</li>
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> 500 MB Base Cloud Storage</li>
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> 80 Images & 8 High-Res Videos</li>
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> Custom Limit Query Access</li>
+            <li className="flex items-center text-sm text-text-secondary"><CheckIcon className="w-5 h-5 text-white/40 mr-3 shrink-0" /> 24/7 Dedicated Concierge Support</li>
+          </ul>
+
+          <Link href="/dashboard/billing" className="block text-center w-full py-4 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white font-semibold transition-all">
+            Contact for Enterprise
+          </Link>
+        </div>
+      </div>
+
+      {/* Standalone Add-on Storage Expansion Section */}
+      <div className="relative z-10 w-full max-w-5xl mt-20">
+        <div className="text-center mb-10">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Standalone Storage Expansion Packs</h2>
+          <p className="text-sm text-text-secondary">Need extra media capacity without changing your execution limits? Add a frozen storage pack anytime.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-[#111] border border-border-subtle rounded-xl p-6 flex flex-col justify-between">
+            <div>
+              <span className="text-xs font-semibold text-accent-blue uppercase tracking-wider block mb-1">Starter Boost</span>
+              <h3 className="text-xl font-bold text-white mb-2">Starter Pack (+100 MB)</h3>
+              <div className="text-3xl font-bold text-white mb-4">₹199<span className="text-sm text-text-secondary font-medium">/mo</span></div>
+              <ul className="space-y-2 text-xs text-text-secondary mb-6">
+                <li>• +100 MB Cloud Storage</li>
+                <li>• +15 Images (Max 2MB each)</li>
+                <li>• +2 Videos (Max 25MB each)</li>
+              </ul>
+            </div>
+            <Link href="/dashboard/billing" className="w-full text-center py-2.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10">
+              Get Starter Pack
+            </Link>
           </div>
 
-          <a href={gmailUrl} target="_blank" rel="noopener noreferrer" className="block text-center w-full py-4 rounded-xl bg-white text-black font-semibold hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-300">
-            Email Receipt via Gmail
-          </a>
+          <div className="bg-[#111] border border-accent-blue/40 rounded-xl p-6 flex flex-col justify-between shadow-lg shadow-accent-blue/5">
+            <div>
+              <span className="text-xs font-semibold text-accent-blue uppercase tracking-wider block mb-1">Creator Choice</span>
+              <h3 className="text-xl font-bold text-white mb-2">Growth Pack (+250 MB)</h3>
+              <div className="text-3xl font-bold text-white mb-4">₹499<span className="text-sm text-text-secondary font-medium">/mo</span></div>
+              <ul className="space-y-2 text-xs text-text-secondary mb-6">
+                <li>• +250 MB Cloud Storage</li>
+                <li>• +40 Images (Max 5MB each)</li>
+                <li>• +5 Videos (Max 35MB each)</li>
+              </ul>
+            </div>
+            <Link href="/dashboard/billing" className="w-full text-center py-2.5 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-colors">
+              Get Growth Pack
+            </Link>
+          </div>
+
+          <div className="bg-[#111] border border-border-subtle rounded-xl p-6 flex flex-col justify-between">
+            <div>
+              <span className="text-xs font-semibold text-accent-violet uppercase tracking-wider block mb-1">Agency Power</span>
+              <h3 className="text-xl font-bold text-white mb-2">Power Pack (+500 MB)</h3>
+              <div className="text-3xl font-bold text-white mb-4">₹899<span className="text-sm text-text-secondary font-medium">/mo</span></div>
+              <ul className="space-y-2 text-xs text-text-secondary mb-6">
+                <li>• +500 MB Cloud Storage</li>
+                <li>• +80 Images (Max 8MB each)</li>
+                <li>• +8 Videos (Max 50MB each)</li>
+              </ul>
+            </div>
+            <Link href="/dashboard/billing" className="w-full text-center py-2.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10">
+              Get Power Pack
+            </Link>
+          </div>
         </div>
       </div>
       </div>

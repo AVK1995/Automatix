@@ -9,6 +9,7 @@ import NotificationDropdown from '@/components/layout/NotificationDropdown';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import Chatbot from '@/components/ui/Chatbot';
 import QuotaUpgradeModal from '@/components/ui/QuotaUpgradeModal';
+import RenewalAlertToast from '@/components/ui/RenewalAlertToast';
 
 export default function ClientDashboardLayout({ children, user }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -24,6 +25,8 @@ export default function ClientDashboardLayout({ children, user }) {
     if (path.startsWith('/dashboard/connections')) return 'Global Connections';
     if (path.startsWith('/dashboard/settings')) return 'Settings';
     if (path.startsWith('/dashboard/calendars')) return 'Calendars';
+    if (path.startsWith('/dashboard/storage')) return 'Storage Bucket';
+    if (path.startsWith('/dashboard/billing')) return 'Billing & Invoices';
     return 'Client Portal';
   };
 
@@ -91,6 +94,7 @@ export default function ClientDashboardLayout({ children, user }) {
       
       <Chatbot />
       <QuotaUpgradeModal />
+      <RenewalAlertToast />
     </div>
   );
 }

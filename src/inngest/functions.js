@@ -4,6 +4,8 @@ import { SYSTEM_STATUS, NODE_TYPES } from "@/constants";
 import { checkAndLogUsage, RateLimitExceeded } from "@/actions/rateLimit";
 import nodemailer from 'nodemailer';
 import { GoogleAuth } from 'google-auth-library';
+import { del } from '@vercel/blob';
+import { sendMail } from '@/lib/mail';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
@@ -1048,5 +1050,250 @@ export const executeWorkflow = inngest.createFunction(
     });
 
     return { success: true, executionLogId, hasFailedStep };
+  }
+);
+
+// 5-Day Storage Grace Period Auto-Purge Cron (Runs Daily at 2:00 AM UTC)
+export const storageGracePurgeCron = inngest.createFunction(
+  { 
+    id: "storage-grace-purge-cron", 
+    name: "5-Day Storage Grace Period Auto-Purge",
+    triggers: { cron: "0 2 * * *" }
+  },
+  async ({ step }) => {
+    const usersToPurge = await step.run("Find Expired Grace Period Users", async () => {
+      const now = new Date();
+      return await prisma.user.findMany({
+        where: {
+          storageStatus: "GRACE_PERIOD",
+          storageGraceExpiresAt: { lte: now }
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          maxStorageMB: true,
+          media: {
+            orderBy: { createdAt: "desc" },
+            select: { id: true, url: true, sizeMB: true }
+          }
+        }
+      });
+    });
+
+    for (const user of usersToPurge) {
+      await step.run(`Purge Excess Media for User ${user.id}`, async () => {
+        let currentStorage = user.media.reduce((sum, m) => sum + (m.sizeMB || 0), 0);
+        const baseAllowedMB = 50; // Revert to Free Plan allowance
+
+        // Delete newest files until storage is under 50MB
+        for (const file of user.media) {
+          if (currentStorage <= baseAllowedMB) break;
+          try {
+            await del(file.url);
+          } catch (e) {
+            console.error(`Failed to delete blob for ${file.url}:`, e);
+          }
+          await prisma.media.delete({ where: { id: file.id } });
+          currentStorage -= (file.sizeMB || 0);
+        }
+
+        // Lock user storage and reset to free tier limits
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            storageStatus: "LOCKED",
+            quotaTier: "Free Plan (50 MB)",
+            maxStorageMB: 50,
+            maxImages: 10,
+            maxImageMB: 2,
+            maxVideos: 1,
+            maxVideoMB: 25,
+            storagePlanExpiresAt: null,
+            storageGraceExpiresAt: null
+          }
+        });
+
+        // Create Notification & send email
+        await prisma.notification.create({
+          data: {
+            id: `notif-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+            userId: user.id,
+            type: "STORAGE_PURGED",
+            message: `Your storage grace period expired without renewal. Your storage bucket has been reset to the 50MB Free tier and excess files were purged.`,
+            status: "UNREAD",
+            updatedAt: new Date()
+          }
+        });
+
+        if (user.email) {
+          await sendMail({
+            to: user.email,
+            subject: "⚠️ Automatix: Storage Plan Downgraded & Excess Files Purged",
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #0a0a0a; color: #ffffff; border-radius: 8px; border: 1px solid #222;">
+                <h2 style="color: #ef4444;">Storage Grace Period Expired</h2>
+                <p>Hello ${user.name || 'there'},</p>
+                <p>Your 5-day grace period for storage renewal has elapsed without payment.</p>
+                <p>Your storage allowance has reverted to the default <strong>50 MB Free tier</strong>, and excess files have been purged from the cloud storage bucket.</p>
+                <p>To upgrade your storage again and restore high limits, visit your billing dashboard anytime.</p>
+                <a href="${process.env.NEXTAUTH_URL || 'https://automatix.agency'}/dashboard/billing" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">Manage Storage & Billing</a>
+              </div>
+            `
+          }).catch(console.error);
+        }
+      });
+    }
+
+    return { purgedCount: usersToPurge.length };
+  }
+);
+
+// Multi-Stage Subscription & Storage Renewal Reminders (Runs Every 4 Hours)
+export const subscriptionRenewalCron = inngest.createFunction(
+  { 
+    id: "subscription-renewal-cron", 
+    name: "Multi-Stage Subscription & Storage Renewal Reminders",
+    triggers: { cron: "0 */4 * * *" }
+  },
+  async ({ step }) => {
+    const users = await step.run("Scan Users For Upcoming Renewals", async () => {
+      const now = new Date();
+      const in6Days = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+      return await prisma.user.findMany({
+        where: {
+          OR: [
+            { subscriptionExpiresAt: { gte: now, lte: in6Days } },
+            { storagePlanExpiresAt: { gte: now, lte: in6Days } },
+            { subscriptionExpiresAt: { lt: now }, storageStatus: "ACTIVE" }
+          ]
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          subscriptionTier: true,
+          subscriptionExpiresAt: true,
+          storagePlanExpiresAt: true,
+          quotaTier: true,
+          autoPayEnabled: true,
+          lastReminderStage: true,
+          storageStatus: true
+        }
+      });
+    });
+
+    for (const user of users) {
+      await step.run(`Process Reminders for ${user.id}`, async () => {
+        const now = new Date();
+        const subExpiry = user.subscriptionExpiresAt;
+        const storageExpiry = user.storagePlanExpiresAt;
+        const targetExpiry = (subExpiry && subExpiry > now) ? subExpiry : storageExpiry;
+
+        // If subscription has expired and not in grace period yet -> move to GRACE_PERIOD
+        if (subExpiry && subExpiry <= now && user.storageStatus === 'ACTIVE') {
+          const graceExpires = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              storageStatus: "GRACE_PERIOD",
+              storageGraceExpiresAt: graceExpires,
+              lastReminderStage: "grace_start"
+            }
+          });
+
+          await prisma.notification.create({
+            data: {
+              id: `notif-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+              userId: user.id,
+              type: "PAYMENT_OVERDUE",
+              message: `⚠️ Your plan renewal payment is overdue! Your account is in a 5-day grace period. Excess files will be purged in 5 days if payment is not completed.`,
+              status: "UNREAD",
+              updatedAt: new Date()
+            }
+          });
+
+          if (user.email) {
+            await sendMail({
+              to: user.email,
+              subject: "⚠️ Action Required: Subscription Expired - 5 Days Grace Period Active",
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #0a0a0a; color: #ffffff; border-radius: 8px; border: 1px solid #333;">
+                  <h2 style="color: #f59e0b;">Payment Overdue - 5-Day Grace Period</h2>
+                  <p>Hello ${user.name || 'there'},</p>
+                  <p>Your subscription for Automatix has expired without renewal.</p>
+                  <p><strong>You have 5 days to renew your payment.</strong> If payment is not completed by <strong>${graceExpires.toLocaleDateString()}</strong>, your storage will be locked to the 50MB free tier and excess files will be permanently purged.</p>
+                  <p>AutoPay Status: <strong>${user.autoPayEnabled ? 'AutoPay Enabled (Payment Pending/Failed)' : 'AutoPay Disabled - Manual Payment Needed'}</strong></p>
+                  <a href="${process.env.NEXTAUTH_URL || 'https://automatix.agency'}/dashboard/billing" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">Make Payment Now</a>
+                </div>
+              `
+            }).catch(console.error);
+          }
+          return;
+        }
+
+        if (!targetExpiry) return;
+
+        const diffHours = (targetExpiry.getTime() - now.getTime()) / (1000 * 60 * 60);
+        let stage = null;
+        let stageTitle = "";
+
+        if (diffHours <= 12 && diffHours > 0) {
+          stage = "12h";
+          stageTitle = "Critical Notice: Plan Renews in 12 Hours";
+        } else if (diffHours <= 24 && diffHours > 12) {
+          stage = "1d";
+          stageTitle = "Urgent: Plan Renews in 24 Hours";
+        } else if (diffHours <= 72 && diffHours > 24) {
+          stage = "3d";
+          stageTitle = "Reminder: Plan Renews in 3 Days";
+        } else if (diffHours <= 120 && diffHours > 72) {
+          stage = "5d";
+          stageTitle = "Upcoming Renewal: Plan Renews in 5 Days";
+        }
+
+        if (stage && user.lastReminderStage !== stage) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastReminderStage: stage }
+          });
+
+          await prisma.notification.create({
+            data: {
+              id: `notif-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+              userId: user.id,
+              type: "RENEWAL_REMINDER",
+              message: `${stageTitle}. AutoPay is ${user.autoPayEnabled ? 'ACTIVE' : 'INACTIVE'}. Click here to review your billing.`,
+              status: "UNREAD",
+              updatedAt: new Date()
+            }
+          });
+
+          if (user.email) {
+            await sendMail({
+              to: user.email,
+              subject: `📅 ${stageTitle} - Automatix`,
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #0a0a0a; color: #ffffff; border-radius: 8px; border: 1px solid #333;">
+                  <h2 style="color: #3b82f6;">${stageTitle}</h2>
+                  <p>Hello ${user.name || 'there'},</p>
+                  <p>This is an automated notification regarding your upcoming service renewal on <strong>${targetExpiry.toLocaleDateString()}</strong>.</p>
+                  <div style="background: #111; padding: 15px; border-radius: 6px; border: 1px solid #222; margin: 15px 0;">
+                    <p style="margin: 5px 0;"><strong>Active Tier:</strong> ${user.subscriptionTier || 'Professional'}</p>
+                    <p style="margin: 5px 0;"><strong>Storage Tier:</strong> ${user.quotaTier || '50 MB Free'}</p>
+                    <p style="margin: 5px 0;"><strong>AutoPay Status:</strong> <span style="color: ${user.autoPayEnabled ? '#10b981' : '#f59e0b'}; font-weight: bold;">${user.autoPayEnabled ? 'ACTIVE (Will automatically process)' : 'INACTIVE (Action Required)'}</span></p>
+                  </div>
+                  <p>If AutoPay is inactive or if you wish to adjust your plan before renewal, please visit your billing dashboard.</p>
+                  <a href="${process.env.NEXTAUTH_URL || 'https://automatix.agency'}/dashboard/billing" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">Go to Billing & Invoices</a>
+                </div>
+              `
+            }).catch(console.error);
+          }
+        }
+      });
+    }
+
+    return { processedCount: users.length };
   }
 );
