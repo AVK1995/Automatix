@@ -1,7 +1,10 @@
+'use client';
+
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, Check } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
+import Checkbox from '@/components/ui/Checkbox';
 
 export default function LegalConsentModal({ isOpen, onClose, onAccept, provider }) {
   const [hasAgreed, setHasAgreed] = React.useState(false);
@@ -29,23 +32,21 @@ export default function LegalConsentModal({ isOpen, onClose, onAccept, provider 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-card border border-border-subtle rounded-xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#0f0f0f] border border-white/10 rounded-xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col"
             >
-              <div className="p-6 pb-4 border-b border-white/5 flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                  <ShieldAlert className="w-5 h-5 text-amber-500" />
+              <div className="p-6 pb-4 border-b border-white/5 flex items-center gap-3 bg-white/[0.02]">
+                <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500">
+                  <ShieldAlert size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-white">Legal Liability & Consent</h3>
-                  <p className="text-sm text-text-secondary mt-1">
-                    Before connecting your {provider} account, please review our zero-liability policy.
-                  </p>
+                  <h3 className="text-lg font-semibold text-white">Third-Party Terms & Liability</h3>
+                  <p className="text-xs text-text-secondary">Important disclaimer regarding {provider} integration</p>
                 </div>
               </div>
 
@@ -61,35 +62,30 @@ export default function LegalConsentModal({ isOpen, onClose, onAccept, provider 
                 </ul>
               </div>
 
-              <div className="p-6 pt-4 border-t border-white/5 bg-black/20">
-                <label className="flex items-start gap-3 cursor-pointer group mb-6">
-                  <div className={`mt-0.5 shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${hasAgreed ? 'bg-accent-blue border-accent-blue' : 'bg-black/50 border-white/20 group-hover:border-white/40'}`}>
-                    {hasAgreed && <Check className="w-3.5 h-3.5 text-white" />}
-                  </div>
-                  <input 
-                    type="checkbox" 
-                    className="hidden" 
-                    checked={hasAgreed} 
-                    onChange={(e) => setHasAgreed(e.target.checked)} 
-                  />
-                  <span className="text-[13px] text-text-secondary group-hover:text-text-primary transition-colors">
-                    I have read and agree to the <Link href="/terms" target="_blank" className="text-accent-blue hover:underline">Terms & Conditions</Link> and <Link href="/privacy" target="_blank" className="text-accent-blue hover:underline">Privacy Policy</Link>. I understand Automatix is not liable for issues with my {provider} account.
-                  </span>
-                </label>
+              <div className="p-6 pt-4 border-t border-white/5 bg-black/20 space-y-5">
+                <Checkbox
+                  checked={hasAgreed}
+                  onChange={(checked) => setHasAgreed(checked)}
+                  label={
+                    <span className="text-xs sm:text-[13px] text-text-secondary leading-relaxed block">
+                      I have read and agree to the <Link href="/terms" target="_blank" className="text-accent-blue hover:underline">Terms & Conditions</Link> and <Link href="/privacy" target="_blank" className="text-accent-blue hover:underline">Privacy Policy</Link>. I understand Automatix is not liable for issues with my {provider} account.
+                    </span>
+                  }
+                />
 
                 <div className="flex gap-3">
                   <button
                     onClick={onClose}
-                    className="flex-1 px-4 py-2.5 rounded-md text-sm font-medium text-text-secondary hover:text-white hover:bg-white/5 border border-border-subtle transition-colors"
+                    className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-white hover:bg-white/5 border border-border-subtle transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleAccept}
                     disabled={!hasAgreed}
-                    className="flex-1 bg-accent-blue hover:bg-accent-blue/90 disabled:bg-accent-blue/50 disabled:cursor-not-allowed text-white font-medium px-4 py-2.5 rounded-md text-sm transition-colors"
+                    className="flex-1 bg-accent-blue hover:bg-accent-blue/90 disabled:bg-accent-blue/50 disabled:cursor-not-allowed text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors shadow-lg shadow-accent-blue/20"
                   >
-                    I Agree, Continue
+                    Accept & Continue
                   </button>
                 </div>
               </div>

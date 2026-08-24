@@ -302,18 +302,12 @@ export default function QuestionBuilder({ questions, onChange }) {
 
                     <div className="flex items-center justify-between pt-2">
                       {['radio', 'checkbox'].includes(q.type) ? (
-                        <label className="flex items-center gap-2 cursor-pointer group">
-                          <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center transition-colors ${q.allowOtherOption ? 'bg-accent-blue border-accent-blue' : 'border-white/20 group-hover:border-white/40 bg-transparent'}`}>
-                            {q.allowOtherOption && <Check size={10} className="text-white" />}
-                          </div>
-                          <input 
-                            type="checkbox" 
-                            className="hidden" 
-                            checked={q.allowOtherOption || false} 
-                            onChange={(e) => updateQuestion(q.id, { allowOtherOption: e.target.checked })} 
-                          />
-                          <span className="text-xs text-text-secondary group-hover:text-text-primary transition-colors">Allow "Other" option</span>
-                        </label>
+                        <Checkbox
+                          checked={q.allowOtherOption || false}
+                          onChange={(checked) => updateQuestion(q.id, { allowOtherOption: checked })}
+                          label="Allow 'Other' option"
+                          labelClassName="text-xs text-text-secondary"
+                        />
                       ) : <div />}
                       
                       <button

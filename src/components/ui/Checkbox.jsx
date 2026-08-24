@@ -3,35 +3,53 @@
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 
-export default function Checkbox({ checked, onChange, label, className = '' }) {
+export default function Checkbox({ 
+  checked = false, 
+  onChange, 
+  label, 
+  id, 
+  name, 
+  disabled = false, 
+  className = '',
+  labelClassName = ''
+}) {
   return (
-    <label className={`flex items-center gap-2 cursor-pointer group ${className}`}>
+    <label 
+      htmlFor={id} 
+      className={`inline-flex items-center gap-2.5 cursor-pointer select-none group ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+    >
       <div 
-        className={`relative w-4 h-4 rounded-[4px] border transition-colors flex items-center justify-center shrink-0 ${
+        className={`relative w-4 h-4 rounded-md border transition-all duration-150 flex items-center justify-center flex-shrink-0 shrink-0 ${
           checked 
-            ? 'bg-accent-blue border-accent-blue' 
-            : 'bg-black/50 border-white/20 group-hover:border-white/40'
+            ? 'bg-accent-blue border-accent-blue text-white shadow-sm shadow-accent-blue/25 ring-1 ring-accent-blue/50' 
+            : 'bg-[#111] border-white/20 group-hover:border-white/40'
         }`}
       >
         {checked && (
           <motion.div
-            initial={{ scale: 0, opacity: 0 }}
+            initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
           >
-            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+            <Check className="w-3 h-3 text-white" strokeWidth={3.5} />
           </motion.div>
         )}
         
-        {/* Hidden native input for accessibility */}
         <input 
+          id={id}
+          name={name}
           type="checkbox" 
-          className="absolute opacity-0 w-0 h-0" 
+          className="sr-only" 
           checked={checked} 
-          onChange={(e) => onChange(e.target.checked)} 
+          disabled={disabled}
+          onChange={(e) => onChange?.(e.target.checked, e)} 
         />
       </div>
-      {label && <span className="text-sm text-white/80 group-hover:text-white transition-colors select-none">{label}</span>}
+      {label && (
+        <span className={`text-xs sm:text-sm font-medium text-white/80 group-hover:text-white transition-colors leading-normal ${labelClassName}`}>
+          {label}
+        </span>
+      )}
     </label>
   );
 }

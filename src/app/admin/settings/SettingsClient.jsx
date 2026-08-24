@@ -5,6 +5,7 @@ import { updatePlatformSettings } from '@/actions/settings';
 import { Save, Users, Settings2, CreditCard, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StoragePlans from './StoragePlans';
+import Toggle from '@/components/ui/Toggle';
 
 export default function SettingsClient({ initialSettings }) {
   const [settings, setSettings] = useState(initialSettings);
@@ -83,23 +84,12 @@ export default function SettingsClient({ initialSettings }) {
              </div>
              
              <div className="space-y-5 relative z-10">
-               <div>
-                 <label className="flex items-center justify-between cursor-pointer">
-                   <div>
-                     <span className="block text-sm font-medium text-white">Enable Public Registration</span>
-                     <span className="block text-[11px] text-text-tertiary">Allow users to sign up for the Starter Plan.</span>
-                   </div>
-                   <div className="relative">
-                     <input 
-                       type="checkbox" 
-                       className="sr-only peer" 
-                       checked={settings.starterPlanEnabled}
-                       onChange={(e) => handleChange('starterPlanEnabled', e.target.checked)}
-                     />
-                     <div className="w-10 h-5 bg-black border border-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-blue"></div>
-                   </div>
-                 </label>
-               </div>
+               <Toggle
+                 checked={settings.starterPlanEnabled}
+                 onChange={(checked) => handleChange('starterPlanEnabled', checked)}
+                 label="Enable Public Registration"
+                 description="Allow users to sign up for the Starter Plan."
+               />
 
                <div>
                  <label className="block text-sm font-medium text-white mb-2">Maximum User Capacity</label>
@@ -159,17 +149,10 @@ export default function SettingsClient({ initialSettings }) {
                     <h3 className="text-sm font-medium text-white flex items-center gap-2">
                       Professional Plan
                     </h3>
-                    <label className="flex items-center cursor-pointer">
-                      <div className="relative">
-                        <input 
-                          type="checkbox" 
-                          className="sr-only peer" 
-                          checked={settings.proPlanEnabled}
-                          onChange={(e) => handleChange('proPlanEnabled', e.target.checked)}
-                        />
-                        <div className="w-8 h-4 bg-black border border-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-accent-violet"></div>
-                      </div>
-                    </label>
+                    <Toggle
+                      checked={settings.proPlanEnabled}
+                      onChange={(checked) => handleChange('proPlanEnabled', checked)}
+                    />
                   </div>
                   
                   <div className="space-y-3 relative z-10">

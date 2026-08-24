@@ -30,6 +30,7 @@ import {
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import Checkbox from '@/components/ui/Checkbox';
 
 const TEMPLATE_PRESETS = [
   {
@@ -662,32 +663,24 @@ export default function AdminCommunicationsHub() {
 
               {/* Delivery Channels */}
               <div className="pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-5 text-xs">
                   <span className="text-text-tertiary">Send Channels:</span>
-                  <label className="flex items-center gap-2 cursor-pointer text-white">
-                    <input
-                      type="checkbox"
-                      checked={channels.includes('email')}
-                      onChange={(e) => {
-                        if (e.target.checked) setChannels([...channels, 'email']);
-                        else setChannels(channels.filter(c => c !== 'email'));
-                      }}
-                      className="rounded bg-black border-white/20 text-accent-blue focus:ring-0 shrink-0"
-                    />
-                    <span>Email (SMTP)</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer text-white">
-                    <input
-                      type="checkbox"
-                      checked={channels.includes('notification')}
-                      onChange={(e) => {
-                        if (e.target.checked) setChannels([...channels, 'notification']);
-                        else setChannels(channels.filter(c => c !== 'notification'));
-                      }}
-                      className="rounded bg-black border-white/20 text-accent-blue focus:ring-0 shrink-0"
-                    />
-                    <span>In-App Notification</span>
-                  </label>
+                  <Checkbox
+                    checked={channels.includes('email')}
+                    onChange={(checked) => {
+                      if (checked) setChannels([...channels, 'email']);
+                      else setChannels(channels.filter(c => c !== 'email'));
+                    }}
+                    label="Email (SMTP)"
+                  />
+                  <Checkbox
+                    checked={channels.includes('notification')}
+                    onChange={(checked) => {
+                      if (checked) setChannels([...channels, 'notification']);
+                      else setChannels(channels.filter(c => c !== 'notification'));
+                    }}
+                    label="In-App Notification"
+                  />
                 </div>
 
                 {/* Send Button */}
