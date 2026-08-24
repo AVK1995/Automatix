@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Plus, Clock, CheckCircle2, AlertCircle, X, Send, Loader2, Lock, Sparkles, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ export default function SupportPage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTicket, setActiveTicket] = useState(null);
+  const messagesEndRef = useRef(null);
   
   // New ticket state
   const [isCreating, setIsCreating] = useState(false);
@@ -26,15 +27,35 @@ export default function SupportPage() {
 
   useEffect(() => {
     fetchTickets();
-  }, []);
+    const interval = setInterval(fetchTickets, 3000);
+    return () => clearInterval(interval);
+  }, [activeTicket?.id]);
+
+  useEffect(() => {
+    if (activeTicket) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeTicket?.id, activeTicket?.messages?.length]);
 
   const fetchTickets = async () => {
     try {
       const res = await fetch('/api/support/tickets');
       const data = await res.json();
-      setTickets(data);
-      if (data?.length > 0 && !activeTicket) {
-        setActiveTicket(data[0]);
+      const ticketList = Array.isArray(data) ? data : [];
+      setTickets(ticketList);
+      
+      if (ticketList.length > 0) {
+        if (!activeTicket) {
+          setActiveTicket(ticketList[0]);
+        } else {
+          const updatedActive = ticketList.find(t => t.id === activeTicket.id);
+          if (updatedActive) {
+            setActiveTicket(prev => ({
+              ...prev,
+              ...updatedActive
+            }));
+          }
+        }
       }
     } catch (error) {
       console.error(error);
@@ -316,6 +337,7 @@ export default function SupportPage() {
                     </div>
                   );
                 })}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Input */}

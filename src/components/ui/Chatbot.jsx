@@ -93,9 +93,10 @@ export default function Chatbot() {
 
   useEffect(() => {
     fetchTickets();
-    const interval = setInterval(fetchTickets, 10000); // Poll every 10s
+    const pollInterval = (isOpen && !isMinimized && activeTab === 'live_support') ? 2500 : 8000;
+    const interval = setInterval(fetchTickets, pollInterval);
     return () => clearInterval(interval);
-  }, []);
+  }, [isOpen, isMinimized, activeTab]);
 
   // Listen for custom event from Notification Bell
   useEffect(() => {
@@ -145,12 +146,15 @@ export default function Chatbot() {
     e.preventDefault();
     if (!supportInput.trim() || !activeTicket || isSendingSupport) return;
 
+    const sendingContent = supportInput.trim();
+    setSupportInput('');
     setIsSendingSupport(true);
+
     try {
       const res = await fetch(`/api/support/tickets/${activeTicket.id}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: supportInput.trim() })
+        body: JSON.stringify({ content: sendingContent })
       });
 
       if (!res.ok) {
@@ -163,10 +167,10 @@ export default function Chatbot() {
         ...prev,
         messages: [...(prev.messages || []), newMsg]
       }));
-      setSupportInput('');
       fetchTickets();
     } catch (err) {
       console.error(err);
+      setSupportInput(sendingContent);
     } finally {
       setIsSendingSupport(false);
     }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { MessageSquare, Send, Loader2, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MessageSquare, Send, Loader2, X, ChevronDown, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminTicketList({ tenantId }) {
@@ -11,16 +11,41 @@ export default function AdminTicketList({ tenantId }) {
   const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     fetchTickets();
   }, [tenantId]);
 
+  // Periodic poll if active ticket is open
+  useEffect(() => {
+    if (!activeTicket) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/support/tickets/${activeTicket.id}`);
+        if (res.ok) {
+          const freshTicket = await res.json();
+          setActiveTicket(prev => prev?.id === freshTicket.id ? { ...prev, ...freshTicket } : prev);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [activeTicket?.id]);
+
+  useEffect(() => {
+    if (activeTicket) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeTicket?.id, activeTicket?.messages?.length]);
+
   const fetchTickets = async () => {
     try {
       const res = await fetch(`/api/admin/users/${tenantId}/tickets`);
       const data = await res.json();
-      setTickets(data);
+      setTickets(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
     } finally {
@@ -30,25 +55,28 @@ export default function AdminTicketList({ tenantId }) {
 
   const handleReply = async (e) => {
     e.preventDefault();
-    if (!replyText || !activeTicket) return;
+    if (!replyText.trim() || !activeTicket) return;
 
+    const sending = replyText.trim();
+    setReplyText('');
     setReplying(true);
+
     try {
       const res = await fetch(`/api/support/tickets/${activeTicket.id}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: replyText })
+        body: JSON.stringify({ content: sending })
       });
       if (!res.ok) throw new Error('Failed to send reply');
 
       const newMsg = await res.json();
-      setActiveTicket({
-        ...activeTicket,
-        messages: [...activeTicket.messages, newMsg]
-      });
-      setReplyText('');
+      setActiveTicket(prev => ({
+        ...prev,
+        messages: [...(prev.messages || []), newMsg]
+      }));
     } catch (error) {
       toast.error(error.message);
+      setReplyText(sending);
     } finally {
       setReplying(false);
     }
@@ -57,6 +85,7 @@ export default function AdminTicketList({ tenantId }) {
   const handleStatusChange = async (status) => {
     if (!activeTicket) return;
     setStatusUpdating(true);
+    setIsStatusDropdownOpen(false);
     try {
       const res = await fetch(`/api/support/tickets/${activeTicket.id}`, {
         method: 'PUT',
@@ -66,8 +95,8 @@ export default function AdminTicketList({ tenantId }) {
       if (!res.ok) throw new Error('Failed to update status');
       
       toast.success('Status updated');
-      setActiveTicket({ ...activeTicket, status });
-      fetchTickets(); // Refresh list
+      setActiveTicket(prev => ({ ...prev, status }));
+      fetchTickets();
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -79,6 +108,7 @@ export default function AdminTicketList({ tenantId }) {
     switch (status) {
       case 'OPEN': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
       case 'IN_PROGRESS': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+      case 'RESOLVED': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
       case 'CLOSED': return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
       case 'DISMISSED': return 'text-red-400 bg-red-400/10 border-red-400/20';
       default: return 'text-white/70 bg-white/5 border-white/10';
@@ -92,6 +122,14 @@ export default function AdminTicketList({ tenantId }) {
       </div>
     );
   }
+
+  const statusOptions = [
+    { value: 'OPEN', label: 'Open' },
+    { value: 'IN_PROGRESS', label: 'In Progress' },
+    { value: 'RESOLVED', label: 'Resolved' },
+    { value: 'CLOSED', label: 'Closed' },
+    { value: 'DISMISSED', label: 'Dismissed' }
+  ];
 
   return (
     <div className="bg-card border border-border-subtle p-6 rounded-sm mt-8">
@@ -117,25 +155,47 @@ export default function AdminTicketList({ tenantId }) {
             </div>
             
             <div className="flex items-center gap-3">
-              <select 
-                value={activeTicket.status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                disabled={statusUpdating}
-                className="bg-[#111] border border-white/10 rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue"
-              >
-                <option value="OPEN">Open</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="RESOLVED">Resolved</option>
-                <option value="CLOSED">Closed</option>
-                <option value="DISMISSED">Dismissed</option>
-              </select>
+              {/* Custom Headless UI Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                  disabled={statusUpdating}
+                  className="bg-[#111] border border-white/10 rounded-md px-2.5 py-1.5 text-xs text-white flex items-center gap-2 hover:border-white/20 transition-colors disabled:opacity-50"
+                >
+                  <span>{statusOptions.find(o => o.value === activeTicket.status)?.label || activeTicket.status}</span>
+                  <ChevronDown size={13} className={`opacity-60 transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isStatusDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsStatusDropdownOpen(false)} />
+                    <div className="absolute right-0 mt-1 w-32 bg-[#111] border border-white/10 rounded-lg shadow-2xl z-50 py-1 overflow-hidden">
+                      {statusOptions.map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleStatusChange(opt.value)}
+                          className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between transition-colors ${
+                            activeTicket.status === opt.value ? 'text-accent-blue bg-accent-blue/10 font-semibold' : 'text-text-secondary hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {activeTicket.status === opt.value && <Check size={12} />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
               <button onClick={() => setActiveTicket(null)} className="text-white/40 hover:text-white p-1"><X size={16}/></button>
             </div>
           </div>
 
           {/* Chat Thread */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {activeTicket.messages.map((msg, i) => {
+            {(activeTicket.messages || []).map((msg) => {
               const isAdmin = msg.senderId !== tenantId;
               return (
                 <div key={msg.id} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
@@ -153,6 +213,7 @@ export default function AdminTicketList({ tenantId }) {
                 </div>
               );
             })}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Reply Box */}

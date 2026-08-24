@@ -4,13 +4,59 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(req, { params }) {
+  try {
+    const session = await auth();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const resolvedParams = await params;
+    const ticketId = resolvedParams?.id || params?.id;
+
+    if (!ticketId) {
+      return NextResponse.json({ error: 'Ticket ID is required' }, { status: 400 });
+    }
+
+    const ticket = await prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, image: true }
+        },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            sender: {
+              select: { id: true, name: true, email: true, role: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Access control: only ADMIN or ticket owner
+    if (session.user.role !== 'ADMIN' && ticket.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    return NextResponse.json(ticket);
+  } catch (error) {
+    console.error('Fetch Ticket Detail Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(req, { params }) {
   try {
     const session = await auth();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { status } = await req.json();
-    const ticketId = params.id;
+    const resolvedParams = await params;
+    const ticketId = resolvedParams?.id || params?.id;
 
     if (!status) {
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });
@@ -36,7 +82,20 @@ export async function PUT(req, { params }) {
 
     const updatedTicket = await prisma.supportTicket.update({
       where: { id: ticketId },
-      data: { status }
+      data: { status },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, image: true }
+        },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            sender: {
+              select: { id: true, name: true, email: true, role: true }
+            }
+          }
+        }
+      }
     });
 
     return NextResponse.json(updatedTicket);

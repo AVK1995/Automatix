@@ -47,10 +47,38 @@ export default function GlobalSupportTicketsPage() {
   const { data, error, isLoading, mutate } = useSWR(
     `/api/admin/support?status=${statusFilter}&search=${encodeURIComponent(searchQuery)}`, 
     fetcher, 
-    { refreshInterval: 8000 }
+    { refreshInterval: 5000, revalidateOnFocus: true }
   );
 
   const tickets = data?.tickets || [];
+
+  // Real-time polling for active ticket message thread
+  const { data: fullActiveTicketData, mutate: mutateActiveTicket } = useSWR(
+    activeTicket?.id ? `/api/support/tickets/${activeTicket.id}` : null,
+    fetcher,
+    { refreshInterval: 2500, revalidateOnFocus: true }
+  );
+
+  // Sync active ticket thread automatically when new data arrives
+  useEffect(() => {
+    if (fullActiveTicketData && fullActiveTicketData.id === activeTicket?.id) {
+      setActiveTicket(prev => {
+        if (!prev) return fullActiveTicketData;
+        return {
+          ...prev,
+          ...fullActiveTicketData
+        };
+      });
+    }
+  }, [fullActiveTicketData]);
+
+  // Auto-scroll chat stream to bottom when active ticket or messages update
+  const messagesEndRef = useRef(null);
+  useEffect(() => {
+    if (activeTicket) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeTicket?.id, activeTicket?.messages?.length]);
 
   // Search users for new direct conversation
   useEffect(() => {
@@ -113,16 +141,15 @@ export default function GlobalSupportTicketsPage() {
   };
 
   const handleSelectTicket = async (ticket) => {
+    setActiveTicket(ticket);
     try {
       const res = await fetch(`/api/support/tickets/${ticket.id}`);
       if (res.ok) {
         const fullTicket = await res.json();
         setActiveTicket(fullTicket);
-      } else {
-        setActiveTicket(ticket);
       }
     } catch (e) {
-      setActiveTicket(ticket);
+      console.error(e);
     }
   };
 
@@ -139,6 +166,7 @@ export default function GlobalSupportTicketsPage() {
 
       toast.success(`Ticket status updated to ${newStatus}`);
       setActiveTicket(prev => ({ ...prev, status: newStatus }));
+      mutateActiveTicket();
       mutate();
     } catch (err) {
       toast.error(err.message);
@@ -151,12 +179,15 @@ export default function GlobalSupportTicketsPage() {
     e.preventDefault();
     if (!replyText.trim() || !activeTicket) return;
 
+    const sendingContent = replyText.trim();
+    setReplyText('');
     setReplying(true);
+
     try {
       const res = await fetch(`/api/support/tickets/${activeTicket.id}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: replyText.trim() })
+        body: JSON.stringify({ content: sendingContent })
       });
       if (!res.ok) throw new Error('Failed to send reply');
 
@@ -166,11 +197,12 @@ export default function GlobalSupportTicketsPage() {
         status: prev.status === 'OPEN' ? 'IN_PROGRESS' : prev.status,
         messages: [...(prev.messages || []), newMsg]
       }));
-      setReplyText('');
       toast.success('Reply sent');
+      mutateActiveTicket();
       mutate();
     } catch (err) {
       toast.error(err.message);
+      setReplyText(sendingContent);
     } finally {
       setReplying(false);
     }
@@ -491,6 +523,7 @@ export default function GlobalSupportTicketsPage() {
                   </div>
                 );
               })}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Chat Composer */}
