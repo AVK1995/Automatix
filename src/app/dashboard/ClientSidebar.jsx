@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { LogOut, LayoutDashboard, Workflow, Network, Settings, Server, ExternalLink, XCircle, CalendarDays, MoreHorizontal, ChevronRight, FileText, Shield, ScrollText, RefreshCw, Database, Link as LinkIcon, CreditCard } from 'lucide-react';
+import { LogOut, LayoutDashboard, Workflow, Network, Settings, Server, ExternalLink, XCircle, CalendarDays, MoreHorizontal, ChevronRight, FileText, Shield, ScrollText, RefreshCw, Database, Link as LinkIcon, CreditCard, MessageSquare } from 'lucide-react';
 import { startInngestDevServer, stopInngestDevServer, checkInngestStatus } from '@/actions/dev';
 import Logo from '@/components/Logo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -45,6 +45,7 @@ export default function ClientSidebar({ isMobile, onClose }) {
     { name: 'Connections', href: '/dashboard/connections', icon: <LinkIcon size={16} /> },
     { name: 'Storage Bucket', href: '/dashboard/storage', icon: <Database size={16} /> },
     { name: 'Billing & Invoices', href: '/dashboard/billing', icon: <CreditCard size={16} /> },
+    { name: 'Support & Help Desk', href: '/dashboard/support', icon: <MessageSquare size={16} /> },
     { name: 'Settings', href: '/dashboard/settings', icon: <Settings size={16} /> },
   ];
 

@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { Database, Image as ImageIcon, Film, FileText, Trash2, Loader2, ArrowUpRight, HardDrive } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
   const [files, setFiles] = useState(mediaFiles || []);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'IMAGE' | 'VIDEO' | 'DOCUMENT'
   const [deletingId, setDeletingId] = useState(null);
+  const [fileToDelete, setFileToDelete] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const router = useRouter();
 
   const videoCount = files.filter(f => f.type === 'VIDEO').length;
@@ -27,25 +30,33 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
     return f.type === activeFilter;
   });
 
-  const handleDelete = async (file) => {
-    if (!confirm('Are you sure you want to delete this file? This will permanently remove it from cloud storage.')) return;
+  const promptDelete = (file) => {
+    setFileToDelete(file);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete) return;
+    const targetFile = fileToDelete;
+    setIsDeleteModalOpen(false);
+    setDeletingId(targetFile.id);
     
-    setDeletingId(file.id);
     try {
       const res = await fetch('/api/media/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mediaId: file.id })
+        body: JSON.stringify({ mediaId: targetFile.id })
       });
-      if (!res.ok) throw new Error('Failed to delete');
+      if (!res.ok) throw new Error('Failed to delete file');
       
-      setFiles(files.filter(f => f.id !== file.id));
-      toast.success('File deleted');
+      setFiles(files.filter(f => f.id !== targetFile.id));
+      toast.success('File deleted permanently');
       router.refresh();
     } catch (error) {
       toast.error(error.message);
     } finally {
       setDeletingId(null);
+      setFileToDelete(null);
     }
   };
 
@@ -164,7 +175,7 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <button 
-                            onClick={() => handleDelete(file)}
+                            onClick={() => promptDelete(file)}
                             disabled={deletingId === file.id}
                             className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-red-400/10 rounded transition-colors disabled:opacity-50"
                           >
@@ -264,6 +275,19 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
         </div>
 
       </div>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setFileToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Cloud File"
+        message="Are you sure you want to permanently delete this file from your storage bucket? Workflows referencing this asset will no longer be able to load it."
+        confirmText="Delete File"
+        isDestructive={true}
+      />
     </div>
   );
 }

@@ -13,6 +13,15 @@ export default async function ManageTenantPage({ params }) {
     include: {
       media: {
         orderBy: { createdAt: 'desc' }
+      },
+      workflows: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          executionLogs: {
+            orderBy: { createdAt: 'desc' },
+            take: 100
+          }
+        }
       }
     }
   });
@@ -27,10 +36,10 @@ export default async function ManageTenantPage({ params }) {
       
       <div>
         <h2 className="text-xl font-medium text-foreground mb-1">Manage Tenant</h2>
-        <p className="text-sm text-text-secondary">Edit subscription settings or generate setup links for {tenant.name || tenant.email}.</p>
+        <p className="text-sm text-text-secondary">Edit subscription settings, quotas, support tickets, and export workflow execution logs for {tenant.name || tenant.email}.</p>
       </div>
 
-      <ManageTenantClient tenant={tenant} mediaFiles={tenant.media} />
+      <ManageTenantClient tenant={tenant} mediaFiles={tenant.media} userWorkflows={tenant.workflows} />
     </div>
   );
 }

@@ -31,6 +31,7 @@ import Radio from '@/components/ui/Radio';
 import RichTextEditor from '@/components/ui/RichTextEditor';
 import WeeklyScheduleBuilder from '@/components/builder/WeeklyScheduleBuilder';
 import Checkbox from '@/components/ui/Checkbox';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 function AvailabilityModal({ calendar, onChange, onClose }) {
   const [localCalendar, setLocalCalendar] = useState(calendar);
@@ -395,27 +396,32 @@ export default function CalendarManager({ initialCalendars }) {
 
   const handleAddNew = () => {
     setEditingCalendar({
-      name: 'New Event',
-      internalName: '',
+      name: '',
       description: '',
-      logoUrl: '',
-      platform: 'gmeet',
-      redirectUrl: '',
+      slug: '',
       themeColor: '#3B82F6',
       buttonStyle: 'rounded',
-      timezone: 'UTC',
-      meetUrl: '',
-      sendDefaultEmail: true,
       duration: 30,
       bufferBefore: 0,
       bufferAfter: 0,
       futureLimit: 30,
+      dateRangeType: 'days_in_future',
+      futureLimitType: 'calendar_days',
+      dateRangeStart: null,
+      dateRangeEnd: null,
+      noticePeriod: 4,
+      noticePeriodUnit: 'hours',
+      slotIncrement: 30,
+      maxBookingsPerDay: null,
+      timezone: 'UTC',
+      meetUrl: '',
+      sendDefaultEmail: true,
       availability: {
-        monday: [{ start: "09:00", end: "17:00" }],
-        tuesday: [{ start: "09:00", end: "17:00" }],
-        wednesday: [{ start: "09:00", end: "17:00" }],
-        thursday: [{ start: "09:00", end: "17:00" }],
-        friday: [{ start: "09:00", end: "17:00" }],
+        monday: [{ start: '09:00', end: '17:00' }],
+        tuesday: [{ start: '09:00', end: '17:00' }],
+        wednesday: [{ start: '09:00', end: '17:00' }],
+        thursday: [{ start: '09:00', end: '17:00' }],
+        friday: [{ start: '09:00', end: '17:00' }],
         saturday: [],
         sunday: []
       },
@@ -426,15 +432,25 @@ export default function CalendarManager({ initialCalendars }) {
     router.push(`${pathname}?new=true`, { scroll: false });
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this calendar?')) return;
+  const promptDeleteCalendar = (id) => {
+    setCalendarToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!calendarToDelete) return;
+    const targetId = calendarToDelete;
+    setIsDeleteModalOpen(false);
+    
     try {
-      await deleteCalendar(id);
-      setCalendars(calendars.filter(c => c.id !== id));
+      await deleteCalendar(targetId);
+      setCalendars(calendars.filter(c => c.id !== targetId));
       new BroadcastChannel('automatix_calendars').postMessage('updated');
-      toast.success('Calendar deleted');
+      toast.success('Calendar deleted successfully');
     } catch (err) {
       toast.error('Failed to delete calendar');
+    } finally {
+      setCalendarToDelete(null);
     }
   };
 
@@ -804,7 +820,7 @@ export default function CalendarManager({ initialCalendars }) {
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button 
-                    onClick={() => handleDelete(calendar.id)}
+                    onClick={() => promptDeleteCalendar(calendar.id)}
                     className="p-1.5 text-text-secondary hover:text-red-400 rounded-md hover:bg-white/10 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -833,6 +849,19 @@ export default function CalendarManager({ initialCalendars }) {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setCalendarToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Calendar"
+        message="Are you sure you want to permanently delete this calendar? All booking configurations and public booking links for this calendar will be removed."
+        confirmText="Delete Calendar"
+        isDestructive={true}
+      />
     </div>
   );
 }

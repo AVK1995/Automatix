@@ -20,10 +20,12 @@ import {
   Mail, 
   Check, 
   X,
-  Loader2
+  Loader2,
+  Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { exportToCsv } from '@/lib/csvExport';
 
 export default function AdminDashboardClient({ 
   stats, 
@@ -74,6 +76,100 @@ export default function AdminDashboardClient({
 
   const urgentCount = requests.length + openTickets.length + expiringUsers.filter(u => u.storageStatus === 'GRACE_PERIOD').length;
 
+  // CSV Export Handlers
+  const downloadUrgentActionsCsv = () => {
+    const combinedData = [
+      ...expiringUsers.filter(u => u.storageStatus === 'GRACE_PERIOD').map(u => ({
+        type: 'GRACE_PERIOD_EXPIRED',
+        title: `Overdue Account: ${u.name || u.email}`,
+        client: u.email,
+        details: `Plan: ${u.quotaTier}, AutoPay: ${u.autoPayEnabled ? 'ON' : 'OFF'}`,
+        status: 'URGENT_PURGE',
+        date: u.storageGraceExpiresAt ? new Date(u.storageGraceExpiresAt).toISOString() : 'Immediate'
+      })),
+      ...requests.map(r => ({
+        type: 'QUOTA_UPGRADE_REQUEST',
+        title: `Requested: ${r.requestedPlan}`,
+        client: r.user?.email || 'N/A',
+        details: r.message || 'No note',
+        status: r.status,
+        date: new Date(r.createdAt).toISOString()
+      })),
+      ...openTickets.map(t => ({
+        type: 'OPEN_SUPPORT_TICKET',
+        title: t.subject,
+        client: t.user?.email || 'N/A',
+        details: `Type: ${t.type}`,
+        status: t.status,
+        date: new Date(t.updatedAt).toISOString()
+      }))
+    ];
+
+    const columns = [
+      { key: 'type', label: 'Item Type' },
+      { key: 'title', label: 'Title / Subject' },
+      { key: 'client', label: 'Client Email' },
+      { key: 'details', label: 'Details' },
+      { key: 'status', label: 'Status' },
+      { key: 'date', label: 'Timestamp' }
+    ];
+
+    exportToCsv(`urgent_actions_${new Date().toISOString().slice(0, 10)}.csv`, columns, combinedData);
+  };
+
+  const downloadRequestsCsv = () => {
+    const columns = [
+      { key: 'id', label: 'Request ID' },
+      { label: 'Client Name', accessor: r => r.user?.name || 'Unknown' },
+      { label: 'Client Email', accessor: r => r.user?.email || 'N/A' },
+      { key: 'requestedPlan', label: 'Requested Plan' },
+      { key: 'message', label: 'Client Note' },
+      { key: 'status', label: 'Status' },
+      { label: 'Submitted At', accessor: r => new Date(r.createdAt).toISOString() }
+    ];
+    exportToCsv(`tenant_requests_${new Date().toISOString().slice(0, 10)}.csv`, columns, requests);
+  };
+
+  const downloadTicketsCsv = () => {
+    const columns = [
+      { key: 'id', label: 'Ticket ID' },
+      { key: 'subject', label: 'Subject' },
+      { key: 'type', label: 'Category' },
+      { key: 'status', label: 'Status' },
+      { label: 'Client Name', accessor: t => t.user?.name || 'Unknown' },
+      { label: 'Client Email', accessor: t => t.user?.email || 'N/A' },
+      { label: 'Last Activity', accessor: t => new Date(t.updatedAt).toISOString() }
+    ];
+    exportToCsv(`support_queue_${new Date().toISOString().slice(0, 10)}.csv`, columns, openTickets);
+  };
+
+  const downloadSubscriptionsCsv = () => {
+    const columns = [
+      { key: 'id', label: 'User ID' },
+      { label: 'Name', accessor: u => u.name || 'Unnamed' },
+      { key: 'email', label: 'Email' },
+      { key: 'subscriptionTier', label: 'Subscription Tier' },
+      { key: 'quotaTier', label: 'Storage Quota' },
+      { label: 'AutoPay Enabled', accessor: u => u.autoPayEnabled ? 'YES' : 'NO' },
+      { key: 'storageStatus', label: 'Storage Status' },
+      { label: 'Subscription Expiry', accessor: u => u.subscriptionExpiresAt ? new Date(u.subscriptionExpiresAt).toISOString() : 'N/A' },
+      { label: 'Grace Expiry', accessor: u => u.storageGraceExpiresAt ? new Date(u.storageGraceExpiresAt).toISOString() : 'N/A' }
+    ];
+    exportToCsv(`subscriptions_grace_${new Date().toISOString().slice(0, 10)}.csv`, columns, expiringUsers);
+  };
+
+  const downloadSignupsCsv = () => {
+    const columns = [
+      { key: 'id', label: 'User ID' },
+      { label: 'Name', accessor: u => u.name || 'Unnamed' },
+      { key: 'email', label: 'Email' },
+      { key: 'subscriptionTier', label: 'Subscription Tier' },
+      { key: 'quotaTier', label: 'Storage Quota' },
+      { label: 'Registered At', accessor: u => new Date(u.createdAt).toISOString() }
+    ];
+    exportToCsv(`recent_signups_${new Date().toISOString().slice(0, 10)}.csv`, columns, recentSignups);
+  };
+
   return (
     <div className="w-full space-y-8">
       {/* Top Priority Header Bar */}
@@ -89,7 +185,7 @@ export default function AdminDashboardClient({
             )}
           </h1>
           <p className="text-sm text-text-secondary mt-1">
-            Real-time feed of urgent tenant requests, support tickets, grace expirations, and recent registrations.
+            Real-time operational dashboard for urgent requests, support tickets, renewals, and tenant logs.
           </p>
         </div>
 
@@ -219,6 +315,18 @@ export default function AdminDashboardClient({
       {/* TAB 1: ALL URGENT ACTIONS (CONSOLIDATED QUEUE) */}
       {activeTab === 'urgent' && (
         <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-secondary font-medium">Consolidated Priority Action Queue</span>
+            <button
+              onClick={downloadUrgentActionsCsv}
+              disabled={urgentCount === 0}
+              className="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            >
+              <Download size={13} />
+              Download Tab CSV
+            </button>
+          </div>
+
           {urgentCount === 0 ? (
             <div className="bg-[#111] border border-border-subtle rounded-xl p-12 text-center flex flex-col items-center justify-center">
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
@@ -348,7 +456,7 @@ export default function AdminDashboardClient({
       {/* TAB 2: TENANT REQUESTS */}
       {activeTab === 'requests' && (
         <div className="bg-[#111] border border-border-subtle rounded-xl p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
             <div>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <Inbox size={18} className="text-accent-blue" />
@@ -358,9 +466,19 @@ export default function AdminDashboardClient({
                 Review client requests to expand storage quotas or provision white-glove configurations.
               </p>
             </div>
-            <Link href="/admin/requests" className="text-xs text-accent-blue hover:underline flex items-center gap-1">
-              View All in Requests Hub &rarr;
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={downloadRequestsCsv}
+                disabled={requests.length === 0}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              >
+                <Download size={13} />
+                Download CSV
+              </button>
+              <Link href="/admin/requests" className="text-xs text-accent-blue hover:underline flex items-center gap-1">
+                Requests Hub &rarr;
+              </Link>
+            </div>
           </div>
 
           {requests.length === 0 ? (
@@ -413,7 +531,7 @@ export default function AdminDashboardClient({
       {/* TAB 3: SUPPORT QUEUE */}
       {activeTab === 'tickets' && (
         <div className="bg-[#111] border border-border-subtle rounded-xl p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
             <div>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <MessageSquare size={18} className="text-accent-blue" />
@@ -423,9 +541,19 @@ export default function AdminDashboardClient({
                 Support tickets and inquiries awaiting administrative review.
               </p>
             </div>
-            <Link href="/admin/support" className="text-xs text-accent-blue hover:underline flex items-center gap-1">
-              Open Support Desk &rarr;
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={downloadTicketsCsv}
+                disabled={openTickets.length === 0}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              >
+                <Download size={13} />
+                Download CSV
+              </button>
+              <Link href="/admin/support" className="text-xs text-accent-blue hover:underline flex items-center gap-1">
+                Open Support Desk &rarr;
+              </Link>
+            </div>
           </div>
 
           {openTickets.length === 0 ? (
@@ -483,7 +611,7 @@ export default function AdminDashboardClient({
       {/* TAB 4: SUBSCRIPTIONS & EXPIRY STATUS */}
       {activeTab === 'subscriptions' && (
         <div className="bg-[#111] border border-border-subtle rounded-xl p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
             <div>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <CreditCard size={18} className="text-accent-blue" />
@@ -493,6 +621,14 @@ export default function AdminDashboardClient({
                 Monitor accounts nearing expiration, AutoPay status, and 5-day grace purge countdowns.
               </p>
             </div>
+            <button
+              onClick={downloadSubscriptionsCsv}
+              disabled={expiringUsers.length === 0}
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50 shrink-0"
+            >
+              <Download size={13} />
+              Download CSV
+            </button>
           </div>
 
           {expiringUsers.length === 0 ? (
@@ -565,7 +701,7 @@ export default function AdminDashboardClient({
       {/* TAB 5: RECENT SIGNUPS */}
       {activeTab === 'signups' && (
         <div className="bg-[#111] border border-border-subtle rounded-xl p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
             <div>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <Users size={18} className="text-accent-blue" />
@@ -575,9 +711,19 @@ export default function AdminDashboardClient({
                 New clients registered on the platform.
               </p>
             </div>
-            <Link href="/admin/users" className="text-xs text-accent-blue hover:underline flex items-center gap-1">
-              View All Tenants &rarr;
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={downloadSignupsCsv}
+                disabled={recentSignups.length === 0}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              >
+                <Download size={13} />
+                Download CSV
+              </button>
+              <Link href="/admin/users" className="text-xs text-accent-blue hover:underline flex items-center gap-1">
+                View All Tenants &rarr;
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-x-auto">

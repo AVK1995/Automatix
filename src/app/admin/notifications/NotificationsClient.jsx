@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Sparkles, Send, Loader2, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 export default function NotificationsClient() {
   const [prompt, setPrompt] = useState('');
@@ -10,6 +11,7 @@ export default function NotificationsClient() {
   const [body, setBody] = useState('');
   const [isDrafting, setIsDrafting] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const handleDraft = async () => {
     if (!prompt.trim()) return toast.error('Please enter a topic for the announcement.');
@@ -35,10 +37,13 @@ export default function NotificationsClient() {
     }
   };
 
-  const handleSend = async () => {
+  const handlePromptSend = () => {
     if (!subject.trim() || !body.trim()) return toast.error('Subject and body cannot be empty.');
-    if (!confirm('Are you sure you want to blast this email to ALL registered users?')) return;
-    
+    setIsConfirmOpen(true);
+  };
+
+  const executeSend = async () => {
+    setIsConfirmOpen(false);
     setIsSending(true);
     try {
       const res = await fetch('/api/admin/notifications/send', {
@@ -115,7 +120,7 @@ export default function NotificationsClient() {
 
         <div className="mt-6 flex justify-end">
           <button 
-            onClick={handleSend}
+            onClick={handlePromptSend}
             disabled={isSending || !subject || !body}
             className="flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded hover:bg-white/90 transition-colors disabled:opacity-50 text-sm font-semibold"
           >
@@ -124,6 +129,16 @@ export default function NotificationsClient() {
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={executeSend}
+        title="Send Announcement Blast"
+        message="Are you sure you want to broadcast this announcement email to all registered platform users?"
+        confirmText="Send Blast"
+        isDestructive={false}
+      />
     </div>
   );
 }

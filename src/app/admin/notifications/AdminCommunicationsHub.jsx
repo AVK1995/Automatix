@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 const TEMPLATE_PRESETS = [
   {
@@ -141,6 +142,8 @@ export default function AdminCommunicationsHub() {
   const [isSending, setIsSending] = useState(false);
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
 
   useEffect(() => {
     if (activeTab === 'logs') {
@@ -247,17 +250,21 @@ export default function AdminCommunicationsHub() {
     setSearchQuery('');
   };
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!subject.trim() || !body.trim()) return toast.error('Subject and message body cannot be empty.');
     if (targetType === 'SINGLE' && !recipientEmail.trim()) return toast.error('Please select a recipient tenant.');
     if (channels.length === 0) return toast.error('Please select at least one delivery channel (Email or In-App Notification).');
 
-    const confirmMsg = targetType === 'SINGLE' 
-      ? `Send this official communication to ${recipientEmail}?`
-      : `Broadcast this message to ${targetType} users across the platform?`;
+    const msg = targetType === 'SINGLE' 
+      ? `Are you sure you want to dispatch this communication to ${recipientEmail}?`
+      : `Are you sure you want to broadcast this message to all ${targetType} tier users across the platform?`;
 
-    if (!confirm(confirmMsg)) return;
+    setConfirmMessage(msg);
+    setIsConfirmModalOpen(true);
+  };
 
+  const executeSend = async () => {
+    setIsConfirmModalOpen(false);
     setIsSending(true);
     try {
       const res = await fetch('/api/admin/emails/send', {
@@ -274,9 +281,9 @@ export default function AdminCommunicationsHub() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to dispatch email');
+      if (!res.ok) throw new Error(data.error || 'Failed to dispatch communication');
 
-      toast.success(`Successfully sent to ${data.sentCount} recipients!`);
+      toast.success(`Successfully dispatched to ${data.sentCount} recipient(s)!`);
       setSubject('');
       setBody('');
       handleClearSelectedUser();
@@ -811,6 +818,16 @@ export default function AdminCommunicationsHub() {
           )}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={executeSend}
+        title="Confirm Dispatch"
+        message={confirmMessage}
+        confirmText="Dispatch Now"
+        isDestructive={false}
+      />
     </div>
   );
 }

@@ -1,12 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Select from '@/components/ui/Select';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import StorageBucketClient from '@/app/dashboard/storage/StorageBucketClient';
 import AdminTicketList from './AdminTicketList';
-import { HardDrive, Sparkles, Image, Video, FileText, CheckCircle2, AlertCircle, Layers } from 'lucide-react';
+import { 
+  HardDrive, 
+  Sparkles, 
+  Image, 
+  Video, 
+  FileText, 
+  CheckCircle2, 
+  AlertCircle, 
+  Layers, 
+  Workflow, 
+  Download, 
+  Search, 
+  ExternalLink,
+  Clock,
+  Play
+} from 'lucide-react';
 import toast from 'react-hot-toast';
+import { exportToCsv } from '@/lib/csvExport';
+import Link from 'next/link';
 
 const PRESET_PLANS = [
   {
@@ -77,8 +94,8 @@ const PRESET_PLANS = [
   }
 ];
 
-export default function ManageTenantClient({ tenant, mediaFiles }) {
-  const [activeTab, setActiveTab] = useState('access');
+export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows = [] }) {
+  const [activeTab, setActiveTab] = useState('access'); // 'access' | 'storage' | 'support' | 'workflows'
 
   const [tier, setTier] = useState(tenant.subscriptionTier || 'Professional');
   const [cycle, setCycle] = useState(tenant.subscriptionCycle || 'monthly');
@@ -95,6 +112,10 @@ export default function ManageTenantClient({ tenant, mediaFiles }) {
   const [maxSupportTickets, setMaxSupportTickets] = useState(tenant.maxSupportTickets || 5);
   const [supportTicketsRemaining, setSupportTicketsRemaining] = useState(tenant.supportTicketsRemaining ?? 5);
   const [ticketCooldownHours, setTicketCooldownHours] = useState(tenant.ticketCooldownHours ?? 24);
+
+  // Workflow Filters
+  const [workflowDateRange, setWorkflowDateRange] = useState('ALL'); // '7' | '30' | '90' | 'ALL'
+  const [workflowSearch, setWorkflowSearch] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -217,13 +238,48 @@ export default function ManageTenantClient({ tenant, mediaFiles }) {
     }
   };
 
+  // Filtered workflows by date & search
+  const filteredWorkflows = useMemo(() => {
+    const now = new Date().getTime();
+    const days = workflowDateRange === 'ALL' ? null : parseInt(workflowDateRange);
+    const cutoff = days ? now - days * 24 * 60 * 60 * 1000 : null;
+
+    return userWorkflows.filter(wf => {
+      if (cutoff && new Date(wf.createdAt).getTime() < cutoff) return false;
+      if (workflowSearch.trim() && !wf.name.toLowerCase().includes(workflowSearch.toLowerCase())) return false;
+      return true;
+    });
+  }, [userWorkflows, workflowDateRange, workflowSearch]);
+
+  const exportWorkflowsCsv = () => {
+    const columns = [
+      { key: 'id', label: 'Workflow ID' },
+      { key: 'name', label: 'Workflow Name' },
+      { label: 'Is Active', accessor: wf => wf.isActive ? 'YES' : 'NO' },
+      { label: 'Trigger Type', accessor: wf => {
+        try {
+          const flow = typeof wf.flowData === 'string' ? JSON.parse(wf.flowData) : wf.flowData;
+          const trigger = flow?.nodes?.find(n => n.type?.toLowerCase().includes('trigger')) || flow?.nodes?.[0];
+          return trigger?.data?.label || trigger?.type || 'Standard';
+        } catch {
+          return 'Standard';
+        }
+      }},
+      { label: 'Total Executions Recorded', accessor: wf => (wf.executionLogs || []).length },
+      { label: 'Created At', accessor: wf => new Date(wf.createdAt).toISOString() },
+      { label: 'Last Updated', accessor: wf => new Date(wf.updatedAt).toISOString() }
+    ];
+
+    exportToCsv(`tenant_${tenant.id.slice(0, 8)}_workflows_${new Date().toISOString().slice(0, 10)}.csv`, columns, filteredWorkflows);
+  };
+
   return (
     <div className="w-full space-y-6">
       {/* Header Tabs */}
-      <div className="flex border-b border-border-subtle">
+      <div className="flex border-b border-border-subtle overflow-x-auto">
         <button
           onClick={() => setActiveTab('access')}
-          className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+          className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors shrink-0 ${
             activeTab === 'access'
               ? 'border-accent-blue text-white'
               : 'border-transparent text-text-secondary hover:text-white'
@@ -233,7 +289,7 @@ export default function ManageTenantClient({ tenant, mediaFiles }) {
         </button>
         <button
           onClick={() => setActiveTab('storage')}
-          className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+          className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors shrink-0 ${
             activeTab === 'storage'
               ? 'border-accent-blue text-white'
               : 'border-transparent text-text-secondary hover:text-white'
@@ -242,8 +298,18 @@ export default function ManageTenantClient({ tenant, mediaFiles }) {
           Storage & Quotas
         </button>
         <button
+          onClick={() => setActiveTab('workflows')}
+          className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors shrink-0 ${
+            activeTab === 'workflows'
+              ? 'border-accent-blue text-white'
+              : 'border-transparent text-text-secondary hover:text-white'
+          }`}
+        >
+          Workflows & Logs ({userWorkflows.length})
+        </button>
+        <button
           onClick={() => setActiveTab('support')}
-          className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+          className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors shrink-0 ${
             activeTab === 'support'
               ? 'border-accent-blue text-white'
               : 'border-transparent text-text-secondary hover:text-white'
@@ -464,7 +530,7 @@ export default function ManageTenantClient({ tenant, mediaFiles }) {
                   </div>
                 </div>
 
-                {/* Documents (.pdf, .csv, .xlsx, .docx, .pptx) */}
+                {/* Documents */}
                 <div className="sm:col-span-2 p-3 bg-white/[0.02] border border-white/5 rounded-lg space-y-2">
                   <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                     <FileText size={14} className="text-amber-400" /> Documents (.pdf, .csv, .xlsx, .docx, .pptx)
@@ -496,6 +562,128 @@ export default function ManageTenantClient({ tenant, mediaFiles }) {
             <h3 className="text-base font-semibold text-foreground mb-4">User Storage Bucket</h3>
             <StorageBucketClient user={{ ...tenant, maxDocs, maxDocMB, maxStorageMB }} mediaFiles={mediaFiles} isAdminView={true} />
           </section>
+        </div>
+      )}
+
+      {activeTab === 'workflows' && (
+        <div className="bg-card border border-border-subtle rounded-xl p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+            <div>
+              <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                <Workflow size={18} className="text-accent-blue" />
+                Tenant Workflows & Execution History
+              </h3>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Filter and export all trigger setups, node configurations, and execution logs for this tenant.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Date Filter */}
+              <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10 text-xs">
+                {['7', '30', '90', 'ALL'].map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setWorkflowDateRange(range)}
+                    className={`px-2.5 py-1 rounded-md transition-colors font-medium ${
+                      workflowDateRange === range ? 'bg-accent-blue text-white' : 'text-text-secondary hover:text-white'
+                    }`}
+                  >
+                    {range === 'ALL' ? 'All Time' : `${range}d`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Export Button */}
+              <button
+                onClick={exportWorkflowsCsv}
+                disabled={filteredWorkflows.length === 0}
+                className="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              >
+                <Download size={13} />
+                Export Workflows CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+            <input
+              type="text"
+              placeholder="Search workflows by name..."
+              value={workflowSearch}
+              onChange={e => setWorkflowSearch(e.target.value)}
+              className="w-full bg-background border border-border-subtle rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-accent-blue"
+            />
+          </div>
+
+          {filteredWorkflows.length === 0 ? (
+            <div className="p-12 text-center text-xs text-text-secondary border-2 border-dashed border-white/5 rounded-xl">
+              No workflows found for this tenant matching your search criteria.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-border-subtle text-[10px] uppercase text-text-secondary font-semibold">
+                    <th className="py-3 px-4">Workflow Name</th>
+                    <th className="py-3 px-4">Trigger Type</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Total Runs</th>
+                    <th className="py-3 px-4">Created Date</th>
+                    <th className="py-3 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filteredWorkflows.map(wf => {
+                    let triggerLabel = 'Webhook / Event';
+                    try {
+                      const flow = typeof wf.flowData === 'string' ? JSON.parse(wf.flowData) : wf.flowData;
+                      const trigger = flow?.nodes?.find(n => n.type?.toLowerCase().includes('trigger')) || flow?.nodes?.[0];
+                      if (trigger?.data?.label) triggerLabel = trigger.data.label;
+                    } catch {}
+
+                    return (
+                      <tr key={wf.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3.5 px-4 font-semibold text-white">
+                          <Link href={`/admin/workflows/${wf.id}`} className="hover:text-accent-blue transition-colors">
+                            {wf.name}
+                          </Link>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-accent-blue/10 text-accent-blue border border-accent-blue/20">
+                            {triggerLabel}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            wf.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-white/5 text-text-tertiary border border-white/10'
+                          }`}>
+                            {wf.isActive ? 'Active' : 'Draft'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-text-secondary font-mono">
+                          {(wf.executionLogs || []).length} runs
+                        </td>
+                        <td className="py-3.5 px-4 text-text-tertiary">
+                          {new Date(wf.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <Link
+                            href={`/admin/workflows/${wf.id}`}
+                            className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-colors border border-white/10 inline-flex items-center gap-1"
+                          >
+                            Inspect <ExternalLink size={12} />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

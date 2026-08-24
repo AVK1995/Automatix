@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Database, Loader2, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 export default function StoragePlans() {
   const [plans, setPlans] = useState([]);
@@ -11,6 +12,8 @@ export default function StoragePlans() {
   const [formData, setFormData] = useState({
     id: '', name: '', priceRs: 0, maxVideos: 5, maxVideoMB: 25, maxImages: 10, maxImageMB: 5, maxStorageMB: 1000
   });
+  const [planToDelete, setPlanToDelete] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     fetchPlans();
@@ -46,15 +49,25 @@ export default function StoragePlans() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this plan?')) return;
+  const promptDeletePlan = (id) => {
+    setPlanToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!planToDelete) return;
+    const targetId = planToDelete;
+    setIsDeleteModalOpen(false);
+
     try {
-      const res = await fetch(`/api/admin/storage-plans?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/storage-plans?id=${targetId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete plan');
-      toast.success('Plan deleted');
+      toast.success('Plan deleted successfully');
       fetchPlans();
     } catch (e) {
       toast.error(e.message);
+    } finally {
+      setPlanToDelete(null);
     }
   };
 
@@ -197,7 +210,7 @@ export default function StoragePlans() {
                         <button onClick={() => openEditor(plan)} className="p-1.5 text-text-secondary hover:text-white hover:bg-white/10 rounded transition-colors">
                           <Edit2 size={14} />
                         </button>
-                        <button onClick={() => handleDelete(plan.id)} className="p-1.5 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded transition-colors">
+                        <button onClick={() => promptDeletePlan(plan.id)} className="p-1.5 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded transition-colors">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -209,6 +222,19 @@ export default function StoragePlans() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setPlanToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Storage Plan"
+        message="Are you sure you want to delete this storage plan tier? Existing users with this plan will remain active until their renewal."
+        confirmText="Delete Plan"
+        isDestructive={true}
+      />
     </div>
   );
 }
