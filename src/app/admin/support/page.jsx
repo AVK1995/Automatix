@@ -18,7 +18,8 @@ import {
   User, 
   Download,
   Lock,
-  Sparkles
+  Sparkles,
+  Plus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { exportToCsv } from '@/lib/csvExport';
@@ -32,6 +33,16 @@ export default function GlobalSupportTicketsPage() {
   const [replying, setReplying] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
+  // New Direct Chat Modal State
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [isSearchingUser, setIsSearchingUser] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [newChatSubject, setNewChatSubject] = useState('');
+  const [newChatMessage, setNewChatMessage] = useState('');
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+
   const fetcher = (url) => fetch(url).then(r => r.json());
   const { data, error, isLoading, mutate } = useSWR(
     `/api/admin/support?status=${statusFilter}&search=${encodeURIComponent(searchQuery)}`, 
@@ -39,7 +50,65 @@ export default function GlobalSupportTicketsPage() {
     { refreshInterval: 8000 }
   );
 
-  const tickets = data?.tickets || [];
+  // Search users for new direct conversation
+  useEffect(() => {
+    if (!userSearchQuery.trim()) {
+      setUserSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingUser(true);
+      try {
+        const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(userSearchQuery.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUserSearchResults(data);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSearchingUser(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [userSearchQuery]);
+
+  const handleCreateDirectChat = async (e) => {
+    e.preventDefault();
+    if (!selectedUser) return toast.error('Please select a recipient tenant');
+    if (!newChatMessage.trim()) return toast.error('Please enter an initial message');
+
+    setIsCreatingChat(true);
+    try {
+      const res = await fetch('/api/admin/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          subject: newChatSubject.trim() || 'Direct Administrator Support',
+          message: newChatMessage.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to initiate conversation');
+
+      toast.success(`Direct conversation opened with ${selectedUser.name || selectedUser.email}`);
+      setIsNewChatModalOpen(false);
+      setSelectedUser(null);
+      setUserSearchQuery('');
+      setNewChatSubject('');
+      setNewChatMessage('');
+      mutate();
+      if (data.ticket) {
+        setActiveTicket(data.ticket);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsCreatingChat(false);
+    }
+  };
 
   const handleSelectTicket = async (ticket) => {
     try {
@@ -156,18 +225,28 @@ export default function GlobalSupportTicketsPage() {
             Global Support Tickets & Live Chat
           </h1>
           <p className="text-sm text-text-secondary mt-1">
-            Accept client chat requests, respond in real time, and manage support resolutions.
+            Accept client chat requests, initiate direct chats with any user, and respond in real time.
           </p>
         </div>
 
-        <button
-          onClick={exportAllTicketsCsv}
-          disabled={tickets.length === 0}
-          className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-xs font-semibold border border-white/10 flex items-center gap-2 transition-colors disabled:opacity-50 shrink-0"
-        >
-          <Download size={14} />
-          Export Tickets CSV
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => setIsNewChatModalOpen(true)}
+            className="px-4 py-2 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-accent-blue/20"
+          >
+            <Plus size={14} />
+            Start Direct Chat
+          </button>
+
+          <button
+            onClick={exportAllTicketsCsv}
+            disabled={tickets.length === 0}
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-xs font-semibold border border-white/10 flex items-center gap-2 transition-colors disabled:opacity-50"
+          >
+            <Download size={14} />
+            Export Tickets CSV
+          </button>
+        </div>
       </div>
 
       {/* Filter & Search Bar */}
@@ -442,6 +521,142 @@ export default function GlobalSupportTicketsPage() {
         )}
 
       </div>
+
+      {/* Start New Direct Chat Modal */}
+      {isNewChatModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d0d0d] border border-white/10 rounded-xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-accent-blue/10 text-accent-blue">
+                  <MessageSquare size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Start Direct Client Chat</h3>
+                  <p className="text-xs text-text-secondary">Initiate a live support conversation with any registered tenant.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsNewChatModalOpen(false)}
+                className="text-text-tertiary hover:text-white p-1 rounded-lg"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateDirectChat} className="p-5 space-y-4">
+              {/* User Selection */}
+              <div>
+                <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-1.5">
+                  Select Recipient Tenant
+                </label>
+                {selectedUser ? (
+                  <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg text-xs">
+                    <div>
+                      <span className="font-semibold text-white block">{selectedUser.name || 'Tenant User'}</span>
+                      <span className="text-text-tertiary">{selectedUser.email}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUser(null)}
+                      className="text-xs text-accent-blue hover:underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+                    <input
+                      type="text"
+                      placeholder="Search tenant by name or email..."
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      className="w-full bg-background border border-border-subtle rounded-lg pl-9 pr-3.5 py-2 text-xs text-white focus:outline-none focus:border-accent-blue"
+                    />
+                    {isSearchingUser && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 size={14} className="animate-spin text-text-tertiary" />
+                      </div>
+                    )}
+
+                    {/* Results dropdown */}
+                    {userSearchResults.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-[#151515] border border-white/10 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto divide-y divide-white/5">
+                        {userSearchResults.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedUser(u);
+                              setUserSearchQuery('');
+                              setUserSearchResults([]);
+                            }}
+                            className="w-full text-left p-2.5 hover:bg-white/5 transition-colors flex items-center justify-between text-xs"
+                          >
+                            <div>
+                              <span className="font-medium text-white block">{u.name || 'User'}</span>
+                              <span className="text-text-tertiary text-[11px]">{u.email}</span>
+                            </div>
+                            <span className="text-[10px] text-accent-blue font-semibold uppercase">Select</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-1.5">
+                  Conversation Subject / Topic
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Account Assistance, Workflow Optimization, Storage Quota Review"
+                  value={newChatSubject}
+                  onChange={(e) => setNewChatSubject(e.target.value)}
+                  className="w-full bg-background border border-border-subtle rounded-lg px-3.5 py-2 text-xs text-white focus:outline-none focus:border-accent-blue"
+                />
+              </div>
+
+              {/* Message */}
+              <div>
+                <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-1.5">
+                  Initial Message
+                </label>
+                <textarea
+                  rows={4}
+                  placeholder="Type your official message to the client..."
+                  value={newChatMessage}
+                  onChange={(e) => setNewChatMessage(e.target.value)}
+                  className="w-full bg-background border border-border-subtle rounded-lg p-3 text-xs text-white focus:outline-none focus:border-accent-blue resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setIsNewChatModalOpen(false)}
+                  className="px-4 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-white hover:bg-white/5 border border-border-subtle transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingChat || !selectedUser || !newChatMessage.trim()}
+                  className="px-5 py-2 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-lg shadow-accent-blue/20"
+                >
+                  {isCreatingChat ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  Send & Open Conversation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

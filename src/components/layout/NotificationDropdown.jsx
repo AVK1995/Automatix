@@ -64,7 +64,21 @@ export default function NotificationDropdown() {
       setNotifications(prev => prev.filter(n => n.id !== notification.id));
       
       const targetUrl = notification.metadata?.targetUrl;
-      const { workflowId, nodeId } = notification.metadata || {};
+      const { workflowId, nodeId, ticketId } = notification.metadata || {};
+
+      if (notification.type === 'SUPPORT_REPLY' || ticketId) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('open-chatbot-support', { 
+            detail: { 
+              ticketId, 
+              subject: notification.metadata?.ticketSubject,
+              content: notification.metadata?.content 
+            } 
+          }));
+        }
+        setIsOpen(false);
+        return;
+      }
 
       if (targetUrl) {
         router.push(targetUrl);
@@ -96,6 +110,12 @@ export default function NotificationDropdown() {
         return (
           <div className="w-8 h-8 rounded-lg bg-accent-blue/10 text-accent-blue flex items-center justify-center shrink-0">
             <HardDrive size={16} />
+          </div>
+        );
+      case 'SUPPORT_REPLY':
+        return (
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+            <MessageSquare size={16} />
           </div>
         );
       case 'SUPPORT_TICKET':
@@ -212,9 +232,22 @@ export default function NotificationDropdown() {
                       <div className="flex items-center gap-2 mt-3">
                         <button 
                           onClick={() => handleAction(notification)}
-                          className="text-xs bg-accent-blue hover:bg-accent-blue/90 text-white px-3.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-colors"
+                          className={`text-xs px-3.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-colors ${
+                            notification.type === 'SUPPORT_REPLY'
+                              ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                              : 'bg-accent-blue hover:bg-accent-blue/90 text-white'
+                          }`}
                         >
-                          View & Action <ArrowRight size={12} />
+                          {notification.type === 'SUPPORT_REPLY' ? (
+                            <>
+                              <MessageSquare size={12} />
+                              Respond in Chat
+                            </>
+                          ) : (
+                            <>
+                              View & Action <ArrowRight size={12} />
+                            </>
+                          )}
                         </button>
                         <button 
                           onClick={(e) => handleDismiss(e, notification.id)}

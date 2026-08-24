@@ -119,7 +119,7 @@ export async function getNotifications() {
   }
 
   // Client user
-  const notifications = await prisma.notification.findMany({
+  const directNotifications = await prisma.notification.findMany({
     where: { 
       userId: session.user.id,
       status: { in: ['UNREAD', 'IGNORED'] }
@@ -127,7 +127,7 @@ export async function getNotifications() {
     orderBy: { createdAt: 'desc' }
   });
 
-  return notifications;
+  return directNotifications;
 }
 
 export async function resolveNotification(id) {

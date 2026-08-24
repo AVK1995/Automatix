@@ -1,36 +1,35 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Mail, 
-  Send, 
-  Sparkles, 
-  ShieldAlert, 
-  CreditCard, 
-  Bell, 
-  AlertTriangle, 
-  History, 
-  FileCode, 
-  Eye, 
-  Loader2, 
-  CheckCircle2, 
-  Users, 
-  User, 
-  RefreshCw, 
-  ChevronDown, 
+import {
+  Mail,
+  Send,
+  Sparkles,
+  Users,
+  User,
+  History,
+  Eye,
+  Code,
+  CheckCircle2,
+  AlertTriangle,
+  RefreshCw,
   Search,
-  X,
-  Star,
   UserCheck,
+  Star,
+  ShieldAlert,
+  CreditCard,
   Megaphone,
   Wrench,
-  Lock,
-  Code
+  ChevronDown,
+  Loader2,
+  Save,
+  FileCode
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import Checkbox from '@/components/ui/Checkbox';
+import { getPlatformSettings, updatePlatformSettings } from '@/actions/settings';
 
 const TEMPLATE_PRESETS = [
   {
@@ -146,11 +145,46 @@ export default function AdminCommunicationsHub() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
 
+  // System Email Templates State
+  const [resetEmailTemplate, setResetEmailTemplate] = useState('');
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [showTemplatePreview, setShowTemplatePreview] = useState(false);
+
   useEffect(() => {
     if (activeTab === 'logs') {
       fetchLogs();
+    } else if (activeTab === 'templates') {
+      fetchPlatformSettings();
     }
   }, [activeTab]);
+
+  const fetchPlatformSettings = async () => {
+    setLoadingTemplate(true);
+    try {
+      const res = await getPlatformSettings();
+      if (res.success && res.settings) {
+        setResetEmailTemplate(res.settings.resetEmailTemplate || '');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTemplate(false);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    setSavingTemplate(true);
+    try {
+      const res = await updatePlatformSettings({ resetEmailTemplate });
+      if (!res.success) throw new Error(res.error || 'Failed to save template');
+      toast.success('Password Reset Email template saved successfully');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
 
   // Handle outside click for user search dropdown
   useEffect(() => {
@@ -336,6 +370,17 @@ export default function AdminCommunicationsHub() {
         >
           <Mail size={15} />
           Compose & Broadcast
+        </button>
+        <button
+          onClick={() => setActiveTab('templates')}
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors relative top-px ${
+            activeTab === 'templates'
+              ? 'border-accent-blue text-white'
+              : 'border-transparent text-text-secondary hover:text-white'
+          }`}
+        >
+          <FileCode size={15} />
+          System Email Templates
         </button>
         <button
           onClick={() => setActiveTab('logs')}
@@ -809,6 +854,118 @@ export default function AdminCommunicationsHub() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB 2: SYSTEM EMAIL TEMPLATES (PASSWORD RESET / SETUP) */}
+      {activeTab === 'templates' && (
+        <div className="space-y-6">
+          <div className="bg-[#111] border border-border-subtle rounded-xl p-6 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border-subtle pb-5 mb-6">
+              <div>
+                <h2 className="text-base font-semibold text-white flex items-center gap-2">
+                  <FileCode size={18} className="text-accent-blue" />
+                  Password Reset & Account Setup Email Template
+                </h2>
+                <p className="text-xs text-text-secondary mt-1">
+                  Customize the transactional HTML email dispatched to tenants during password resets and white-glove setup.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplatePreview(!showTemplatePreview)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+                >
+                  <Eye size={14} />
+                  {showTemplatePreview ? 'Hide Live Preview' : 'Show Live Preview'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveTemplate}
+                  disabled={savingTemplate || loadingTemplate}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-colors disabled:opacity-50 shadow-lg shadow-accent-blue/20"
+                >
+                  {savingTemplate ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  Save Template
+                </button>
+              </div>
+            </div>
+
+            {loadingTemplate ? (
+              <div className="flex justify-center py-20">
+                <Loader2 size={28} className="animate-spin text-accent-blue" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Personalization Tokens */}
+                <div>
+                  <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">
+                    Insert Personalization Tokens (Click to append):
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[
+                      { token: '{{SETUP_LINK}}', desc: 'Secure One-Time Setup URL' },
+                      { token: '{{USER_EMAIL}}', desc: 'Recipient Email Address' }
+                    ].map((tok) => (
+                      <button
+                        key={tok.token}
+                        type="button"
+                        onClick={() => setResetEmailTemplate(prev => prev + `${tok.token}`)}
+                        className="px-2.5 py-1 rounded bg-white/5 hover:bg-accent-blue/20 hover:border-accent-blue/40 border border-white/10 text-xs font-mono text-accent-blue transition-colors flex items-center gap-1.5"
+                      >
+                        <code>{tok.token}</code>
+                        <span className="text-[10px] text-text-tertiary">({tok.desc})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* HTML Editor vs Preview */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Editor */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-text-secondary">
+                      <span className="font-semibold text-white">Semantic HTML Body</span>
+                      <span className="text-[11px] text-text-tertiary">UTF-8 HTML supported</span>
+                    </div>
+                    <textarea
+                      value={resetEmailTemplate}
+                      onChange={(e) => setResetEmailTemplate(e.target.value)}
+                      rows={18}
+                      placeholder="<!DOCTYPE html><html>...Use {{SETUP_LINK}} and {{USER_EMAIL}}...</html>"
+                      className="w-full bg-black/60 border border-border-subtle rounded-xl p-4 text-xs font-mono text-white focus:outline-none focus:border-accent-blue resize-none leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Live Rendered View */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-text-secondary">
+                      <span className="font-semibold text-white">Live Email Preview</span>
+                      <span className="text-[11px] text-emerald-400 font-medium">Rendered HTML View</span>
+                    </div>
+                    <div className="w-full h-[380px] bg-[#050505] border border-border-subtle rounded-xl p-4 overflow-y-auto custom-scrollbar">
+                      {resetEmailTemplate ? (
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: resetEmailTemplate
+                              .replace(/\{\{SETUP_LINK\}\}/g, 'https://automatix.ai/setup-password?token=example_secure_token')
+                              .replace(/\{\{USER_EMAIL\}\}/g, 'user@example.com')
+                          }}
+                        />
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-text-tertiary text-xs">
+                          <Code size={24} className="mb-2 opacity-50" />
+                          <p>No custom template set. The system default dark transactional template will be used.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
