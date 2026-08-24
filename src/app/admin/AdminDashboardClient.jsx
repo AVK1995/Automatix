@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Flame, 
@@ -21,7 +21,11 @@ import {
   Check, 
   X,
   Loader2,
-  Download
+  Download,
+  Search,
+  Filter,
+  Calendar,
+  RotateCcw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -38,6 +42,11 @@ export default function AdminDashboardClient({
   const [activeTab, setActiveTab] = useState('urgent'); // 'urgent' | 'requests' | 'tickets' | 'subscriptions' | 'signups'
   const [requests, setRequests] = useState(pendingQuotaRequests);
   const [processingId, setProcessingId] = useState(null);
+  
+  // Live Search & Filter Controls
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState('ALL'); // 'ALL' | 'TODAY' | '7' | '30'
+
   const router = useRouter();
 
   const handleApproveRequest = async (requestId) => {
@@ -74,12 +83,90 @@ export default function AdminDashboardClient({
     }
   };
 
-  const urgentCount = requests.length + openTickets.length + expiringUsers.filter(u => u.storageStatus === 'GRACE_PERIOD').length;
+  // Date filter evaluation
+  const matchesDate = (dateStr) => {
+    if (dateRange === 'ALL' || !dateStr) return true;
+    const itemTime = new Date(dateStr).getTime();
+    const now = Date.now();
+    if (dateRange === 'TODAY') {
+      const todayStart = new Date().setHours(0, 0, 0, 0);
+      return itemTime >= todayStart;
+    }
+    const days = parseInt(dateRange, 10);
+    return itemTime >= now - days * 24 * 60 * 60 * 1000;
+  };
+
+  const q = searchQuery.toLowerCase().trim();
+
+  // Filtered Datasets based on live search query & date filter
+  const filteredRequests = useMemo(() => {
+    return requests.filter(r => {
+      if (!matchesDate(r.createdAt)) return false;
+      if (!q) return true;
+      return (
+        r.user?.name?.toLowerCase().includes(q) ||
+        r.user?.email?.toLowerCase().includes(q) ||
+        r.requestedPlan?.toLowerCase().includes(q) ||
+        r.message?.toLowerCase().includes(q) ||
+        r.status?.toLowerCase().includes(q)
+      );
+    });
+  }, [requests, dateRange, q]);
+
+  const filteredTickets = useMemo(() => {
+    return openTickets.filter(t => {
+      if (!matchesDate(t.updatedAt)) return false;
+      if (!q) return true;
+      return (
+        t.user?.name?.toLowerCase().includes(q) ||
+        t.user?.email?.toLowerCase().includes(q) ||
+        t.subject?.toLowerCase().includes(q) ||
+        t.type?.toLowerCase().includes(q) ||
+        t.status?.toLowerCase().includes(q)
+      );
+    });
+  }, [openTickets, dateRange, q]);
+
+  const filteredExpiringUsers = useMemo(() => {
+    return expiringUsers.filter(u => {
+      if (!matchesDate(u.subscriptionExpiresAt || u.storageGraceExpiresAt)) return false;
+      if (!q) return true;
+      return (
+        u.name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.quotaTier?.toLowerCase().includes(q) ||
+        u.subscriptionTier?.toLowerCase().includes(q) ||
+        u.storageStatus?.toLowerCase().includes(q)
+      );
+    });
+  }, [expiringUsers, dateRange, q]);
+
+  const filteredSignups = useMemo(() => {
+    return recentSignups.filter(u => {
+      if (!matchesDate(u.createdAt)) return false;
+      if (!q) return true;
+      return (
+        u.name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.subscriptionTier?.toLowerCase().includes(q) ||
+        u.quotaTier?.toLowerCase().includes(q)
+      );
+    });
+  }, [recentSignups, dateRange, q]);
+
+  const filteredUrgentGrace = filteredExpiringUsers.filter(u => u.storageStatus === 'GRACE_PERIOD');
+  const filteredUrgentCount = filteredRequests.length + filteredTickets.length + filteredUrgentGrace.length;
+  const isFiltered = searchQuery.trim() !== '' || dateRange !== 'ALL';
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setDateRange('ALL');
+  };
 
   // CSV Export Handlers
   const downloadUrgentActionsCsv = () => {
     const combinedData = [
-      ...expiringUsers.filter(u => u.storageStatus === 'GRACE_PERIOD').map(u => ({
+      ...filteredUrgentGrace.map(u => ({
         type: 'GRACE_PERIOD_EXPIRED',
         title: `Overdue Account: ${u.name || u.email}`,
         client: u.email,
@@ -87,7 +174,7 @@ export default function AdminDashboardClient({
         status: 'URGENT_PURGE',
         date: u.storageGraceExpiresAt ? new Date(u.storageGraceExpiresAt).toISOString() : 'Immediate'
       })),
-      ...requests.map(r => ({
+      ...filteredRequests.map(r => ({
         type: 'QUOTA_UPGRADE_REQUEST',
         title: `Requested: ${r.requestedPlan}`,
         client: r.user?.email || 'N/A',
@@ -95,7 +182,7 @@ export default function AdminDashboardClient({
         status: r.status,
         date: new Date(r.createdAt).toISOString()
       })),
-      ...openTickets.map(t => ({
+      ...filteredTickets.map(t => ({
         type: 'OPEN_SUPPORT_TICKET',
         title: t.subject,
         client: t.user?.email || 'N/A',
@@ -127,7 +214,7 @@ export default function AdminDashboardClient({
       { key: 'status', label: 'Status' },
       { label: 'Submitted At', accessor: r => new Date(r.createdAt).toISOString() }
     ];
-    exportToCsv(`tenant_requests_${new Date().toISOString().slice(0, 10)}.csv`, columns, requests);
+    exportToCsv(`tenant_requests_${new Date().toISOString().slice(0, 10)}.csv`, columns, filteredRequests);
   };
 
   const downloadTicketsCsv = () => {
@@ -140,7 +227,7 @@ export default function AdminDashboardClient({
       { label: 'Client Email', accessor: t => t.user?.email || 'N/A' },
       { label: 'Last Activity', accessor: t => new Date(t.updatedAt).toISOString() }
     ];
-    exportToCsv(`support_queue_${new Date().toISOString().slice(0, 10)}.csv`, columns, openTickets);
+    exportToCsv(`support_queue_${new Date().toISOString().slice(0, 10)}.csv`, columns, filteredTickets);
   };
 
   const downloadSubscriptionsCsv = () => {
@@ -155,7 +242,7 @@ export default function AdminDashboardClient({
       { label: 'Subscription Expiry', accessor: u => u.subscriptionExpiresAt ? new Date(u.subscriptionExpiresAt).toISOString() : 'N/A' },
       { label: 'Grace Expiry', accessor: u => u.storageGraceExpiresAt ? new Date(u.storageGraceExpiresAt).toISOString() : 'N/A' }
     ];
-    exportToCsv(`subscriptions_grace_${new Date().toISOString().slice(0, 10)}.csv`, columns, expiringUsers);
+    exportToCsv(`subscriptions_grace_${new Date().toISOString().slice(0, 10)}.csv`, columns, filteredExpiringUsers);
   };
 
   const downloadSignupsCsv = () => {
@@ -167,7 +254,7 @@ export default function AdminDashboardClient({
       { key: 'quotaTier', label: 'Storage Quota' },
       { label: 'Registered At', accessor: u => new Date(u.createdAt).toISOString() }
     ];
-    exportToCsv(`recent_signups_${new Date().toISOString().slice(0, 10)}.csv`, columns, recentSignups);
+    exportToCsv(`recent_signups_${new Date().toISOString().slice(0, 10)}.csv`, columns, filteredSignups);
   };
 
   return (
@@ -177,10 +264,10 @@ export default function AdminDashboardClient({
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
             Admin Priority Command Center
-            {urgentCount > 0 && (
+            {filteredUrgentCount > 0 && (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
                 <Flame size={12} className="text-amber-400" />
-                {urgentCount} Actions Required
+                {filteredUrgentCount} Actions Required
               </span>
             )}
           </h1>
@@ -211,42 +298,42 @@ export default function AdminDashboardClient({
         <div 
           onClick={() => setActiveTab('requests')}
           className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            requests.length > 0 ? 'bg-amber-500/5 border-amber-500/30 hover:border-amber-500/50' : 'bg-[#111] border-border-subtle hover:border-white/20'
+            filteredRequests.length > 0 ? 'bg-amber-500/5 border-amber-500/30 hover:border-amber-500/50' : 'bg-[#111] border-border-subtle hover:border-white/20'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Pending Requests</span>
-            <Inbox size={16} className={requests.length > 0 ? 'text-amber-400' : 'text-text-tertiary'} />
+            <Inbox size={16} className={filteredRequests.length > 0 ? 'text-amber-400' : 'text-text-tertiary'} />
           </div>
-          <div className="text-2xl font-bold text-white">{requests.length}</div>
+          <div className="text-2xl font-bold text-white">{filteredRequests.length}</div>
           <span className="text-[11px] text-text-tertiary block mt-1">Quota & Custom upgrades</span>
         </div>
 
         <div 
           onClick={() => setActiveTab('tickets')}
           className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            openTickets.length > 0 ? 'bg-accent-blue/5 border-accent-blue/30 hover:border-accent-blue/50' : 'bg-[#111] border-border-subtle hover:border-white/20'
+            filteredTickets.length > 0 ? 'bg-accent-blue/5 border-accent-blue/30 hover:border-accent-blue/50' : 'bg-[#111] border-border-subtle hover:border-white/20'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Support Queue</span>
             <MessageSquare size={16} className="text-accent-blue" />
           </div>
-          <div className="text-2xl font-bold text-white">{openTickets.length}</div>
+          <div className="text-2xl font-bold text-white">{filteredTickets.length}</div>
           <span className="text-[11px] text-text-tertiary block mt-1">Awaiting staff response</span>
         </div>
 
         <div 
           onClick={() => setActiveTab('subscriptions')}
           className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            expiringUsers.some(u => u.storageStatus === 'GRACE_PERIOD') ? 'bg-red-500/5 border-red-500/30 hover:border-red-500/50' : 'bg-[#111] border-border-subtle hover:border-white/20'
+            filteredExpiringUsers.some(u => u.storageStatus === 'GRACE_PERIOD') ? 'bg-red-500/5 border-red-500/30 hover:border-red-500/50' : 'bg-[#111] border-border-subtle hover:border-white/20'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Grace & Expirations</span>
             <CreditCard size={16} className="text-accent-violet" />
           </div>
-          <div className="text-2xl font-bold text-white">{expiringUsers.length}</div>
+          <div className="text-2xl font-bold text-white">{filteredExpiringUsers.length}</div>
           <span className="text-[11px] text-text-tertiary block mt-1">Overdue or &le;5 days renewal</span>
         </div>
 
@@ -259,7 +346,69 @@ export default function AdminDashboardClient({
             <Users size={16} className="text-emerald-400" />
           </div>
           <div className="text-2xl font-bold text-white">{stats.totalUsers}</div>
-          <span className="text-[11px] text-text-tertiary block mt-1">{recentSignups.length} joined recently</span>
+          <span className="text-[11px] text-text-tertiary block mt-1">{filteredSignups.length} active in view</span>
+        </div>
+      </div>
+
+      {/* LIVE SEARCH & FILTER TOOLBAR */}
+      <div className="bg-[#111] border border-border-subtle rounded-xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 shadow-lg shadow-black/20">
+        {/* Search Input */}
+        <div className="relative flex-1 min-w-[260px]">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tenant name, email, plan, subject, or query notes..."
+            className="w-full bg-background border border-border-subtle rounded-lg pl-10 pr-9 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-accent-blue transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-white"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Date Range Selector & Reset Button */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <Calendar size={14} className="text-accent-blue" />
+            <span className="font-medium hidden sm:inline">Date:</span>
+          </div>
+
+          <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10 text-xs">
+            {[
+              { id: 'ALL', label: 'All Time' },
+              { id: 'TODAY', label: 'Today' },
+              { id: '7', label: '7 Days' },
+              { id: '30', label: '30 Days' }
+            ].map(range => (
+              <button
+                key={range.id}
+                onClick={() => setDateRange(range.id)}
+                className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                  dateRange === range.id
+                    ? 'bg-accent-blue text-white shadow-sm'
+                    : 'text-text-secondary hover:text-white'
+                }`}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
+
+          {isFiltered && (
+            <button
+              onClick={clearFilters}
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white text-xs font-medium border border-white/10 flex items-center gap-1.5 transition-colors"
+            >
+              <RotateCcw size={12} />
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
@@ -272,7 +421,7 @@ export default function AdminDashboardClient({
           }`}
         >
           <Flame size={14} />
-          All Urgent Actions ({urgentCount})
+          All Urgent Actions ({filteredUrgentCount})
         </button>
         <button
           onClick={() => setActiveTab('requests')}
@@ -281,7 +430,7 @@ export default function AdminDashboardClient({
           }`}
         >
           <Inbox size={14} />
-          Tenant Requests ({requests.length})
+          Tenant Requests ({filteredRequests.length})
         </button>
         <button
           onClick={() => setActiveTab('tickets')}
@@ -290,7 +439,7 @@ export default function AdminDashboardClient({
           }`}
         >
           <MessageSquare size={14} />
-          Support Queue ({openTickets.length})
+          Support Queue ({filteredTickets.length})
         </button>
         <button
           onClick={() => setActiveTab('subscriptions')}
@@ -299,7 +448,7 @@ export default function AdminDashboardClient({
           }`}
         >
           <CreditCard size={14} />
-          Subscriptions & Expiry ({expiringUsers.length})
+          Subscriptions & Expiry ({filteredExpiringUsers.length})
         </button>
         <button
           onClick={() => setActiveTab('signups')}
@@ -308,7 +457,7 @@ export default function AdminDashboardClient({
           }`}
         >
           <Users size={14} />
-          Recent Signups ({recentSignups.length})
+          Recent Signups ({filteredSignups.length})
         </button>
       </div>
 
@@ -316,10 +465,12 @@ export default function AdminDashboardClient({
       {activeTab === 'urgent' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-text-secondary font-medium">Consolidated Priority Action Queue</span>
+            <span className="text-xs text-text-secondary font-medium">
+              Consolidated Priority Action Queue {isFiltered && `(Filtered: ${filteredUrgentCount} items)`}
+            </span>
             <button
               onClick={downloadUrgentActionsCsv}
-              disabled={urgentCount === 0}
+              disabled={filteredUrgentCount === 0}
               className="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
             >
               <Download size={13} />
@@ -327,20 +478,20 @@ export default function AdminDashboardClient({
             </button>
           </div>
 
-          {urgentCount === 0 ? (
+          {filteredUrgentCount === 0 ? (
             <div className="bg-[#111] border border-border-subtle rounded-xl p-12 text-center flex flex-col items-center justify-center">
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
                 <CheckCircle2 size={24} />
               </div>
-              <h3 className="text-base font-semibold text-white">All Clear! No Urgent Actions Pending</h3>
+              <h3 className="text-base font-semibold text-white">All Clear! No Urgent Actions Found</h3>
               <p className="text-xs text-text-secondary mt-1 max-w-md">
-                There are no overdue accounts, unanswered support tickets, or pending quota requests right now.
+                {isFiltered ? 'No urgent items match your active search or date filter criteria.' : 'There are no overdue accounts, unanswered support tickets, or pending quota requests right now.'}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Overdue Grace Period Accounts */}
-              {expiringUsers.filter(u => u.storageStatus === 'GRACE_PERIOD').map((user) => (
+              {filteredUrgentGrace.map((user) => (
                 <div key={user.id} className="bg-[#111] border border-red-500/30 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg shadow-red-500/5">
                   <div className="flex items-start gap-3.5">
                     <div className="p-2 rounded-lg bg-red-500/10 text-red-400 shrink-0 mt-0.5">
@@ -372,7 +523,7 @@ export default function AdminDashboardClient({
               ))}
 
               {/* Pending Quota Requests */}
-              {requests.map((req) => (
+              {filteredRequests.map((req) => (
                 <div key={req.id} className="bg-[#111] border border-amber-500/30 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg shadow-amber-500/5">
                   <div className="flex items-start gap-3.5">
                     <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 shrink-0 mt-0.5">
@@ -418,7 +569,7 @@ export default function AdminDashboardClient({
               ))}
 
               {/* Open Support Tickets */}
-              {openTickets.map((ticket) => (
+              {filteredTickets.map((ticket) => (
                 <div key={ticket.id} className="bg-[#111] border border-border-subtle rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-white/20 transition-all">
                   <div className="flex items-start gap-3.5">
                     <div className="p-2 rounded-lg bg-accent-blue/10 text-accent-blue shrink-0 mt-0.5">
@@ -463,13 +614,13 @@ export default function AdminDashboardClient({
                 Pending Quota & Setup Requests
               </h2>
               <p className="text-xs text-text-secondary mt-0.5">
-                Review client requests to expand storage quotas or provision white-glove configurations.
+                Review client requests to expand storage quotas or provision configurations.
               </p>
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={downloadRequestsCsv}
-                disabled={requests.length === 0}
+                disabled={filteredRequests.length === 0}
                 className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
                 <Download size={13} />
@@ -481,13 +632,13 @@ export default function AdminDashboardClient({
             </div>
           </div>
 
-          {requests.length === 0 ? (
+          {filteredRequests.length === 0 ? (
             <div className="py-16 text-center text-xs text-text-secondary border-2 border-dashed border-white/5 rounded-xl">
-              No pending quota requests.
+              {isFiltered ? 'No quota requests match your search criteria.' : 'No pending quota requests.'}
             </div>
           ) : (
             <div className="divide-y divide-white/5">
-              {requests.map((req) => (
+              {filteredRequests.map((req) => (
                 <div key={req.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -544,7 +695,7 @@ export default function AdminDashboardClient({
             <div className="flex items-center gap-3">
               <button
                 onClick={downloadTicketsCsv}
-                disabled={openTickets.length === 0}
+                disabled={filteredTickets.length === 0}
                 className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
                 <Download size={13} />
@@ -556,9 +707,9 @@ export default function AdminDashboardClient({
             </div>
           </div>
 
-          {openTickets.length === 0 ? (
+          {filteredTickets.length === 0 ? (
             <div className="py-16 text-center text-xs text-text-secondary border-2 border-dashed border-white/5 rounded-xl">
-              No active support tickets.
+              {isFiltered ? 'No tickets match your search criteria.' : 'No active support tickets.'}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -573,7 +724,7 @@ export default function AdminDashboardClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {openTickets.map((t) => (
+                  {filteredTickets.map((t) => (
                     <tr key={t.id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="py-3.5 px-4 font-medium text-white max-w-xs truncate">
                         {t.subject}
@@ -623,7 +774,7 @@ export default function AdminDashboardClient({
             </div>
             <button
               onClick={downloadSubscriptionsCsv}
-              disabled={expiringUsers.length === 0}
+              disabled={filteredExpiringUsers.length === 0}
               className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50 shrink-0"
             >
               <Download size={13} />
@@ -631,9 +782,9 @@ export default function AdminDashboardClient({
             </button>
           </div>
 
-          {expiringUsers.length === 0 ? (
+          {filteredExpiringUsers.length === 0 ? (
             <div className="py-16 text-center text-xs text-text-secondary border-2 border-dashed border-white/5 rounded-xl">
-              No accounts currently near expiration or in grace period.
+              {isFiltered ? 'No subscription records match your search criteria.' : 'No accounts currently near expiration or in grace period.'}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -650,7 +801,7 @@ export default function AdminDashboardClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {expiringUsers.map((u) => (
+                  {filteredExpiringUsers.map((u) => (
                     <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="py-3.5 px-4">
                         <span className="font-semibold text-white block">{u.name || 'Unnamed'}</span>
@@ -714,7 +865,7 @@ export default function AdminDashboardClient({
             <div className="flex items-center gap-3">
               <button
                 onClick={downloadSignupsCsv}
-                disabled={recentSignups.length === 0}
+                disabled={filteredSignups.length === 0}
                 className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
                 <Download size={13} />
@@ -726,47 +877,53 @@ export default function AdminDashboardClient({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border-subtle text-[10px] uppercase text-text-secondary font-semibold">
-                  <th className="py-3 px-4">Client Name</th>
-                  <th className="py-3 px-4">Email</th>
-                  <th className="py-3 px-4">Plan Tier</th>
-                  <th className="py-3 px-4">Joined Date</th>
-                  <th className="py-3 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {recentSignups.map((u) => (
-                  <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3.5 px-4 font-semibold text-white">
-                      {u.name || 'Unnamed Client'}
-                    </td>
-                    <td className="py-3.5 px-4 text-text-secondary">
-                      {u.email}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/5 text-text-secondary border border-white/10 capitalize">
-                        {u.subscriptionTier || 'Starter'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-text-tertiary">
-                      {new Date(u.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <Link
-                        href={`/admin/users/${u.id}`}
-                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition-colors border border-white/10"
-                      >
-                        Details
-                      </Link>
-                    </td>
+          {filteredSignups.length === 0 ? (
+            <div className="py-16 text-center text-xs text-text-secondary border-2 border-dashed border-white/5 rounded-xl">
+              {isFiltered ? 'No signups match your search criteria.' : 'No recent signups.'}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-border-subtle text-[10px] uppercase text-text-secondary font-semibold">
+                    <th className="py-3 px-4">Client Name</th>
+                    <th className="py-3 px-4">Email</th>
+                    <th className="py-3 px-4">Plan Tier</th>
+                    <th className="py-3 px-4">Joined Date</th>
+                    <th className="py-3 px-4 text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filteredSignups.map((u) => (
+                    <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3.5 px-4 font-semibold text-white">
+                        {u.name || 'Unnamed Client'}
+                      </td>
+                      <td className="py-3.5 px-4 text-text-secondary">
+                        {u.email}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/5 text-text-secondary border border-white/10 capitalize">
+                          {u.subscriptionTier || 'Starter'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-text-tertiary">
+                        {new Date(u.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <Link
+                          href={`/admin/users/${u.id}`}
+                          className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition-colors border border-white/10"
+                        >
+                          Details
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
