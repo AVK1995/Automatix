@@ -10,11 +10,11 @@ export async function getNotifications() {
   const isAdmin = session.user.role === 'ADMIN';
 
   if (isAdmin) {
-    // 1. Fetch direct admin notifications from DB
+    // 1. Fetch direct admin notifications from DB (Only UNREAD)
     const directNotifications = await prisma.notification.findMany({
       where: { 
         userId: session.user.id,
-        status: { in: ['UNREAD', 'IGNORED'] }
+        status: 'UNREAD'
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -118,14 +118,45 @@ export async function getNotifications() {
     return combined;
   }
 
-  // Client user
+  // Client user: fetch only UNREAD direct notifications
   const directNotifications = await prisma.notification.findMany({
     where: { 
       userId: session.user.id,
-      status: { in: ['UNREAD', 'IGNORED'] }
+      status: 'UNREAD'
     },
     orderBy: { createdAt: 'desc' }
   });
+
+  // Filter out any notifications for tickets that have already been closed or resolved
+  const ticketIds = directNotifications
+    .map(n => n.metadata?.ticketId)
+    .filter(Boolean);
+
+  if (ticketIds.length > 0) {
+    const closedTickets = await prisma.supportTicket.findMany({
+      where: {
+        id: { in: ticketIds },
+        status: { in: ['CLOSED', 'RESOLVED'] }
+      },
+      select: { id: true, status: true }
+    });
+    
+    if (closedTickets.length > 0) {
+      const closedIdSet = new Set(closedTickets.map(t => t.id));
+      const staleNotifIds = directNotifications
+        .filter(n => n.metadata?.ticketId && closedIdSet.has(n.metadata.ticketId))
+        .map(n => n.id);
+
+      if (staleNotifIds.length > 0) {
+        // Auto-resolve stale notifications asynchronously
+        await prisma.notification.updateMany({
+          where: { id: { in: staleNotifIds } },
+          data: { status: 'RESOLVED' }
+        });
+        return directNotifications.filter(n => !staleNotifIds.includes(n.id));
+      }
+    }
+  }
 
   return directNotifications;
 }
@@ -167,5 +198,45 @@ export async function ignoreNotification(id) {
     data: { status: 'IGNORED' }
   });
   
+  return { success: true };
+}
+
+export async function markAllNotificationsAsRead() {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error('Unauthorized');
+
+  await prisma.notification.updateMany({
+    where: { 
+      userId: session.user.id,
+      status: 'UNREAD' 
+    },
+    data: { status: 'RESOLVED' }
+  });
+
+  return { success: true };
+}
+
+export async function resolveTicketNotifications(ticketId) {
+  const session = await auth();
+  if (!session?.user?.id || !ticketId) return { success: true };
+
+  const notifs = await prisma.notification.findMany({
+    where: {
+      userId: session.user.id,
+      status: 'UNREAD'
+    }
+  });
+
+  const matchingIds = notifs
+    .filter(n => n.metadata?.ticketId === ticketId)
+    .map(n => n.id);
+
+  if (matchingIds.length > 0) {
+    await prisma.notification.updateMany({
+      where: { id: { in: matchingIds } },
+      data: { status: 'RESOLVED' }
+    });
+  }
+
   return { success: true };
 }

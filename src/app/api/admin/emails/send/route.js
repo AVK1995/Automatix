@@ -152,12 +152,32 @@ export async function POST(req) {
       // 2. Notification Channel
       if (channels.includes('notification')) {
         try {
+          // Clean HTML tags for short dropdown summary
+          const plainTextBody = personalizedBody
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          const shortSnippet = plainTextBody.length > 140 ? plainTextBody.slice(0, 140) + '...' : plainTextBody;
+
           await prisma.notification.create({
             data: {
               id: `notif-${Date.now()}-${Math.random().toString(36).substring(7)}`,
               userId: user.id,
-              type: category || 'ADMIN_BROADCAST',
-              message: `${personalizedSubject}: ${personalizedBody.substring(0, 160)}...`,
+              type: category || 'ANNOUNCEMENT',
+              message: `${personalizedSubject}: ${shortSnippet}`,
+              metadata: {
+                subject: personalizedSubject,
+                htmlContent: personalizedBody,
+                category: category || 'ANNOUNCEMENT'
+              },
               status: 'UNREAD',
               updatedAt: new Date()
             }

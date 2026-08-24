@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Plus, Clock, CheckCircle2, AlertCircle, X, Send, Loader2, Lock, Sparkles, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Select from '@/components/ui/Select';
+import { resolveTicketNotifications } from '@/actions/notifications';
 
 export default function SupportPage() {
   const [tickets, setTickets] = useState([]);
@@ -27,6 +28,12 @@ export default function SupportPage() {
     fetchTickets();
     const interval = setInterval(fetchTickets, 3000);
     return () => clearInterval(interval);
+  }, [activeTicket?.id]);
+
+  useEffect(() => {
+    if (activeTicket?.id) {
+      resolveTicketNotifications(activeTicket.id).catch(console.error);
+    }
   }, [activeTicket?.id]);
 
   useEffect(() => {

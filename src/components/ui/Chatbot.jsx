@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { resolveTicketNotifications } from '@/actions/notifications';
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -98,6 +99,13 @@ export default function Chatbot() {
     return () => clearInterval(interval);
   }, [isOpen, isMinimized, activeTab]);
 
+  // Auto-resolve notifications when active ticket is open in live chat
+  useEffect(() => {
+    if (isOpen && !isMinimized && activeTab === 'live_support' && activeTicket?.id) {
+      resolveTicketNotifications(activeTicket.id).catch(console.error);
+    }
+  }, [isOpen, isMinimized, activeTab, activeTicket?.id]);
+
   // Listen for custom event from Notification Bell
   useEffect(() => {
     const handleOpenSupport = (e) => {
@@ -106,6 +114,9 @@ export default function Chatbot() {
       setActiveTab('live_support');
       setIsPopupDismissed(true);
       fetchTickets();
+      if (e.detail?.ticketId) {
+        resolveTicketNotifications(e.detail.ticketId).catch(console.error);
+      }
     };
 
     window.addEventListener('open-chatbot-support', handleOpenSupport);
