@@ -4,11 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Plus, Clock, CheckCircle2, AlertCircle, X, Send, Loader2, Lock, Sparkles, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useSession } from 'next-auth/react';
 import Select from '@/components/ui/Select';
 
 export default function SupportPage() {
-  const { data: session } = useSession();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTicket, setActiveTicket] = useState(null);
