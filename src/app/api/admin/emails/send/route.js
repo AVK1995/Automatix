@@ -122,7 +122,7 @@ export async function POST(req) {
                 <div class="logo">Automa<span>tix</span></div>
               </div>
               <div class="content">
-                ${personalizedBody.split('\n').map(line => `<p>${line}</p>`).join('')}
+                ${personalizedBody.includes('<') ? personalizedBody : personalizedBody.split('\n').map(line => `<p>${line || '&nbsp;'}</p>`).join('')}
                 <div style="margin-top: 24px;">
                   <a href="${appUrl}/dashboard" class="btn">Open Automatix Portal</a>
                 </div>

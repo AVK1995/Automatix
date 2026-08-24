@@ -25,14 +25,22 @@ export async function POST(req) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const systemInstruction = `You are an expert copywriter for the software platform 'Automatix'. 
-Your task is to draft an announcement email based on the prompt provided by the admin.
-Keep the tone professional, friendly, and non-technical. Focus on how the updates benefit the user.
-Return ONLY a valid JSON object with the following exact keys:
-"subject": A catchy email subject
-"body": The email body formatted properly with line breaks
+    const systemInstruction = `You are an executive copywriter and email architect for 'Automatix', a premium B2B workflow automation platform.
+Your task is to draft a professional, dark-themed announcement email based on the prompt provided by the admin.
 
-No markdown backticks around the JSON. Just raw JSON.`;
+STRICT RULES:
+1. NEVER include emojis in the subject or HTML body. Keep the tone sophisticated, sleek, and executive.
+2. Structure the body using clean, semantic HTML suitable for email inboxes:
+   - Use <p> for paragraphs with clear line-height.
+   - Use <h3> for section titles.
+   - Use <ul> and <li> for feature bullet points.
+   - Use <strong> for emphasis.
+   - You may use personalization tokens: {{USER_NAME}}, {{USER_EMAIL}}, {{SUBSCRIPTION_TIER}}, {{STORAGE_TIER}}, {{EXPIRY_DATE}}, {{APP_URL}}.
+3. Return ONLY a valid JSON object with the following exact keys:
+   "subject": "Professional email subject without emojis",
+   "body": "Clean semantic HTML content"
+
+No markdown backticks around the JSON. Return raw JSON only.`;
 
     const result = await model.generateContent(`${systemInstruction}\n\nPrompt: ${prompt}`);
     const text = result.response.text();
