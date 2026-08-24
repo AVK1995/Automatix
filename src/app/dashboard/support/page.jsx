@@ -300,21 +300,23 @@ export default function SupportPage() {
               )}
 
               {/* Message History */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Initial Description */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-1">
-                  <div className="flex items-center justify-between text-xs text-text-tertiary mb-1">
-                    <span className="font-semibold text-white">Your Initial Request</span>
-                    <span>{new Date(activeTicket.createdAt).toLocaleDateString()}</span>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-black/20">
+                {(!activeTicket.messages || activeTicket.messages.length === 0) && activeTicket.message && (
+                  <div className="ml-auto items-end max-w-[85%] flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary px-1">
+                      <span className="font-semibold text-accent-blue">You</span>
+                      <span>•</span>
+                      <span>{new Date(activeTicket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div className="p-3.5 rounded-2xl rounded-tr-sm bg-accent-blue text-white text-xs sm:text-sm leading-relaxed whitespace-pre-wrap shadow-md">
+                      {activeTicket.message}
+                    </div>
                   </div>
-                  <p className="text-xs sm:text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
-                    {activeTicket.message}
-                  </p>
-                </div>
+                )}
 
                 {/* Conversation Stream */}
                 {(activeTicket.messages || []).map(msg => {
-                  const isAdmin = msg.senderRole === 'ADMIN' || msg.sender?.role === 'ADMIN';
+                  const isAdmin = msg.senderId !== activeTicket.userId;
                   return (
                     <div 
                       key={msg.id} 
@@ -322,15 +324,17 @@ export default function SupportPage() {
                         isAdmin ? 'mr-auto items-start' : 'ml-auto items-end'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary">
-                        <span>{isAdmin ? 'Administrator' : 'You'}</span>
+                      <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary px-1">
+                        <span className={isAdmin ? 'font-semibold text-emerald-400' : 'font-semibold text-accent-blue'}>
+                          {isAdmin ? 'Administrator' : 'You'}
+                        </span>
                         <span>•</span>
                         <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <div className={`p-3 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
+                      <div className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                         isAdmin 
-                          ? 'bg-white/10 text-white rounded-bl-sm border border-white/5' 
-                          : 'bg-accent-blue text-white rounded-br-sm'
+                          ? 'bg-[#1a1a1a] border border-emerald-500/20 text-white rounded-tl-sm shadow-md' 
+                          : 'bg-accent-blue text-white rounded-tr-sm shadow-md shadow-accent-blue/10'
                       }`}>
                         {msg.content}
                       </div>

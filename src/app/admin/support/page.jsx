@@ -484,21 +484,23 @@ export default function GlobalSupportTicketsPage() {
             </div>
 
             {/* Conversation Messages Stream */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Initial Ticket Ingestion Message */}
-              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-1.5">
-                <div className="flex items-center justify-between text-xs text-text-tertiary">
-                  <span className="font-semibold text-white">{activeTicket.user?.name || 'Client'} (Initial Request)</span>
-                  <span>{format(new Date(activeTicket.createdAt), 'MMM d, yyyy HH:mm')}</span>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-black/20">
+              {(!activeTicket.messages || activeTicket.messages.length === 0) && activeTicket.message && (
+                <div className="mr-auto items-start max-w-[85%] flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary">
+                    <span className="font-semibold text-text-secondary">{activeTicket.user?.name || 'Client'}</span>
+                    <span>•</span>
+                    <span>{format(new Date(activeTicket.createdAt), 'HH:mm')}</span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl rounded-tl-sm bg-[#1a1a1a] border border-white/10 text-white text-xs sm:text-sm leading-relaxed whitespace-pre-wrap shadow-md">
+                    {activeTicket.message}
+                  </div>
                 </div>
-                <p className="text-xs sm:text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
-                  {activeTicket.message}
-                </p>
-              </div>
+              )}
 
-              {/* Threaded Replies */}
+              {/* Threaded Replies & Messages */}
               {(activeTicket.messages || []).map((msg) => {
-                const isAdmin = msg.sender?.role === 'ADMIN' || msg.senderRole === 'ADMIN';
+                const isAdmin = msg.senderId !== activeTicket.userId;
                 return (
                   <div
                     key={msg.id}
@@ -506,16 +508,18 @@ export default function GlobalSupportTicketsPage() {
                       isAdmin ? 'ml-auto items-end' : 'mr-auto items-start'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary">
-                      <span>{isAdmin ? 'Administrator (You)' : (activeTicket.user?.name || 'Client')}</span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary px-1">
+                      <span className={isAdmin ? 'font-semibold text-accent-blue' : 'font-semibold text-text-secondary'}>
+                        {isAdmin ? 'Administrator (You)' : (activeTicket.user?.name || 'Client')}
+                      </span>
                       <span>•</span>
                       <span>{format(new Date(msg.createdAt), 'HH:mm')}</span>
                     </div>
                     <div
-                      className={`p-3 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
+                      className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                         isAdmin
-                          ? 'bg-accent-blue text-white rounded-br-sm'
-                          : 'bg-white/10 text-white rounded-bl-sm border border-white/5'
+                          ? 'bg-accent-blue text-white rounded-tr-sm shadow-md shadow-accent-blue/10'
+                          : 'bg-[#1a1a1a] border border-white/10 text-white rounded-tl-sm shadow-md'
                       }`}
                     >
                       {msg.content}

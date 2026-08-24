@@ -23,12 +23,7 @@ export async function GET(req, { params }) {
           select: { id: true, name: true, email: true, image: true }
         },
         messages: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            sender: {
-              select: { id: true, name: true, email: true, role: true }
-            }
-          }
+          orderBy: { createdAt: 'asc' }
         }
       }
     });
@@ -88,12 +83,7 @@ export async function PUT(req, { params }) {
           select: { id: true, name: true, email: true, image: true }
         },
         messages: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            sender: {
-              select: { id: true, name: true, email: true, role: true }
-            }
-          }
+          orderBy: { createdAt: 'asc' }
         }
       }
     });
