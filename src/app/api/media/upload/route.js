@@ -20,12 +20,15 @@ export async function POST(request) {
         const userId = session.user.id;
         const payload = JSON.parse(clientPayload || '{}');
         const { nodeId, fileType, sizeMB, originalName } = payload;
-        const type = fileType?.startsWith('video/') ? 'VIDEO' : 'IMAGE';
+        
+        const isDoc = fileType?.includes('pdf') || fileType?.includes('csv') || fileType?.includes('sheet') || fileType?.includes('excel') || fileType?.includes('word') || fileType?.includes('presentation') || fileType?.includes('text/plain') || originalName?.match(/\.(pdf|csv|xlsx|xls|docx|doc|pptx|ppt|txt)$/i);
+        const isVideo = !isDoc && (fileType?.startsWith('video/') || originalName?.match(/\.(mp4|mov|webm)$/i));
+        const type = isDoc ? 'DOCUMENT' : isVideo ? 'VIDEO' : 'IMAGE';
 
         // Check user limits
         const user = await prisma.user.findUnique({
           where: { id: userId },
-          select: { maxImages: true, maxImageMB: true, maxVideos: true, maxVideoMB: true, maxStorageMB: true }
+          select: { maxImages: true, maxImageMB: true, maxVideos: true, maxVideoMB: true, maxDocs: true, maxDocMB: true, maxStorageMB: true }
         });
 
         if (!user) throw new Error('User not found');
@@ -37,6 +40,9 @@ export async function POST(request) {
         if (type === 'IMAGE' && sizeMB > user.maxImageMB) {
           throw new Error(`QUOTA_EXCEEDED:Image exceeds maximum size of ${user.maxImageMB}MB`);
         }
+        if (type === 'DOCUMENT' && sizeMB > (user.maxDocMB || 10)) {
+          throw new Error(`QUOTA_EXCEEDED:Document exceeds maximum size of ${user.maxDocMB || 10}MB`);
+        }
 
         // Fetch current media usage
         const userMedia = await prisma.media.findMany({
@@ -46,6 +52,7 @@ export async function POST(request) {
 
         const currentVideoCount = userMedia.filter(m => m.type === 'VIDEO').length;
         const currentImageCount = userMedia.filter(m => m.type === 'IMAGE').length;
+        const currentDocCount = userMedia.filter(m => m.type === 'DOCUMENT').length;
         const totalStorageUsedMB = userMedia.reduce((sum, media) => sum + media.sizeMB, 0);
 
         // 2. Count Check
@@ -54,6 +61,9 @@ export async function POST(request) {
         }
         if (type === 'IMAGE' && currentImageCount >= user.maxImages) {
           throw new Error(`QUOTA_EXCEEDED:Image limit reached (${currentImageCount}/${user.maxImages}).`);
+        }
+        if (type === 'DOCUMENT' && currentDocCount >= (user.maxDocs || 10)) {
+          throw new Error(`QUOTA_EXCEEDED:Document limit reached (${currentDocCount}/${user.maxDocs || 10}).`);
         }
 
         // 3. Total Storage Check
@@ -74,12 +84,19 @@ export async function POST(request) {
 
         // Return token parameters
         return {
-          allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime', 'video/webm'],
-          tokenPayload: JSON.stringify({ userId, nodeId, type, sizeMB }),
+          allowedContentTypes: [
+            'image/jpeg', 'image/png', 'image/webp', 'image/gif', 
+            'video/mp4', 'video/quicktime', 'video/webm',
+            'application/pdf', 'text/csv', 'text/plain',
+            'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+          ],
+          tokenPayload: JSON.stringify({ userId, nodeId, type, sizeMB, originalName }),
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
-        const { userId, nodeId, type, sizeMB } = JSON.parse(tokenPayload);
+        const { userId, nodeId, type, sizeMB, originalName } = JSON.parse(tokenPayload);
 
         try {
           if (nodeId) {
@@ -95,6 +112,7 @@ export async function POST(request) {
           await prisma.media.create({
             data: {
               url: blob.url,
+              fileName: originalName || null,
               userId,
               nodeId,
               sizeMB,

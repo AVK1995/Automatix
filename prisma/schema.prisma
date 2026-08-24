@@ -26,6 +26,8 @@ model User {
   maxImageMB            Int                 @default(2)
   maxVideos             Int                 @default(1)
   maxVideoMB            Int                 @default(25)
+  maxDocs               Int                 @default(10)
+  maxDocMB              Int                 @default(10)
   maxStorageMB          Float               @default(50)
   autoPayEnabled        Boolean             @default(true)
   storagePlanExpiresAt  DateTime?
@@ -70,11 +72,12 @@ model Invoice {
 model Media {
   id          String   @id @default(uuid())
   url         String
+  fileName    String?
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   nodeId      String?
   sizeMB      Float
-  type        String   @default("IMAGE") // IMAGE or VIDEO
+  type        String   @default("IMAGE") // IMAGE, VIDEO, or DOCUMENT
   createdAt   DateTime @default(now())
 
   @@index([userId])
@@ -100,6 +103,8 @@ model StoragePlan {
   maxVideoMB      Int
   maxImages       Int
   maxImageMB      Int
+  maxDocs         Int      @default(10)
+  maxDocMB        Int      @default(10)
   maxStorageMB    Float    // Total storage limit in MB (e.g., 10000 for 10GB)
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())

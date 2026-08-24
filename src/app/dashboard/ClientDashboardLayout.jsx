@@ -79,7 +79,7 @@ export default function ClientDashboardLayout({ children, user }) {
       {/* Main Content Area */}
       <main className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col">
         <header className="hidden md:flex h-14 items-center bg-background/80 backdrop-blur-md sticky top-0 z-[50] border-b border-border-subtle">
-          <div className="max-w-7xl mx-auto w-full px-4 md:px-8 flex justify-between items-center">
+          <div className="w-full px-4 md:px-8 flex justify-between items-center">
             <h1 className="text-sm font-medium text-text-secondary">{getPageTitle(pathname)}</h1>
             <div className="flex items-center gap-4">
               <NotificationDropdown />
@@ -87,7 +87,7 @@ export default function ClientDashboardLayout({ children, user }) {
             </div>
           </div>
         </header>
-        <div className="p-4 md:p-8 max-w-7xl mx-auto w-full flex-1">
+        <div className="p-4 md:p-8 w-full flex-1">
           {children}
         </div>
       </main>
