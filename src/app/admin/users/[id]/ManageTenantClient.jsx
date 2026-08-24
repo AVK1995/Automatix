@@ -8,7 +8,7 @@ import AdminTicketList from './AdminTicketList';
 import { 
   HardDrive, 
   Sparkles, 
-  Image, 
+  Image as ImageIcon, 
   Video, 
   FileText, 
   CheckCircle2, 

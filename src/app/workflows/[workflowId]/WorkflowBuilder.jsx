@@ -10,7 +10,7 @@ import WaitingLeadsModal from '@/components/builder/WaitingLeadsModal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { PlayIcon, CheckIcon } from '@/components/Icons';
 import Link from 'next/link';
-import { AlertCircle, ArrowLeft, Loader2, Edit2, PlayCircle, Undo2, Redo2, Globe, History, MoreHorizontal } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, Edit2, PlayCircle, Undo2, Redo2, Globe, History as HistoryIcon, MoreHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -880,7 +880,7 @@ export default function WorkflowBuilder({ workflow }) {
             onClick={() => setIsHistoryOpen(true)}
             className="hidden md:flex text-text-secondary hover:text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors items-center gap-1.5 border border-transparent hover:border-border-subtle hover:bg-card"
           >
-            <History className="w-3.5 h-3.5" />
+            <HistoryIcon className="w-3.5 h-3.5" />
             History
           </button>
 
@@ -907,7 +907,7 @@ export default function WorkflowBuilder({ workflow }) {
                   <PlayCircle className="w-4 h-4" /> Test Flow
                 </button>
                 <button onClick={() => { setIsHistoryOpen(true); setIsMobileMenuOpen(false); }} className="px-4 py-2 text-left text-sm text-text-secondary hover:text-white hover:bg-white/5 flex items-center gap-2">
-                  <History className="w-4 h-4" /> History
+                  <HistoryIcon className="w-4 h-4" /> History
                 </button>
               </div>
             )}

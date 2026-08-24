@@ -7,7 +7,7 @@ import {
   Sparkles,
   Users,
   User,
-  History,
+  History as HistoryIcon,
   Eye,
   Code,
   CheckCircle2,
@@ -390,7 +390,7 @@ export default function AdminCommunicationsHub() {
               : 'border-transparent text-text-secondary hover:text-white'
           }`}
         >
-          <History size={15} />
+          <HistoryIcon size={15} />
           Delivery History Logs
         </button>
       </div>
@@ -784,7 +784,7 @@ export default function AdminCommunicationsHub() {
           <div className="flex items-center justify-between border-b border-white/5 pb-4">
             <div>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <History size={18} className="text-accent-blue" />
+                <HistoryIcon size={18} className="text-accent-blue" />
                 Communication Logs & Sent History
               </h2>
               <p className="text-xs text-text-secondary mt-0.5">

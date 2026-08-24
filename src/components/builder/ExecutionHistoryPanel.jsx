@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { X, History, CheckCircle2, XCircle, Clock, Search } from 'lucide-react';
+import { X, History as HistoryIcon, CheckCircle2, XCircle, Clock, Search } from 'lucide-react';
 import { useState } from 'react';
 import ExecutionDetailModal from './ExecutionDetailModal';
 
@@ -76,7 +76,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="font-medium text-foreground flex items-center gap-2">
-                <History className="w-4 h-4 text-accent-blue" />
+                <HistoryIcon className="w-4 h-4 text-accent-blue" />
                 Execution History
               </h2>
               <p className="text-xs text-text-secondary mt-0.5">Recent automated runs.</p>
