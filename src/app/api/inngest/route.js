@@ -5,12 +5,14 @@ import {
   storageGracePurgeCron, 
   subscriptionRenewalCron 
 } from "@/inngest/functions";
+import { pollGoogleSheets } from "@/inngest/sheetsPolling";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
     executeWorkflow,
     storageGracePurgeCron,
-    subscriptionRenewalCron
+    subscriptionRenewalCron,
+    pollGoogleSheets
   ],
 });

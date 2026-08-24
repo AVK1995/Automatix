@@ -148,12 +148,16 @@ export default function AdminAnalyticsClient({
             {filteredUsages.length === 0 ? (
               <p className="text-xs text-text-secondary">No usage data recorded for this date range.</p>
             ) : (
-              filteredUsages.map(u => (
-                <div key={u.date.toISOString()} className="flex justify-between items-center py-2 text-xs">
-                  <span className="text-text-secondary">{new Date(u.date).toLocaleDateString()}</span>
-                  <span className="text-white font-mono font-semibold">{u._sum.requestCount} requests</span>
-                </div>
-              ))
+              filteredUsages.map(u => {
+                const dateKey = typeof u.date === 'string' ? u.date : (u.date?.toISOString ? u.date.toISOString() : String(Math.random()));
+                const formattedDate = isNaN(new Date(u.date).getTime()) ? 'Unknown Date' : new Date(u.date).toLocaleDateString();
+                return (
+                  <div key={dateKey} className="flex justify-between items-center py-2 text-xs">
+                    <span className="text-text-secondary">{formattedDate}</span>
+                    <span className="text-white font-mono font-semibold">{u._sum?.requestCount || 0} requests</span>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

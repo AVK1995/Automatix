@@ -85,48 +85,88 @@ export default function AdminSidebar({ isMobile, onClose }) {
         })}
       </nav>
       
-      {/* Inngest Dev Mode Button */}
-      {process.env.NODE_ENV !== 'production' && (
-        <div className="p-4 border-t border-border-subtle space-y-2" suppressHydrationWarning>
-          <button
-            suppressHydrationWarning
-            onClick={async () => {
-              if (inngestRunning) {
-                setIsConfirmOpen(true);
-              } else {
-                try {
-                  await startInngestDevServer();
-                  setInngestRunning(true);
-                } catch (e) {}
-                window.open('http://127.0.0.1:8288', '_blank');
-              }
-            }}
-            className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-sm transition-colors border ${
-              inngestRunning 
-                ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20' 
-                : 'bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 border-accent-blue/20'
-            }`}
+      {/* Inngest Server & Engine Controls (Accessible in All Environments) */}
+      <div className="p-3 border-t border-border-subtle space-y-2 bg-white/[0.01]" suppressHydrationWarning>
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Inngest Engine
+          </span>
+          <a
+            href="/api/inngest"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] text-accent-blue hover:underline flex items-center gap-0.5"
+            title="Inspect registered Inngest serve endpoint"
           >
-            <div className="flex items-center gap-2">
-              {inngestRunning ? <XCircle size={14} /> : <Server size={14} />}
-              <span>{inngestRunning ? 'Stop Inngest Server' : 'Run Inngest Dev'}</span>
-            </div>
-            {!inngestRunning && <ExternalLink size={12} className="opacity-70" />}
-          </button>
-          
-          {inngestRunning && (
+            <span>/api/inngest</span>
+            <ExternalLink size={9} />
+          </a>
+        </div>
+
+        {process.env.NODE_ENV !== 'production' ? (
+          <>
             <button
-              onClick={() => window.open('http://127.0.0.1:8288', '_blank')}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-sm transition-colors border bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 border-accent-blue/20"
+              suppressHydrationWarning
+              onClick={async () => {
+                if (inngestRunning) {
+                  setIsConfirmOpen(true);
+                } else {
+                  try {
+                    await startInngestDevServer();
+                    setInngestRunning(true);
+                  } catch (e) {}
+                  window.open('http://127.0.0.1:8288', '_blank');
+                }
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-colors border ${
+                inngestRunning 
+                  ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20' 
+                  : 'bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 border-accent-blue/20'
+              }`}
             >
               <div className="flex items-center gap-2">
-                <ExternalLink size={14} />
-                <span>Open Inngest UI</span>
+                {inngestRunning ? <XCircle size={14} /> : <Server size={14} />}
+                <span>{inngestRunning ? 'Stop Inngest Server' : 'Run Inngest Dev'}</span>
               </div>
+              {!inngestRunning && <ExternalLink size={12} className="opacity-70" />}
             </button>
-          )}
-        </div>
-      )}
+            
+            {inngestRunning && (
+              <button
+                onClick={() => window.open('http://127.0.0.1:8288', '_blank')}
+                className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 border-accent-blue/20"
+              >
+                <div className="flex items-center gap-2">
+                  <ExternalLink size={13} />
+                  <span>Open Inngest Dev UI (8288)</span>
+                </div>
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="grid grid-cols-2 gap-1.5">
+            <a
+              href="/api/inngest"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-colors"
+            >
+              <Server size={12} className="text-emerald-400" />
+              <span>API Endpoint</span>
+            </a>
+            <a
+              href="https://app.inngest.com"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue border border-accent-blue/20 transition-colors"
+            >
+              <ExternalLink size={12} />
+              <span>Inngest Cloud</span>
+            </a>
+          </div>
+        )}
+      </div>
 
       {/* Logout Button */}
       <div className="px-4 pt-4 pb-2 border-t border-border-subtle">
