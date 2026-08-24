@@ -300,6 +300,18 @@ model PlatformSettings {
   updatedAt          DateTime @updatedAt
 }
 
+model AdminEmailLog {
+  id              String   @id @default(uuid())
+  category        String   // "ANNOUNCEMENT", "BILLING", "LEGAL", "SYSTEM", "DIRECT"
+  subject         String
+  body            String   @db.Text
+  targetType      String   // "ALL", "PAID", "FREE", "GRACE", "SINGLE"
+  recipientEmail  String?  // For single user emails
+  sentCount       Int      @default(0)
+  sentBy          String   @default("Admin")
+  createdAt       DateTime @default(now())
+}
+
 enum Role {
   ADMIN
   CLIENT

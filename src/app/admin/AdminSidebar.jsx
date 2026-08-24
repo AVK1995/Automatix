@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { signOut } from 'next-auth/react';
-import { LogOut, LayoutDashboard, Users, Workflow, Settings, Server, ExternalLink, XCircle, Link as LinkIcon, Activity, Globe, MoreHorizontal, ChevronRight, FileText, Shield, ScrollText, RefreshCw, Database, Bell, MessageSquare } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Workflow, Settings, Server, ExternalLink, XCircle, Link as LinkIcon, Activity, Globe, MoreHorizontal, ChevronRight, FileText, Shield, ScrollText, RefreshCw, Database, Bell, MessageSquare, Mail } from 'lucide-react';
 import { startInngestDevServer, stopInngestDevServer, checkInngestStatus } from '@/actions/dev';
 import Logo from '@/components/Logo';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -42,7 +42,7 @@ export default function AdminSidebar({ isMobile, onClose }) {
   const navItems = [
     { name: 'Dashboard', href: '/admin', icon: <LayoutDashboard size={16} /> },
     { name: 'Users & Tenants', href: '/admin/users', icon: <Users size={16} /> },
-    { name: 'Global Notifications', href: '/admin/notifications', icon: <Bell size={16} /> },
+    { name: 'Email & Notifications', href: '/admin/notifications', icon: <Mail size={16} /> },
     { name: 'Global Support Tickets', href: '/admin/support', icon: <MessageSquare size={16} /> },
     { name: 'Global Storage', href: '/admin/storage', icon: <Database size={16} /> },
     { name: 'Global Connections', href: '/admin/connections', icon: <LinkIcon size={16} /> },

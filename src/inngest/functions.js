@@ -1072,6 +1072,9 @@ export const storageGracePurgeCron = inngest.createFunction(
           id: true,
           email: true,
           name: true,
+          subscriptionTier: true,
+          subscriptionExpiresAt: true,
+          quotaTier: true,
           maxStorageMB: true,
           media: {
             orderBy: { createdAt: "desc" },
@@ -1083,10 +1086,52 @@ export const storageGracePurgeCron = inngest.createFunction(
 
     for (const user of usersToPurge) {
       await step.run(`Purge Excess Media for User ${user.id}`, async () => {
-        let currentStorage = user.media.reduce((sum, m) => sum + (m.sizeMB || 0), 0);
-        const baseAllowedMB = 50; // Revert to Free Plan allowance
+        const now = new Date();
+        const isMainSubActive = user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > now;
+        const subTier = (user.subscriptionTier || 'starter').toLowerCase();
 
-        // Delete newest files until storage is under 50MB
+        let baseAllowedMB = 50;
+        let newQuotaTier = "Free Plan (50 MB)";
+        let newMaxImages = 10;
+        let newMaxImageMB = 2;
+        let newMaxVideos = 1;
+        let newMaxVideoMB = 25;
+        let newSubTier = user.subscriptionTier;
+        let messageText = "";
+
+        if (isMainSubActive && (subTier === 'professional' || subTier === 'pro')) {
+          // Layer 1: User is an active Pro user -> revert storage to Pro base allowance (200MB)
+          baseAllowedMB = 200;
+          newQuotaTier = "Professional Base (200 MB)";
+          newMaxImages = 30;
+          newMaxImageMB = 5;
+          newMaxVideos = 4;
+          newMaxVideoMB = 35;
+          messageText = `Your standalone storage add-on pack has expired. Your storage has reverted to your active Professional plan allowance (200 MB), and excess files were safely purged.`;
+        } else if (isMainSubActive && subTier === 'enterprise') {
+          // Layer 1: User is an active Enterprise user -> revert storage to Enterprise base allowance (500MB)
+          baseAllowedMB = 500;
+          newQuotaTier = "Enterprise Base (500 MB)";
+          newMaxImages = 80;
+          newMaxImageMB = 8;
+          newMaxVideos = 8;
+          newMaxVideoMB = 50;
+          messageText = `Your standalone storage add-on pack has expired. Your storage has reverted to your active Enterprise plan allowance (500 MB), and excess files were safely purged.`;
+        } else {
+          // Layer 2: Main subscription expired -> revert user to Starter/Free (50MB, 3 flows, 100 executions)
+          baseAllowedMB = 50;
+          newQuotaTier = "Free Plan (50 MB)";
+          newSubTier = "free";
+          newMaxImages = 10;
+          newMaxImageMB = 2;
+          newMaxVideos = 1;
+          newMaxVideoMB = 25;
+          messageText = `Your subscription plan has expired without renewal. Your account has been downgraded to the Free Starter tier (50 MB storage, 3 workflows, 100 executions) and excess files were purged.`;
+        }
+
+        let currentStorage = user.media.reduce((sum, m) => sum + (m.sizeMB || 0), 0);
+
+        // Delete newest files until storage is under the allowed base limit
         for (const file of user.media) {
           if (currentStorage <= baseAllowedMB) break;
           try {
@@ -1098,17 +1143,18 @@ export const storageGracePurgeCron = inngest.createFunction(
           currentStorage -= (file.sizeMB || 0);
         }
 
-        // Lock user storage and reset to free tier limits
+        // Update user limits and reset grace status
         await prisma.user.update({
           where: { id: user.id },
           data: {
-            storageStatus: "LOCKED",
-            quotaTier: "Free Plan (50 MB)",
-            maxStorageMB: 50,
-            maxImages: 10,
-            maxImageMB: 2,
-            maxVideos: 1,
-            maxVideoMB: 25,
+            subscriptionTier: newSubTier,
+            storageStatus: "ACTIVE",
+            quotaTier: newQuotaTier,
+            maxStorageMB: baseAllowedMB,
+            maxImages: newMaxImages,
+            maxImageMB: newMaxImageMB,
+            maxVideos: newMaxVideos,
+            maxVideoMB: newMaxVideoMB,
             storagePlanExpiresAt: null,
             storageGraceExpiresAt: null
           }
@@ -1120,7 +1166,7 @@ export const storageGracePurgeCron = inngest.createFunction(
             id: `notif-${Date.now()}-${Math.random().toString(36).substring(7)}`,
             userId: user.id,
             type: "STORAGE_PURGED",
-            message: `Your storage grace period expired without renewal. Your storage bucket has been reset to the 50MB Free tier and excess files were purged.`,
+            message: messageText,
             status: "UNREAD",
             updatedAt: new Date()
           }
@@ -1134,8 +1180,8 @@ export const storageGracePurgeCron = inngest.createFunction(
               <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #0a0a0a; color: #ffffff; border-radius: 8px; border: 1px solid #222;">
                 <h2 style="color: #ef4444;">Storage Grace Period Expired</h2>
                 <p>Hello ${user.name || 'there'},</p>
-                <p>Your 5-day grace period for storage renewal has elapsed without payment.</p>
-                <p>Your storage allowance has reverted to the default <strong>50 MB Free tier</strong>, and excess files have been purged from the cloud storage bucket.</p>
+                <p>${messageText}</p>
+                <p>Your active storage capacity is now <strong>${baseAllowedMB} MB</strong>.</p>
                 <p>To upgrade your storage again and restore high limits, visit your billing dashboard anytime.</p>
                 <a href="${process.env.NEXTAUTH_URL || 'https://automatix.agency'}/dashboard/billing" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">Manage Storage & Billing</a>
               </div>
