@@ -61,13 +61,20 @@ export async function POST(request) {
           throw new Error(`QUOTA_EXCEEDED:Total storage limit reached. You have ${(user.maxStorageMB - totalStorageUsedMB).toFixed(1)}MB remaining.`);
         }
 
+        // 4. Global Platform Safety Guard (Keep overall Vercel Blob usage below 950MB)
+        const allMedia = await prisma.media.findMany({ select: { sizeMB: true } });
+        const totalPlatformStorageMB = allMedia.reduce((sum, m) => sum + (m.sizeMB || 0), 0);
+        if (totalPlatformStorageMB + sizeMB > 950) {
+          throw new Error('QUOTA_EXCEEDED:Platform storage is temporarily full. Please contact support.');
+        }
+
         // Sanitize filename
         const safeName = (originalName || pathname).replace(/[^a-zA-Z0-9.]/g, '_');
         const filename = `${userId}/${Date.now()}-${safeName}`;
 
         // Return token parameters
         return {
-          allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime', 'video/webm'],
+          allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime', 'video/webm'],
           tokenPayload: JSON.stringify({ userId, nodeId, type, sizeMB }),
         };
       },

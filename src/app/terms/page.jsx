@@ -59,11 +59,19 @@ export default function TermsPage() {
             <section className="space-y-4">
               <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
                 <ShieldAlert className="w-5 h-5 text-accent-blue" />
-                <h2 className="text-xl font-semibold text-white m-0">3. Intellectual Property</h2>
+                <h2 className="text-xl font-semibold text-white m-0">3. Media Assets & Storage Ownership</h2>
               </div>
-              <p className="text-text-secondary leading-relaxed mt-4">
-                All code, design, and architecture of the Automatix platform are the exclusive property of Automatix. You retain full ownership of the content, text, and customer data you generate using our funnel builder.
-              </p>
+              <div className="text-text-secondary leading-relaxed mt-4 space-y-3">
+                <p>
+                  <strong>You retain 100% ownership</strong> of all images, videos, audio files, and documents you upload to the Automatix platform. Automatix claims zero intellectual property rights over your content.
+                </p>
+                <p>
+                  Your files are stored securely in cloud storage infrastructure and are strictly used to deliver automated messages (e.g., via Instagram, WhatsApp, or email) in accordance with the workflow funnels you configure. We will never sell, analyze, or distribute your media files to unauthorized third parties.
+                </p>
+                <p>
+                  When you delete a media file or workflow from your dashboard, the corresponding asset is permanently and irreversibly purged from our cloud storage servers.
+                </p>
+              </div>
             </section>
 
             {/* Section 4 */}

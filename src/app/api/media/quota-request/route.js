@@ -9,10 +9,10 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { plan } = await req.json();
+    const { plan, message } = await req.json();
 
     if (!plan) {
-      return NextResponse.json({ error: 'Plan is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Plan or request type is required' }, { status: 400 });
     }
 
     // Create the quota request
@@ -20,6 +20,7 @@ export async function POST(req) {
       data: {
         userId: session.user.id,
         requestedPlan: plan,
+        message: message || null,
         status: 'PENDING'
       }
     });

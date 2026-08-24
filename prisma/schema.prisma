@@ -23,10 +23,10 @@ model User {
   phone                 String?
   quotaTier             String              @default("free")
   maxImages             Int                 @default(10)
-  maxImageMB            Int                 @default(1)
-  maxVideos             Int                 @default(5)
+  maxImageMB            Int                 @default(2)
+  maxVideos             Int                 @default(1)
   maxVideoMB            Int                 @default(25)
-  maxStorageMB          Float               @default(1000)
+  maxStorageMB          Float               @default(50)
   accounts              Account[]
   automatixCalendars    AutomatixCalendar[]
   integrations          Integration[]
@@ -63,6 +63,7 @@ model QuotaRequest {
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   requestedPlan String
+  message       String?
   status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
   createdAt     DateTime @default(now())
 

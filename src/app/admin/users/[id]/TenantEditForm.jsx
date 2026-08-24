@@ -154,53 +154,27 @@ export default function TenantEditForm({ tenant }) {
           </div>
 
           <div className="pt-4 border-t border-border-subtle mt-4">
-            <h4 className="text-sm font-medium text-foreground mb-3">Storage Limits</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">Max Images Allowed</label>
-                <input 
-                  type="number" 
-                  value={maxImages}
-                  onChange={(e) => setMaxImages(e.target.value)}
-                  className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-                />
+            <h4 className="text-sm font-medium text-foreground mb-2">Storage Tier Status</h4>
+            <div className="bg-white/[0.02] border border-white/10 rounded-md p-3.5 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-text-secondary">Assigned Storage Plan:</span>
+                <span className="font-medium text-accent-blue bg-accent-blue/10 px-2 py-0.5 rounded border border-accent-blue/20">
+                  {tenant.quotaTier || 'Free Plan (50 MB)'}
+                </span>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">Max Image Size (MB)</label>
-                <input 
-                  type="number" 
-                  value={maxImageMB}
-                  onChange={(e) => setMaxImageMB(e.target.value)}
-                  className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-                />
+              <div className="flex justify-between items-center pt-1 border-t border-white/5 text-text-tertiary">
+                <span>Total Storage Capacity:</span>
+                <span className="text-foreground font-medium">{tenant.maxStorageMB || 50} MB</span>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">Max Videos Allowed</label>
-                <input 
-                  type="number" 
-                  value={maxVideos}
-                  onChange={(e) => setMaxVideos(e.target.value)}
-                  className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-                />
+              <div className="flex justify-between items-center text-text-tertiary">
+                <span>Media Limits:</span>
+                <span className="text-foreground">
+                  {tenant.maxImages || 10} Images (max {tenant.maxImageMB || 2}MB) • {tenant.maxVideos || 1} Videos (max {tenant.maxVideoMB || 25}MB)
+                </span>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">Max Video Size (MB)</label>
-                <input 
-                  type="number" 
-                  value={maxVideoMB}
-                  onChange={(e) => setMaxVideoMB(e.target.value)}
-                  className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-text-secondary mb-1">Total Storage Limit (MB) - e.g. 10000 = 10GB</label>
-                <input 
-                  type="number" 
-                  value={maxStorageMB}
-                  onChange={(e) => setMaxStorageMB(e.target.value)}
-                  className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue"
-                />
-              </div>
+              <p className="text-[11px] text-text-tertiary pt-1 border-t border-white/5 italic">
+                Storage tiers are managed via frozen plans & approved client queries in the Admin Requests page.
+              </p>
             </div>
           </div>
 

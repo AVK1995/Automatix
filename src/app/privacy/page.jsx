@@ -59,11 +59,19 @@ export default function PrivacyPage() {
             <section className="space-y-4">
               <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
                 <Lock className="w-5 h-5 text-accent-blue" />
-                <h2 className="text-xl font-semibold text-white m-0">2. How We Use Your Information</h2>
+                <h2 className="text-xl font-semibold text-white m-0">2. How We Use & Store Your Media Files</h2>
               </div>
-              <p className="text-text-secondary leading-relaxed mt-4">
-                We use your data solely to provide, maintain, and improve the Automatix platform, to process your transactions, and to facilitate API communications between your connected services.
-              </p>
+              <div className="text-text-secondary leading-relaxed mt-4 space-y-3">
+                <p>
+                  <strong>Secure Cloud Storage:</strong> All media files (images, promotional videos, audio recordings, and documents) you upload to Automatix are hosted in secure, encrypted cloud storage environments.
+                </p>
+                <p>
+                  <strong>Strictly Functional Usage:</strong> Your files are only used to deliver the specific automated messages, quizzes, and funnel steps you design. We never analyze, mine, or share your media assets with outside advertisers or third parties.
+                </p>
+                <p>
+                  <strong>Permanent File Purging:</strong> When you delete a media file or workflow from your dashboard, the underlying asset is permanently erased from our cloud storage servers immediately.
+                </p>
+              </div>
             </section>
 
             {/* Section 3 */}

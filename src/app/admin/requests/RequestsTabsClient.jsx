@@ -106,6 +106,12 @@ export default function RequestsTabsClient({ quotaRequests, conciergeRequests, r
                       <span className="text-text-secondary">Requested Plan: </span>
                       <span className="text-accent-blue font-medium">{req.requestedPlan}</span>
                     </div>
+                    {req.message && (
+                      <div className="text-xs text-text-secondary mt-2 bg-white/[0.03] border border-white/10 p-2.5 rounded-md">
+                        <span className="text-white font-medium block mb-1">Client Query / Notes:</span>
+                        {req.message}
+                      </div>
+                    )}
                   </div>
                   
                   {req.status === 'PENDING' && (

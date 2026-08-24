@@ -9,7 +9,8 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
+    const body = await req.json().catch(() => ({}));
 
     const request = await prisma.quotaRequest.findUnique({
       where: { id }
@@ -19,13 +20,44 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
 
-    // Find the requested plan to get limits
-    const plan = await prisma.storagePlan.findFirst({
-      where: { name: request.requestedPlan }
-    });
+    let updateData = {};
 
-    if (!plan) {
-      return NextResponse.json({ error: 'Requested plan no longer exists in system' }, { status: 400 });
+    if (body.customStorageMB) {
+      // Custom Limit Approval
+      updateData = {
+        quotaTier: 'Custom Enterprise',
+        maxStorageMB: Number(body.customStorageMB) || 200,
+        maxVideos: Number(body.customVideos) || 10,
+        maxVideoMB: Number(body.customVideoMB) || 50,
+        maxImages: Number(body.customImages) || 50,
+        maxImageMB: Number(body.customImageMB) || 8
+      };
+    } else {
+      // Find the requested plan to get limits
+      const plan = await prisma.storagePlan.findFirst({
+        where: { name: request.requestedPlan }
+      });
+
+      if (plan) {
+        updateData = {
+          quotaTier: plan.name,
+          maxVideos: plan.maxVideos,
+          maxVideoMB: plan.maxVideoMB,
+          maxImages: plan.maxImages,
+          maxImageMB: plan.maxImageMB,
+          maxStorageMB: plan.maxStorageMB
+        };
+      } else {
+        // Fallback custom default
+        updateData = {
+          quotaTier: request.requestedPlan,
+          maxStorageMB: 250,
+          maxVideos: 5,
+          maxVideoMB: 35,
+          maxImages: 40,
+          maxImageMB: 5
+        };
+      }
     }
 
     // Update the request status
@@ -37,17 +69,10 @@ export async function POST(req, { params }) {
     // Update the user's limits
     await prisma.user.update({
       where: { id: request.userId },
-      data: {
-        quotaTier: plan.name,
-        maxVideos: plan.maxVideos,
-        maxVideoMB: plan.maxVideoMB,
-        maxImages: plan.maxImages,
-        maxImageMB: plan.maxImageMB,
-        maxStorageMB: plan.maxStorageMB
-      }
+      data: updateData
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, updatedLimits: updateData });
   } catch (error) {
     console.error('Approve Quota Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
