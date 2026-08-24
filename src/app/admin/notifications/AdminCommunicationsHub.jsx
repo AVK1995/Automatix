@@ -23,7 +23,8 @@ import {
   ChevronDown,
   Loader2,
   Save,
-  FileCode
+  FileCode,
+  Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';

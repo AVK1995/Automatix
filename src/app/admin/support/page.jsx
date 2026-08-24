@@ -50,6 +50,8 @@ export default function GlobalSupportTicketsPage() {
     { refreshInterval: 8000 }
   );
 
+  const tickets = data?.tickets || [];
+
   // Search users for new direct conversation
   useEffect(() => {
     if (!userSearchQuery.trim()) {
