@@ -239,6 +239,10 @@ export default function AdminCommunicationsHub() {
     }
   };
 
+  // Textarea Refs for Cursor-Aware Token Insertion
+  const bodyTextareaRef = useRef(null);
+  const resetTemplateTextareaRef = useRef(null);
+
   const handleApplyPreset = (preset) => {
     setCategory(preset.category);
     setSubject(preset.subject);
@@ -247,7 +251,39 @@ export default function AdminCommunicationsHub() {
   };
 
   const handleInsertToken = (token) => {
-    setBody(prev => prev + `${token}`);
+    const textarea = bodyTextareaRef.current;
+    if (!textarea) {
+      setBody(prev => (prev ? prev + token : token));
+      return;
+    }
+
+    const start = textarea.selectionStart ?? body.length;
+    const end = textarea.selectionEnd ?? body.length;
+    const newBody = body.substring(0, start) + token + body.substring(end);
+    setBody(newBody);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + token.length, start + token.length);
+    }, 0);
+  };
+
+  const handleInsertResetToken = (token) => {
+    const textarea = resetTemplateTextareaRef.current;
+    if (!textarea) {
+      setResetEmailTemplate(prev => (prev ? prev + token : token));
+      return;
+    }
+
+    const start = textarea.selectionStart ?? resetEmailTemplate.length;
+    const end = textarea.selectionEnd ?? resetEmailTemplate.length;
+    const newContent = resetEmailTemplate.substring(0, start) + token + resetEmailTemplate.substring(end);
+    setResetEmailTemplate(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + token.length, start + token.length);
+    }, 0);
   };
 
   const handleAiDraft = async () => {
@@ -698,6 +734,7 @@ export default function AdminCommunicationsHub() {
                   </div>
                 ) : (
                   <textarea
+                    ref={bodyTextareaRef}
                     rows={9}
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
@@ -903,7 +940,7 @@ export default function AdminCommunicationsHub() {
                 {/* Personalization Tokens */}
                 <div>
                   <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">
-                    Insert Personalization Tokens (Click to append):
+                    Insert Personalization Tokens (Click to insert):
                   </label>
                   <div className="flex flex-wrap items-center gap-2">
                     {[
@@ -913,7 +950,7 @@ export default function AdminCommunicationsHub() {
                       <button
                         key={tok.token}
                         type="button"
-                        onClick={() => setResetEmailTemplate(prev => prev + `${tok.token}`)}
+                        onClick={() => handleInsertResetToken(tok.token)}
                         className="px-2.5 py-1 rounded bg-white/5 hover:bg-accent-blue/20 hover:border-accent-blue/40 border border-white/10 text-xs font-mono text-accent-blue transition-colors flex items-center gap-1.5"
                       >
                         <code>{tok.token}</code>
@@ -932,6 +969,7 @@ export default function AdminCommunicationsHub() {
                       <span className="text-[11px] text-text-tertiary">UTF-8 HTML supported</span>
                     </div>
                     <textarea
+                      ref={resetTemplateTextareaRef}
                       value={resetEmailTemplate}
                       onChange={(e) => setResetEmailTemplate(e.target.value)}
                       rows={18}
