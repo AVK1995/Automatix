@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe } from 'lucide-react';
+import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import ConnectIntegration from './ConnectIntegration';
@@ -28,6 +28,7 @@ import { NODE_TYPES } from '@/constants';
 export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onUpdateNode, onSelectNode, onConfigureReminderStep, onSimulate, workflowId, isPublished }) {
   const [schemaValue, setSchemaValue] = useState(selectedNode?.config?.schema || '');
   const [copied, setCopied] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
@@ -176,15 +177,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       }
       setPayloadHistory(history || []);
       
-      // Auto-select the most recent payload ONLY if we haven't captured one yet
-      const isActuallyListening = isPublished ? true : (selectedNode?.config?.isListening || false);
+      // Auto-select the most recent payload if listening or if a new event arrived
+      const isActuallyListening = isPublished ? true : (selectedNode?.config?.isListening !== false);
       if (history && history.length > 0 && isActuallyListening) {
-        if (!selectedNode.config?.capturedPayload) {
-          const mostRecent = history[0];
-          const clearedAt = selectedNode.config?.clearedAt || 0;
-          const payloadTime = new Date(mostRecent.createdAt).getTime();
-          
-          if (payloadTime > clearedAt) {
+        const mostRecent = history[0];
+        const currentSelectedId = selectedNode.config?.selectedEventId;
+        const clearedAt = selectedNode.config?.clearedAt || 0;
+        const payloadTime = new Date(mostRecent.createdAt).getTime();
+        
+        if (payloadTime > clearedAt) {
+          if (!selectedNode.config?.capturedPayload || (currentSelectedId && mostRecent.id !== currentSelectedId)) {
             onUpdateNode(selectedNode.id, {
               ...selectedNode,
               config: {
@@ -216,7 +218,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
     if (['webhook', 'sheets_trigger', 'instagram'].includes(selectedNode?.integration?.id) && isActuallyListening && workflowId && workflowId !== 'new') {
       intervalId = setInterval(() => {
         fetchPayloadHistory(false);
-      }, 3000);
+      }, 2000);
     }
     return () => {
       if (intervalId) clearInterval(intervalId);
@@ -250,13 +252,33 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
     fetchEventTypes();
   }, [selectedNode?.config?.connectionId, selectedNode?.integration?.id]);
 
-  // Google Sheets Metadata Auto-Fetcher
+  // Google Sheets Metadata Auto-Fetcher & Refetcher
+  const refetchSheets = async () => {
+    const spreadsheetId = selectedNode?.config?.spreadsheetId;
+    if (!spreadsheetId) return;
+    setLoadingSheets(true);
+    try {
+      const res = await fetch(`/api/integrations/google/public-sheet-meta?sheetId=${spreadsheetId}&_t=${Date.now()}`);
+      const data = await res.json();
+      if (data.success && data.sheets) {
+        setAvailableSheets(data.sheets.map(s => ({ value: s, label: s })));
+        if (data.spreadsheetName && data.spreadsheetName !== selectedNode?.config?.spreadsheetName) {
+          onUpdateNode(selectedNode.id, { ...selectedNode, config: { ...selectedNode.config, spreadsheetName: data.spreadsheetName }});
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingSheets(false);
+    }
+  };
+
   useEffect(() => {
     const fetchSheets = async () => {
       const spreadsheetId = selectedNode?.config?.spreadsheetId;
       const actionType = selectedNode?.config?.actionType || 'WRITE';
       
-      if (spreadsheetId && ['sheets', 'sheets_trigger'].includes(selectedNode?.integration?.id)) {
+      if (spreadsheetId && ['sheets', 'sheets_trigger', 'google_sheets'].includes(selectedNode?.integration?.id)) {
         // Don't fetch if creating a new sheet
         if (actionType === 'CREATE_SHEET') return;
         
@@ -264,7 +286,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         try {
           const res = await fetch(`/api/integrations/google/public-sheet-meta?sheetId=${spreadsheetId}&_t=${Date.now()}`);
           const data = await res.json();
-          if (data.success) {
+          if (data.success && data.sheets) {
             setAvailableSheets(data.sheets.map(s => ({ value: s, label: s })));
             if (data.spreadsheetName && data.spreadsheetName !== selectedNode?.config?.spreadsheetName) {
               onUpdateNode(selectedNode.id, { ...selectedNode, config: { ...selectedNode.config, spreadsheetName: data.spreadsheetName }});
@@ -286,9 +308,9 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       const sheetName = selectedNode?.config?.range;
       const actionType = selectedNode?.config?.actionType || 'WRITE';
       
-      if (spreadsheetId && sheetName && ['sheets', 'sheets_trigger'].includes(selectedNode?.integration?.id)) {
+      if (spreadsheetId && sheetName && ['sheets', 'sheets_trigger', 'google_sheets'].includes(selectedNode?.integration?.id)) {
         // Only fetch headers for actions that map columns or search, and always for sheets_trigger
-        if (selectedNode?.integration?.id === 'sheets' && !['WRITE', 'UPDATE', 'READ', 'DELETE'].includes(actionType)) return;
+        if (['sheets', 'google_sheets'].includes(selectedNode?.integration?.id) && !['WRITE', 'UPDATE', 'READ', 'DELETE'].includes(actionType)) return;
         
         setLoadingHeaders(true);
         try {
@@ -314,8 +336,6 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       }
     };
     
-    // We only want to trigger this if the sheetName genuinely changes, but it's bound to config.range
-    // Using a timeout prevents spamming if the user is typing the sheet name manually
     const timer = setTimeout(() => {
       fetchHeaders();
     }, 500);
@@ -382,11 +402,29 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       const tId = anc.integration?.id;
       const tConfig = anc.config || {};
       
-      if (tId === 'webhook' && tConfig.capturedPayload) {
-        try {
-          group.variables.push(...flattenObject(tConfig.capturedPayload));
-        } catch (e) {
-          console.error(e);
+      if (tId === 'sheets_trigger') {
+        if (tConfig.capturedPayload && typeof tConfig.capturedPayload === 'object') {
+          try {
+            group.variables.push(...flattenObject(tConfig.capturedPayload));
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          group.variables.push(
+            { id: 'trigger.body._row', label: '_row', example: '2' },
+            { id: 'trigger.body._event', label: '_event', example: 'row_added' },
+            { id: 'trigger.body._triggeredAt', label: '_triggeredAt (ISO Date & Time)', example: '2026-08-25T14:49:00.000Z' },
+            { id: 'trigger.body._triggeredDate', label: '_triggeredDate (Date)', example: '2026-08-25' },
+            { id: 'trigger.body._triggeredTime', label: '_triggeredTime (Time)', example: '14:49:00' }
+          );
+        }
+      } else if (tId === 'webhook') {
+        if (tConfig.capturedPayload && typeof tConfig.capturedPayload === 'object') {
+          try {
+            group.variables.push(...flattenObject(tConfig.capturedPayload));
+          } catch (e) {
+            console.error(e);
+          }
         }
       } else if (tId === 'typeform' && tConfig.capturedPayload) {
         // If typeform has captured data in the future
@@ -581,10 +619,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const handleCopy = (text) => {
+  const handleCopy = (text, key = 'default') => {
     navigator.clipboard.writeText(text);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedKey(key);
+    setTimeout(() => {
+      setCopied(false);
+      setCopiedKey(null);
+    }, 2000);
   };
 
   const handleTokenCopy = (text) => {
@@ -613,10 +655,10 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                 <input readOnly value={hookUrl} className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-sm text-text-secondary font-mono focus:outline-none" />
                 <button 
                   disabled={!config.webhookToken}
-                  onClick={() => handleCopy(hookUrl)} 
+                  onClick={() => handleCopy(hookUrl, 'generic_webhook')} 
                   className="bg-white/10 hover:bg-white/20 disabled:opacity-50 px-3 py-2 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center"
                 >
-                  {copied ? 'Copied' : 'Copy'}
+                  {copiedKey === 'generic_webhook' ? 'Copied' : 'Copy'}
                 </button>
               </div>
               <p className="text-[10px] text-text-secondary mt-2">Send a POST request to this URL to trigger this automation.</p>
@@ -648,7 +690,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
             <div className="pt-2 border-t border-white/5 space-y-3">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-medium text-text-secondary">Recent Webhook Events</label>
-                {isLoadingHistory && <Sparkles className="w-3 h-3 text-brand-primary animate-pulse" />}
+                <button
+                  type="button"
+                  onClick={() => fetchPayloadHistory(true)}
+                  disabled={isLoadingHistory}
+                  className="text-[10px] text-text-tertiary hover:text-white transition-colors flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/5 disabled:opacity-50"
+                  title="Check for new events"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isLoadingHistory ? 'animate-spin text-accent-blue' : ''}`} />
+                  <span>{isLoadingHistory ? 'Checking...' : 'Refresh'}</span>
+                </button>
               </div>
               
               {payloadHistory.length === 0 ? (
@@ -728,42 +779,6 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
               isDestructive={true}
             />
 
-            <ConfirmModal
-              isOpen={!!sheetToClear}
-              onClose={() => setSheetToClear(null)}
-              onConfirm={() => {
-                if (sheetToClear === 'trigger') {
-                  onUpdateNode(selectedNode.id, {
-                    ...selectedNode,
-                    config: {
-                      ...selectedNode.config,
-                      sheetUrl: '',
-                      spreadsheetId: '',
-                      range: ''
-                    }
-                  });
-                } else if (sheetToClear === 'action') {
-                  onUpdateNode(selectedNode.id, {
-                    ...selectedNode,
-                    config: {
-                      ...selectedNode.config,
-                      sheetUrl: '',
-                      spreadsheetId: '',
-                      range: '',
-                      rowDataMapping: [],
-                      newSheetName: '',
-                      searchQuery: ''
-                    }
-                  });
-                }
-                setSheetToClear(null);
-              }}
-              title="Change Connected Sheet"
-              message="Are you sure you want to change the connected sheet? This will clear your current configuration for this step."
-              confirmText="Change Sheet"
-              isDestructive={true}
-            />
-
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Trigger Event</label>
               <Select 
@@ -784,7 +799,6 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         );
 
     case 'sheets_trigger':
-        const method = config.method || 'polling';
         const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
         const activeOrigin = (config.customOrigin && config.customOrigin.trim()) 
           ? config.customOrigin.trim().replace(/\/+$/, '') 
@@ -800,89 +814,80 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
           }
         };
 
-        const appsScriptCode = `function setupTrigger() {\n  ScriptApp.newTrigger('onEditRow')\n    .forSpreadsheet(SpreadsheetApp.getActive())\n    .onEdit()\n    .create();\n}\n\nfunction onEditRow(e) {\n  var sheet = e.source.getActiveSheet();\n  if (sheet.getName() !== "${config.range || 'Sheet1'}") return;\n  \n  var row = e.range.getRow();\n  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];\n${config.triggerColumn ? `  var triggerColIndex = headers.indexOf("${config.triggerColumn}");\n  if (triggerColIndex !== -1 && e.range.getColumn() !== (triggerColIndex + 1)) return;\n` : ''}  \n  var data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];\n  \n  var payload = {};\n  for (var i = 0; i < headers.length; i++) {\n    payload[headers[i]] = data[i];\n  }\n\n  UrlFetchApp.fetch("${sheetsHookUrl}", {\n    method: "post",\n    contentType: "application/json",\n    payload: JSON.stringify(payload)\n  });\n}`;
-        const currentSignature = `${config.spreadsheetId}-${config.range}-${config.triggerColumn || ''}-${activeOrigin}`;
+        const targetTab = config.range || 'Sheet1';
+        const currentEvent = config.triggerEvent || 'row_added';
+        const targetRowRule = config.targetRowRule || 'any';
+        const targetRowIndex = parseInt(config.targetRowIndex, 10);
+        const triggerCol = config.triggerColumn || '';
+
+        // Dynamic condition based on event and row rule
+        let rowConditionCode = '';
+        if (currentEvent === 'row_added') {
+          rowConditionCode = '  // Only trigger when the newly added last row is edited\n  if (row < sheet.getLastRow()) {\n    Logger.log("Ignored: edit on row " + row + " is not the last row (" + sheet.getLastRow() + ")");\n    return;\n  }\n';
+        } else if (currentEvent === 'row_updated') {
+          if (targetRowRule === 'last') {
+            rowConditionCode = '  // Only trigger if edit is on the last row\n  if (row < sheet.getLastRow()) return;\n';
+          } else if (targetRowRule === 'specific' && !isNaN(targetRowIndex) && targetRowIndex > 1) {
+            rowConditionCode = `  // Only trigger for specific row ${targetRowIndex}\n  if (row !== ${targetRowIndex}) return;\n`;
+          }
+        }
+
+        let columnFilterCode = '';
+        if (triggerCol) {
+          columnFilterCode = `  var triggerColName = "${triggerCol}".trim().toLowerCase();\n  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];\n  var triggerColIndex = -1;\n  for (var h = 0; h < headers.length; h++) {\n    if (String(headers[h]).trim().toLowerCase() === triggerColName) {\n      triggerColIndex = h;\n      break;\n    }\n  }\n  if (triggerColIndex !== -1 && e.range.getColumn() !== (triggerColIndex + 1)) {\n    Logger.log("Ignored: edit in col " + e.range.getColumn() + ", but target col is " + (triggerColIndex + 1));\n    return;\n  }\n`;
+        }
+
+        const appsScriptCode = `function setupTrigger() {\n  // Clear any existing triggers to prevent duplicates\n  var triggers = ScriptApp.getProjectTriggers();\n  for (var i = 0; i < triggers.length; i++) {\n    if (triggers[i].getHandlerFunction() === 'onEditRow') {\n      ScriptApp.deleteTrigger(triggers[i]);\n    }\n  }\n  ScriptApp.newTrigger('onEditRow')\n    .forSpreadsheet(SpreadsheetApp.getActive())\n    .onEdit()\n    .create();\n  \n  // Automatically send the latest row as a test payload immediately\n  testSendLastRow();\n  Logger.log("Trigger setup and test payload sent successfully!");\n}\n\nfunction onEditRow(e) {\n  // If run manually from Apps Script without edit event e, fallback to sending the last row\n  if (!e || !e.source) {\n    testSendLastRow();\n    return;\n  }\n\n  var sheet = e.source.getActiveSheet();\n  if (sheet.getName().trim().toLowerCase() !== "${targetTab}".trim().toLowerCase()) {\n    Logger.log("Ignored: edit was on sheet '" + sheet.getName() + "', but target tab is '${targetTab}'");\n    return;\n  }\n  \n  var row = e.range.getRow();\n  if (row <= 1) return; // Skip header row\n${rowConditionCode}${columnFilterCode}\n  // Smart Debounce & Multi-Column Delay:\n  // If user or an automation is populating columns across this row, debounce rapid edits\n  // and wait 3.5 seconds so all remaining columns have time to settle.\n  var cache = CacheService.getScriptCache();\n  var lockKey = "edit_row_" + sheet.getName() + "_" + row;\n  if (cache.get(lockKey)) {\n    Logger.log("Debouncing rapid edit on row " + row);\n    return;\n  }\n  cache.put(lockKey, "1", 6);\n\n  // Wait 3.5 seconds to capture all populated column values\n  Utilities.sleep(3500);\n  SpreadsheetApp.flush();\n\n  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];\n  var data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];\n  var now = new Date();\n  \n  var payload = {\n    _event: "${currentEvent}",\n    _row: row,\n    _triggeredAt: now.toISOString(),\n    _triggeredDate: Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT", "yyyy-MM-dd"),\n    _triggeredTime: Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT", "HH:mm:ss")\n  };\n  for (var i = 0; i < headers.length; i++) {\n    var key = String(headers[i]).trim();\n    if (key) {\n      var cellVal = data[i];\n      if (cellVal instanceof Date) {\n        payload[key] = cellVal.toISOString();\n      } else {\n        payload[key] = (cellVal !== undefined && cellVal !== null) ? cellVal : "";\n      }\n    }\n  }\n\n  var response = UrlFetchApp.fetch("${sheetsHookUrl}", {\n    method: "post",\n    contentType: "application/json",\n    headers: {\n      "Bypass-Tunnel-Reminder": "true",\n      "bypass-tunnel-reminder": "true",\n      "ngrok-skip-browser-warning": "true",\n      "User-Agent": "Automatix-AppsScript"\n    },\n    muteHttpExceptions: true,\n    payload: JSON.stringify(payload)\n  });\n  Logger.log("Webhook fired for row " + row + " | Status: " + response.getResponseCode() + " | Body: " + response.getContentText());\n}\n\nfunction testSendLastRow() {\n  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("${targetTab}") || SpreadsheetApp.getActiveSheet();\n  var lastRow = sheet.getLastRow();\n  if (lastRow <= 1) {\n    Logger.log("No data rows found below header.");\n    return;\n  }\n  SpreadsheetApp.flush();\n  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];\n  var data = sheet.getRange(lastRow, 1, 1, sheet.getLastColumn()).getValues()[0];\n  var now = new Date();\n  \n  var payload = {\n    _event: "${currentEvent}",\n    _row: lastRow,\n    _triggeredAt: now.toISOString(),\n    _triggeredDate: Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT", "yyyy-MM-dd"),\n    _triggeredTime: Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT", "HH:mm:ss")\n  };\n  for (var i = 0; i < headers.length; i++) {\n    var key = String(headers[i]).trim();\n    if (key) {\n      var cellVal = data[i];\n      if (cellVal instanceof Date) {\n        payload[key] = cellVal.toISOString();\n      } else {\n        payload[key] = (cellVal !== undefined && cellVal !== null) ? cellVal : "";\n      }\n    }\n  }\n\n  var response = UrlFetchApp.fetch("${sheetsHookUrl}", {\n    method: "post",\n    contentType: "application/json",\n    headers: {\n      "Bypass-Tunnel-Reminder": "true",\n      "bypass-tunnel-reminder": "true",\n      "ngrok-skip-browser-warning": "true",\n      "User-Agent": "Automatix-AppsScript"\n    },\n    muteHttpExceptions: true,\n    payload: JSON.stringify(payload)\n  });\n  Logger.log("Test payload sent for row " + lastRow + " | Status: " + response.getResponseCode() + " | Body: " + response.getContentText());\n}`;
+        const currentSignature = `${config.spreadsheetId}-${config.range}-${currentEvent}-${targetRowRule}-${config.targetRowIndex || ''}-${triggerCol}-${activeOrigin}`;
 
         return (
           <div className="space-y-6">
+            {/* 1. Google Sheet Connection */}
             <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">Trigger Event</label>
-              <Select 
-                value={config.triggerEvent || 'row_added_updated'} 
-                onChange={(val) => handleChange('triggerEvent', val)}
-                options={[
-                  { value: 'row_added_updated', label: 'A new row is Added/Updated in a spreadsheet' }
-                ]}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">Trigger Method</label>
-              <Select 
-                value={method} 
-                onChange={(val) => handleChange('method', val)}
-                options={[
-                  { value: 'polling', label: '1-Minute Polling (No Code)' },
-                  { value: 'webhook', label: 'Real-Time (Apps Script)' }
-                ]}
-              />
-            </div>
-
-            <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-md mb-2">
-               <p className="text-xs text-amber-500 font-medium flex items-center gap-1.5">
-                 <AlertCircle className="w-4 h-4" />
-                 Public Access Required
-               </p>
-               <p className="text-[10px] text-amber-400 mt-1">
-                 You must set your Google Sheet sharing settings to "Anyone with the link can edit" for this to work. No Google account connection required!
-               </p>
-            </div>
-            
-            {!config.spreadsheetId && pseudoConnections.length > 0 && (
-              <div className="mb-4">
-                <label className="block text-xs font-medium text-text-secondary mb-1">Select from Connections</label>
-                <Select 
-                  value=""
-                  onChange={(val) => {
-                    if (val) {
-                      const sheet = pseudoConnections.find(s => s.id === val);
-                      if (sheet) {
-                        onUpdateNode(selectedNode.id, {
-                          ...selectedNode,
-                          config: {
-                            ...selectedNode.config,
-                            sheetUrl: `https://docs.google.com/spreadsheets/d/${sheet.id}/edit`,
-                            spreadsheetId: sheet.id,
-                            spreadsheetName: sheet.name
-                          }
-                        });
+              <label className="block text-xs font-medium text-text-secondary mb-1">Spreadsheet</label>
+              
+              {!config.spreadsheetId && pseudoConnections.length > 0 && (
+                <div className="mb-3">
+                  <Select 
+                    value=""
+                    onChange={(val) => {
+                      if (val) {
+                        const sheet = pseudoConnections.find(s => s.id === val);
+                        if (sheet) {
+                          onUpdateNode(selectedNode.id, {
+                            ...selectedNode,
+                            config: {
+                              ...selectedNode.config,
+                              sheetUrl: `https://docs.google.com/spreadsheets/d/${sheet.id}/edit`,
+                              spreadsheetId: sheet.id,
+                              spreadsheetName: sheet.name
+                            }
+                          });
+                        }
                       }
-                    }
-                  }}
-                  options={[
-                    { value: '', label: 'Select a previously used sheet...' },
-                    ...pseudoConnections.map(c => ({ value: c.id, label: c.name }))
-                  ]}
-                />
-                <p className="text-[10px] text-text-tertiary mt-1">
-                  Select a previously added Google Sheet from your connections to auto-fill the URL below.
-                </p>
-              </div>
-            )}
-            
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">Google Sheet URL</label>
+                    }}
+                    options={[
+                      { value: '', label: 'Select a previously connected sheet...' },
+                      ...pseudoConnections.map(c => ({ value: c.id, label: c.name }))
+                    ]}
+                  />
+                  <p className="text-[10px] text-text-tertiary mt-1">Or paste a new Google Sheet URL below.</p>
+                </div>
+              )}
+
               {config.spreadsheetId ? (
                 <div className="bg-black/50 border border-white/10 rounded-md p-3">
                   <div className="flex items-center justify-between">
                     <div className="overflow-hidden">
-                      <span className="text-[10px] text-green-400 flex items-center gap-1 mb-1"><CheckCircle2 className="w-3 h-3" /> Connected</span>
+                      <span className="text-[10px] text-emerald-400 flex items-center gap-1 mb-1 font-medium">
+                        <CheckCircle2 className="w-3 h-3 flex-shrink-0" /> Connected Spreadsheet
+                      </span>
                       {config.spreadsheetName && <p className="text-sm font-medium text-white truncate max-w-[200px]" title={config.spreadsheetName}>{config.spreadsheetName}</p>}
                       <p className="text-[10px] text-text-tertiary truncate max-w-[200px]" title={config.spreadsheetId}>ID: {config.spreadsheetId}</p>
                     </div>
                     <button 
                       onClick={() => setSheetToClear('trigger')}
-                      className="text-[10px] bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded transition-colors whitespace-nowrap flex-shrink-0 ml-2"
+                      className="text-[10px] bg-white/10 hover:bg-white/20 text-white px-2.5 py-1.5 rounded transition-colors whitespace-nowrap flex-shrink-0 ml-2"
                     >
                       Change Sheet
                     </button>
@@ -894,15 +899,28 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                    placeholder="https://docs.google.com/spreadsheets/d/..."
                    value={config.sheetUrl || ''} 
                    onChange={(e) => handleTriggerUrlChange(e.target.value)}
-                   className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue"
+                   className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue placeholder:text-text-tertiary"
                 />
               )}
             </div>
-            
+
+            {/* 2. Worksheet Tab */}
             <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">
-                Worksheet Tab
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-text-secondary">Worksheet Tab</label>
+                {config.spreadsheetId && (
+                  <button
+                    type="button"
+                    onClick={refetchSheets}
+                    disabled={loadingSheets}
+                    className="text-[10px] text-text-tertiary hover:text-white transition-colors flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/5 disabled:opacity-50"
+                    title="Refresh worksheet tabs"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${loadingSheets ? 'animate-spin text-accent-blue' : ''}`} />
+                    <span>{loadingSheets ? 'Loading...' : 'Refresh Tabs'}</span>
+                  </button>
+                )}
+              </div>
               {availableSheets.length > 0 ? (
                 <Select 
                   value={config.range || ''} 
@@ -919,77 +937,131 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                    disabled={loadingSheets}
                 />
               )}
-              {loadingSheets && <p className="text-[10px] text-text-tertiary mt-1 animate-pulse">Loading sheets...</p>}
+              {loadingSheets && <p className="text-[10px] text-text-tertiary mt-1 animate-pulse">Loading worksheet tabs...</p>}
             </div>
 
+            {/* 3. Trigger Event */}
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Trigger Event</label>
+              <Select 
+                value={currentEvent} 
+                onChange={(val) => handleChange('triggerEvent', val)}
+                options={[
+                  { value: 'row_added', label: 'New Row Added (Last Row Only)' },
+                  { value: 'row_updated', label: 'Row Updated / Cell Modified' }
+                ]}
+              />
+              <p className="text-[10px] text-text-tertiary mt-1">
+                {currentEvent === 'row_added' 
+                  ? 'Fires exclusively when a new row is added at the end of the sheet. Historical row edits are ignored.' 
+                  : 'Fires when existing cells or rows are edited based on your row/column rules below.'}
+              </p>
+            </div>
+
+            {/* 4. Row Updated Specific Settings */}
+            {currentEvent === 'row_updated' && (
+              <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Target Row Scope</label>
+                  <Select 
+                    value={targetRowRule} 
+                    onChange={(val) => handleChange('targetRowRule', val)}
+                    options={[
+                      { value: 'any', label: 'Any Row in Worksheet' },
+                      { value: 'last', label: 'Only the Last (Latest) Row' },
+                      { value: 'specific', label: 'Specific Row Number' }
+                    ]}
+                  />
+                </div>
+
+                {targetRowRule === 'specific' && (
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">Row Number (Row 2 or higher)</label>
+                    <input 
+                      type="number"
+                      min={2}
+                      placeholder="e.g. 2"
+                      value={config.targetRowIndex || ''}
+                      onChange={(e) => handleChange('targetRowIndex', e.target.value)}
+                      className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue font-mono"
+                    />
+                    <p className="text-[10px] text-text-tertiary mt-1">Row 1 is reserved for column headers.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 5. Trigger Column Filter */}
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">
-                Trigger Column (Optional)
+                Trigger Column {currentEvent === 'row_added' ? '(Optional Filter)' : ''}
               </label>
-              <p className="text-[10px] text-text-tertiary mb-2">If selected, the trigger will only fire when a cell in this specific column is edited.</p>
+              <p className="text-[10px] text-text-tertiary mb-1.5">
+                {currentEvent === 'row_added'
+                  ? 'Optionally fire only if a specific column is populated in the new row.'
+                  : 'Only trigger when a cell inside this specific column is modified.'}
+              </p>
               {availableHeaders.length > 0 ? (
                 <Select 
-                  value={config.triggerColumn || ''} 
+                  value={triggerCol} 
                   onChange={(val) => handleChange('triggerColumn', val)}
-                  options={[{ value: '', label: 'Any Column' }, ...availableHeaders.map(h => ({ value: h, label: h }))]}
+                  options={[{ value: '', label: 'Any Column (Trigger on all edits)' }, ...availableHeaders.map(h => ({ value: h, label: h }))]}
                 />
               ) : (
                 <input 
                    type="text" 
-                   placeholder={loadingHeaders ? "Fetching columns..." : "e.g. Email"}
-                   value={config.triggerColumn || ''} 
+                   placeholder={loadingHeaders ? "Fetching columns..." : "e.g. Email or Status (leave blank for Any Column)"}
+                   value={triggerCol} 
                    onChange={(e) => handleChange('triggerColumn', e.target.value)}
                    className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
                    disabled={loadingHeaders}
                 />
               )}
-              {loadingHeaders && <p className="text-[10px] text-text-tertiary mt-1 animate-pulse">Loading columns...</p>}
+              {loadingHeaders && <p className="text-[10px] text-text-tertiary mt-1 animate-pulse">Loading column headers...</p>}
             </div>
 
-            {method === 'webhook' ? (
-              <div className="bg-black/20 p-4 rounded-md border border-white/5 space-y-4">
-                <Toggle 
-                  label="Listening Mode (Catching for the first time)"
-                  checked={isSheetsListening}
-                  disabled={isPublished}
-                  onChange={(checked) => handleChange('isListening', checked)}
-                  description={isPublished ? "Listening mode is permanently active while workflow is published." : "Keep the webhook in listening mode to easily test and catch incoming requests."}
-                />
+            {/* 6. Real-Time Webhook & Apps Script Card */}
+            <div className="bg-black/20 p-4 rounded-md border border-white/5 space-y-4">
+              <Toggle 
+                label="Listening Mode (Catching for the first time)"
+                checked={isSheetsListening}
+                disabled={isPublished}
+                onChange={(checked) => handleChange('isListening', checked)}
+                description={isPublished ? "Listening mode is permanently active while workflow is published." : "Keep the webhook in listening mode to test and catch incoming row data."}
+              />
 
-                {isLocalhost && !config.customOrigin && (
-                  <div className="bg-amber-500/10 border border-amber-500/25 p-3 rounded-lg space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
-                      <AlertTriangle size={14} className="shrink-0" />
-                      <span>Localhost Webhook Notice</span>
-                    </div>
-                    <p className="text-[11px] text-text-secondary leading-relaxed">
-                      Google Sheets executes on <strong>Google Cloud servers</strong> and cannot send HTTP webhooks directly to your private <code className="text-amber-300 font-mono">localhost:3000</code>.
-                    </p>
-                    <div className="text-[11px] text-text-secondary space-y-1">
-                      <p className="text-white font-medium">To test this trigger:</p>
-                      <ul className="list-disc pl-4 space-y-0.5 text-text-tertiary">
-                        <li>
-                          <strong className="text-white">Option 1 (No setup):</strong> Switch Trigger Method to <strong>"1-Minute Polling (No Code)"</strong>.
-                        </li>
-                        <li>
-                          <strong className="text-white">Option 2 (Local Tunnel):</strong> Start a tunnel (e.g. <code className="text-white">npx localtunnel --port 3000</code> or <code className="text-white">ngrok http 3000</code>) and enter your URL below.
-                        </li>
-                        <li>
-                          <strong className="text-white">Option 3:</strong> Test on your live production deployment.
-                        </li>
-                      </ul>
-                    </div>
+              {isLocalhost && !config.customOrigin && (
+                <div className="bg-amber-500/10 border border-amber-500/25 p-3 rounded-lg space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                    <AlertTriangle size={14} className="shrink-0" />
+                    <span>Localhost Webhook Notice</span>
                   </div>
-                )}
+                  <p className="text-[11px] text-text-secondary leading-relaxed">
+                    Google Sheets runs on <strong>Google Cloud servers</strong> and cannot send HTTP webhooks directly to your private <code className="text-amber-300 font-mono">localhost:3000</code>.
+                  </p>
+                  <div className="text-[11px] text-text-secondary space-y-1">
+                    <p className="text-white font-medium">To test this trigger locally:</p>
+                    <ul className="list-disc pl-4 space-y-0.5 text-text-tertiary">
+                      <li>
+                        <strong className="text-white">Public Tunnel:</strong> Start a tunnel (e.g. <code className="text-white">npx untun@latest tunnel --port 3000</code> or <code className="text-white">ngrok http 3000</code>) and enter your URL below.
+                      </li>
+                      <li>
+                        <strong className="text-white">Live Production:</strong> Open and test your workflow on your deployed domain.
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              )}
 
-                {isLocalhost && (
+              {isLocalhost && (
+                <div className="space-y-2">
                   <div>
                     <label className="block text-xs font-medium text-text-secondary mb-1">
                       Public Tunnel / Domain Override (Optional for local testing)
                     </label>
                     <input 
                       type="text"
-                      placeholder="e.g. https://your-tunnel.loca.lt or https://automatix-sepia.vercel.app"
+                      placeholder="e.g. https://xxxx.trycloudflare.com or https://automatix-sepia.vercel.app"
                       value={config.customOrigin || ''}
                       onChange={(e) => handleChange('customOrigin', e.target.value)}
                       className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-accent-blue placeholder:text-text-tertiary"
@@ -998,147 +1070,192 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       If set, the generated Apps Script code and Webhook URL will automatically use this public endpoint.
                     </p>
                   </div>
-                )}
 
-                <div>
-                  <label className="block text-xs text-text-secondary mb-1">Webhook URL</label>
-                  <div className="flex items-center">
-                    <input readOnly value={sheetsHookUrl} className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" />
-                    <button 
-                      disabled={!config.webhookToken}
-                      onClick={() => handleCopy(sheetsHookUrl)} 
-                      className="bg-white/10 hover:bg-white/20 disabled:opacity-50 px-3 py-2 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center text-white"
-                    >
-                      {copied ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-                </div>
-
-                {config.lastCopiedSignature && config.lastCopiedSignature !== currentSignature && (
-                  <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-md">
-                    <p className="text-xs text-red-400 font-medium flex items-center gap-1.5">
-                      <AlertTriangle className="w-4 h-4 shrink-0" />
-                      Sheet Configuration Changed!
-                    </p>
-                    <p className="text-[10px] text-red-300 mt-1">
-                      You have changed the spreadsheet, worksheet tab, trigger column, or origin. You <strong>MUST</strong> copy the updated Apps Script code below and paste it into the Apps Script editor of your sheet for the trigger to work properly.
-                    </p>
-                  </div>
-                )}
-                
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-medium text-text-secondary flex items-center gap-2">
-                      Apps Script Code
-                      <button 
-                        onClick={() => setIsCodeCollapsed(!isCodeCollapsed)}
-                        className="text-[10px] text-text-tertiary hover:text-white transition-colors"
+                  <div className="bg-white/5 border border-white/10 rounded-md p-2.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-text-secondary flex items-center gap-1.5">
+                        <Terminal className="w-3.5 h-3.5 text-accent-blue" />
+                        <span>Start Terminal Tunnel (ngrok / localtunnel)</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy('npx ngrok http 3000', 'tunnel')}
+                        className="text-[10px] text-accent-blue hover:text-white transition-colors flex items-center gap-1 font-medium"
                       >
-                        {isCodeCollapsed ? '(Expand)' : '(Collapse)'}
-                      </button>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => setIsGuideModalOpen(true)}
-                        className="text-[10px] text-accent-blue hover:text-white transition-colors flex items-center gap-1"
-                      >
-                        <ExternalLink className="w-3 h-3" /> Learn How?
-                      </button>
-                      <button 
-                        onClick={() => {
-                          handleCopy(appsScriptCode);
-                          handleChange('lastCopiedSignature', currentSignature);
-                        }}
-                        className="flex items-center gap-1 text-[10px] bg-white/5 hover:bg-white/10 text-white px-2 py-1 rounded transition-colors"
-                      >
-                        <Copy className="w-3 h-3" /> {copied ? 'Copied' : 'Copy Code'}
+                        <Copy className="w-3 h-3" /> {copiedKey === 'tunnel' ? 'Copied' : 'Copy ngrok Command'}
                       </button>
                     </div>
+                    <div className="bg-black/60 rounded px-2.5 py-1.5 border border-white/5 flex items-center justify-between">
+                      <code className="text-[11px] text-emerald-400 font-mono select-all">
+                        npx ngrok http 3000
+                      </code>
+                    </div>
+                    <p className="text-[10px] text-text-tertiary leading-relaxed">
+                      Run this in your terminal to get a super-fast, reliable public URL, then paste the generated <code className="text-white">https://xxxx.ngrok-free.app</code> into the field above.
+                    </p>
                   </div>
-                  {!isCodeCollapsed && (
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">Webhook URL</label>
+                <div className="flex items-center">
+                  <input readOnly value={sheetsHookUrl} className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" />
+                  <button 
+                    disabled={!config.webhookToken}
+                    onClick={() => handleCopy(sheetsHookUrl, 'sheets_webhook')} 
+                    className="bg-white/10 hover:bg-white/20 disabled:opacity-50 px-3 py-2 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center text-white"
+                  >
+                    {copiedKey === 'sheets_webhook' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              {config.lastCopiedSignature && config.lastCopiedSignature !== currentSignature && (
+                <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-md">
+                  <p className="text-xs text-red-400 font-medium flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    Sheet Configuration Changed!
+                  </p>
+                  <p className="text-[10px] text-red-300 mt-1">
+                    You have changed the spreadsheet, worksheet tab, trigger event, target row, or column. You <strong>MUST</strong> copy the updated Apps Script code below and paste it into the Apps Script editor of your sheet.
+                  </p>
+                </div>
+              )}
+              
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-text-secondary">Apps Script Code</label>
+                    <button 
+                      type="button"
+                      onClick={() => setIsCodeCollapsed(!isCodeCollapsed)}
+                      className="text-[10px] text-text-tertiary hover:text-white transition-colors"
+                    >
+                      {isCodeCollapsed ? '(Expand)' : '(Collapse)'}
+                    </button>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setIsGuideModalOpen(true)}
+                    className="text-[11px] text-accent-blue hover:text-white transition-colors flex items-center gap-1 shrink-0"
+                  >
+                    <ExternalLink className="w-3 h-3 shrink-0" /> Learn How?
+                  </button>
+                </div>
+                
+                {!isCodeCollapsed && (
+                  <div className="relative">
                     <textarea 
                       readOnly 
                       rows={8} 
-                      className="w-full bg-black/50 border border-white/10 rounded-md p-3 text-[10px] text-accent-blue font-mono focus:outline-none resize-none custom-scrollbar"
+                      className="w-full bg-black/50 border border-white/10 rounded-md p-3 text-[10px] text-accent-blue font-mono focus:outline-none resize-none custom-scrollbar pb-11"
                       value={appsScriptCode}
                     />
-                  )}
-                </div>
-                
-                {/* Webhook History UI (Shared with generic Webhook) */}
-                <div className="pt-4 border-t border-white/5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-medium text-text-secondary">Recent Webhook Events</label>
-                    {isLoadingHistory && <Sparkles className="w-3 h-3 text-brand-primary animate-pulse" />}
-                  </div>
-                  
-                  {payloadHistory.length === 0 ? (
-                    <div className="text-[11px] text-text-tertiary bg-black/20 rounded border border-white/5 p-3 text-center">
-                      No recent payloads found. Waiting for row edits...
-                    </div>
-                  ) : (
-                    <Select
-                      value={config.selectedEventId || (config.capturedPayload ? payloadHistory.find(h => JSON.stringify(h.payload) === JSON.stringify(config.capturedPayload))?.id || 'custom' : '')}
-                      onChange={(val) => {
-                        const selected = payloadHistory.find(h => h.id === val);
-                        if (selected) {
-                          onUpdateNode(selectedNode.id, {
-                            ...selectedNode,
-                            config: {
-                              ...selectedNode.config,
-                              capturedPayload: selected.payload,
-                              selectedEventId: selected.id
-                            }
-                          });
-                        }
-                      }}
-                      options={payloadHistory.map((item) => ({
-                        value: item.id,
-                        label: `Row Edit #${item.id.split('-')[0]} - ${new Date(item.createdAt).toLocaleString()}`
-                      }))}
-                    />
-                  )}
-                </div>
-
-                {config.capturedPayload && (
-                  <div className="bg-black/20 p-4 rounded-md border border-brand-primary/30 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-[11px] font-medium text-brand-primary">Selected Payload Schema</label>
-                      <button
+                    <div className="absolute right-2 bottom-2.5">
+                      <button 
+                        type="button"
                         onClick={() => {
-                          onUpdateNode(selectedNode.id, {
-                            ...selectedNode,
-                            config: {
-                              ...selectedNode.config,
-                              capturedPayload: null,
-                              clearedAt: Date.now(),
-                              selectedEventId: null,
-                              isListening: true
-                            }
-                          });
+                          handleCopy(appsScriptCode, 'sheets_code');
+                          handleChange('lastCopiedSignature', currentSignature);
                         }}
-                        className="text-[10px] text-text-secondary hover:text-white transition-colors flex items-center gap-1"
+                        className="flex items-center gap-1.5 text-xs bg-accent-blue/20 hover:bg-accent-blue/30 text-accent-blue hover:text-white border border-accent-blue/30 px-3 py-1.5 rounded transition-all font-medium backdrop-blur-sm"
                       >
-                        <Trash2 className="w-3 h-3" /> Clear Selection
+                        <Copy className="w-3.5 h-3.5 shrink-0" /> {copiedKey === 'sheets_code' ? 'Copied' : 'Copy Code'}
                       </button>
-                    </div>
-                    <div className="bg-black/50 border border-white/10 rounded-md p-3 overflow-auto max-h-64 custom-scrollbar">
-                      <pre className="text-[11px] text-text-secondary font-mono leading-relaxed">
-                        {JSON.stringify(config.capturedPayload, null, 2)}
-                      </pre>
                     </div>
                   </div>
                 )}
+
+                {isCodeCollapsed && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      handleCopy(appsScriptCode, 'sheets_code');
+                      handleChange('lastCopiedSignature', currentSignature);
+                    }}
+                    className="w-full flex items-center justify-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-white border border-white/10 py-2 rounded transition-colors font-medium"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> {copiedKey === 'sheets_code' ? 'Copied to Clipboard' : 'Copy Apps Script Code'}
+                  </button>
+                )}
               </div>
-            ) : (
-              <div className="bg-blue-500/10 p-3 rounded-md border border-blue-500/20">
-                <p className="text-[11px] text-blue-400">
-                  <strong className="font-semibold block mb-1">Polling Active</strong>
-                  Automatix will check this sheet for new rows every minute in the background once published.
-                </p>
+              
+              {/* 7. Recent Webhook Events & Variable Schema Selection */}
+              <div className="pt-4 border-t border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium text-text-secondary">Recent Webhook Events</label>
+                  <button
+                    type="button"
+                    onClick={() => fetchPayloadHistory(true)}
+                    disabled={isLoadingHistory}
+                    className="text-[10px] text-text-tertiary hover:text-white transition-colors flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/5 disabled:opacity-50"
+                    title="Check for new events"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingHistory ? 'animate-spin text-accent-blue' : ''}`} />
+                    <span>{isLoadingHistory ? 'Checking...' : 'Refresh'}</span>
+                  </button>
+                </div>
+                
+                {payloadHistory.length === 0 ? (
+                  <div className="text-[11px] text-text-tertiary bg-black/20 rounded border border-white/5 p-3 text-center">
+                    No recent payloads found. Waiting for row edits...
+                  </div>
+                ) : (
+                  <Select 
+                    value={config.selectedEventId || (config.capturedPayload ? payloadHistory.find(h => JSON.stringify(h.payload) === JSON.stringify(config.capturedPayload))?.id || 'custom' : '')}
+                    onChange={(val) => {
+                      const selected = payloadHistory.find(h => h.id === val);
+                      if (selected) {
+                        onUpdateNode(selectedNode.id, {
+                          ...selectedNode,
+                          config: {
+                            ...selectedNode.config,
+                            capturedPayload: selected.payload,
+                            selectedEventId: selected.id
+                          }
+                        });
+                      }
+                    }}
+                    options={payloadHistory.map((item) => ({
+                      value: item.id,
+                      label: `Row Edit #${item.id.split('-')[0]} - ${new Date(item.createdAt).toLocaleString()}`
+                    }))}
+                  />
+                )}
               </div>
-            )}
-            
+
+              {config.capturedPayload && (
+                <div className="bg-black/20 p-4 rounded-md border border-brand-primary/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-medium text-brand-primary">Selected Payload Schema (Variables)</label>
+                    <button
+                      onClick={() => {
+                        onUpdateNode(selectedNode.id, {
+                          ...selectedNode,
+                          config: {
+                            ...selectedNode.config,
+                            capturedPayload: null,
+                            clearedAt: Date.now(),
+                            selectedEventId: null,
+                            isListening: true
+                          }
+                        });
+                      }}
+                      className="text-[10px] text-text-secondary hover:text-white transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Clear Selection
+                    </button>
+                  </div>
+                  <div className="bg-black/50 border border-white/10 rounded-md p-3 overflow-auto max-h-64 custom-scrollbar">
+                    <pre className="text-[11px] text-text-secondary font-mono leading-relaxed">
+                      {JSON.stringify(config.capturedPayload, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          
             <GoogleSheetsGuideModal 
               isOpen={isGuideModalOpen} 
               onClose={() => setIsGuideModalOpen(false)} 
@@ -1232,7 +1349,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   <div className="pt-2 border-t border-white/5 space-y-3 mt-4">
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-medium text-text-secondary">Recent Bookings</label>
-                      {isLoadingHistory && <Sparkles className="w-3 h-3 text-brand-primary animate-pulse" />}
+                      <button
+                        type="button"
+                        onClick={() => fetchPayloadHistory(true)}
+                        disabled={isLoadingHistory}
+                        className="text-[10px] text-text-tertiary hover:text-white transition-colors flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/5 disabled:opacity-50"
+                        title="Check for new bookings"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isLoadingHistory ? 'animate-spin text-accent-blue' : ''}`} />
+                        <span>{isLoadingHistory ? 'Checking...' : 'Refresh'}</span>
+                      </button>
                     </div>
                     
                     {payloadHistory.length === 0 ? (
@@ -1425,7 +1551,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
               <div className="pt-2 border-t border-white/5 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-medium text-text-secondary">Recent Instagram Events</label>
-                  {isLoadingHistory && <Sparkles className="w-3 h-3 text-brand-primary animate-pulse" />}
+                  <button
+                    type="button"
+                    onClick={() => fetchPayloadHistory(true)}
+                    disabled={isLoadingHistory}
+                    className="text-[10px] text-text-tertiary hover:text-white transition-colors flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/5 disabled:opacity-50"
+                    title="Check for new events"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingHistory ? 'animate-spin text-accent-blue' : ''}`} />
+                    <span>{isLoadingHistory ? 'Checking...' : 'Refresh'}</span>
+                  </button>
                 </div>
                 
                 {payloadHistory.length === 0 ? (
@@ -2293,9 +2428,23 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
 
             {!['CREATE_SHEET'].includes(config.actionType) && (
               <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">
-                  {config.actionType === 'DUPLICATE_SHEET' ? 'Source Sheet Name to Duplicate' : 'Worksheet Tab'}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-text-secondary">
+                    {config.actionType === 'DUPLICATE_SHEET' ? 'Source Sheet Name to Duplicate' : 'Worksheet Tab'}
+                  </label>
+                  {config.spreadsheetId && (
+                    <button
+                      type="button"
+                      onClick={refetchSheets}
+                      disabled={loadingSheets}
+                      className="text-[10px] text-text-tertiary hover:text-white transition-colors flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/5 disabled:opacity-50"
+                      title="Refresh worksheet tabs"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${loadingSheets ? 'animate-spin text-accent-blue' : ''}`} />
+                      <span>{loadingSheets ? 'Loading...' : 'Refresh Tabs'}</span>
+                    </button>
+                  )}
+                </div>
                 {availableSheets.length > 0 ? (
                   <Select 
                     value={config.range || ''} 
@@ -2478,22 +2627,13 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                           {map.key}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 min-w-0">
-                          <VariableInput 
-                            placeholder="Value to write"
-                            value={map.value}
-                            onChange={(val) => handleUpdateMapping(idx, 'value', val)}
-                            variables={variableGroups}
-                          />
-                        </div>
-                        <button 
-                          onClick={() => handleUpdateMapping(idx, 'value', '')} 
-                          className="p-1.5 text-text-secondary hover:text-white bg-black/50 border border-white/10 rounded"
-                          title="Clear value"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                      <div className="w-full">
+                        <VariableInput 
+                          placeholder="Value to write"
+                          value={map.value}
+                          onChange={(val) => handleUpdateMapping(idx, 'value', val)}
+                          variables={variableGroups}
+                        />
                       </div>
                     </div>
                   ))}
@@ -3462,6 +3602,43 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
             )}
           </div>
       </div>
+      <ConfirmModal
+        isOpen={!!sheetToClear}
+        onClose={() => setSheetToClear(null)}
+        onConfirm={() => {
+          if (sheetToClear === 'trigger') {
+            onUpdateNode(selectedNode.id, {
+              ...selectedNode,
+              config: {
+                ...selectedNode.config,
+                sheetUrl: '',
+                spreadsheetId: '',
+                spreadsheetName: '',
+                range: ''
+              }
+            });
+          } else if (sheetToClear === 'action') {
+            onUpdateNode(selectedNode.id, {
+              ...selectedNode,
+              config: {
+                ...selectedNode.config,
+                sheetUrl: '',
+                spreadsheetId: '',
+                spreadsheetName: '',
+                range: '',
+                rowDataMapping: [],
+                newSheetName: '',
+                searchQuery: ''
+              }
+            });
+          }
+          setSheetToClear(null);
+        }}
+        title="Change Connected Sheet"
+        message="Are you sure you want to change the connected sheet? This will clear your current configuration for this step."
+        confirmText="Change Sheet"
+        isDestructive={true}
+      />
       <ConnectionGuideModal
         isOpen={isConnectionGuideOpen}
         onClose={() => setIsConnectionGuideOpen(false)}

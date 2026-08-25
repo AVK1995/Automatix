@@ -14,7 +14,7 @@ export default function GoogleSheetsGuideModal({ isOpen, onClose }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/60"
           onClick={onClose}
         />
         
@@ -22,19 +22,34 @@ export default function GoogleSheetsGuideModal({ isOpen, onClose }) {
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="relative w-full max-w-2xl bg-[#0f1115] border border-white/10 rounded-xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+          className="relative w-full max-w-2xl bg-[#0f1115] border border-white/10 rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
         >
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/5 bg-white/[0.02]">
+          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/5 bg-white/[0.02]">
             <div>
               <h2 className="text-lg font-semibold text-white">Google Sheets Real-Time Trigger Guide</h2>
-              <p className="text-xs text-text-tertiary mt-1">Learn how to configure Apps Script and bypass security warnings.</p>
+              <p className="text-xs text-text-tertiary mt-0.5">Learn how to configure Apps Script and bypass security warnings.</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-text-tertiary hover:text-white transition-colors rounded-lg hover:bg-white/5"
+              className="p-1.5 text-text-tertiary hover:text-white transition-colors rounded-lg hover:bg-white/5 flex-shrink-0"
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+
+          {/* Video Guide Section above tabs */}
+          <div className="px-4 sm:px-6 pt-4 pb-3 bg-black/30 border-b border-white/5">
+            <div className="rounded-lg overflow-hidden border border-white/10 bg-black shadow-inner">
+              <video 
+                src="/assets/Google Sheet App Script Guide.mp4" 
+                controls 
+                autoPlay 
+                muted 
+                loop 
+                playsInline
+                className="w-full max-h-56 sm:max-h-64 object-contain bg-black"
+              />
+            </div>
           </div>
 
           <div className="flex border-b border-white/5">
@@ -81,16 +96,18 @@ export default function GoogleSheetsGuideModal({ isOpen, onClose }) {
                   <div className="flex gap-4">
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-accent-blue/20 text-accent-blue flex items-center justify-center font-bold text-xs">3</div>
                     <div>
-                      <h3 className="text-sm font-medium text-white">Save and Run</h3>
-                      <p className="text-xs text-text-secondary mt-1">Click the Save icon (💾). Then, from the dropdown menu at the top, select <code className="bg-white/10 px-1 rounded">setupTrigger</code> and click the <strong>Run</strong> button.</p>
+                      <h3 className="text-sm font-medium text-white">Save and Click Run</h3>
+                      <p className="text-xs text-text-secondary mt-1">Click the Save icon (💾). Keep <code className="bg-white/10 px-1 rounded">setupTrigger</code> selected at the top and click <strong>▶ Run</strong>.</p>
                     </div>
                   </div>
 
                   <div className="flex gap-4">
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-bold text-xs"><CheckCircle2 className="w-4 h-4" /></div>
                     <div>
-                      <h3 className="text-sm font-medium text-white">Authorize (Important!)</h3>
-                      <p className="text-xs text-text-secondary mt-1">Google will ask you to authorize the script. Click <strong>Review Permissions</strong>. See the next tab if you get an "Unverified App" warning.</p>
+                      <h3 className="text-sm font-medium text-white">Authorize Once & Done!</h3>
+                      <p className="text-xs text-text-secondary mt-1">
+                        Google will ask you to authorize the script (click <strong>Review Permissions</strong>). Once granted, the script automatically registers the real-time background trigger AND instantly shoots your test row to Automatix!
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -133,9 +150,8 @@ export default function GoogleSheetsGuideModal({ isOpen, onClose }) {
                   <div className="bg-white/5 border border-white/10 rounded-md p-4">
                     <h4 className="font-medium text-white mb-2">Solutions:</h4>
                     <ul className="list-disc pl-4 space-y-2">
-                      <li><strong>Use the "Polling" Method:</strong> Switch the Trigger Method in Automatix from "Real-Time (Apps Script)" to "1-Minute Polling (No Code)". This requires zero setup on your end and works automatically!</li>
-                      <li><strong>Contact Admin:</strong> Ask your Google Workspace administrator to enable Apps Script for your account.</li>
-                      <li><strong>Use a Personal Account:</strong> Apps Script is always available on personal @gmail.com accounts.</li>
+                      <li><strong>Contact Admin:</strong> Ask your Google Workspace administrator to enable Apps Script for your organization account.</li>
+                      <li><strong>Use a Personal Account:</strong> Apps Script is always enabled and available on standard @gmail.com personal accounts.</li>
                     </ul>
                   </div>
                 </div>

@@ -10,6 +10,9 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
 import customParseFormat from 'dayjs/plugin/customParseFormat.js';
+import { cleanValueForSheets } from '@/lib/dateUtils';
+import { getGoogleAccessToken } from '@/lib/googleAuth';
+import { executeGoogleSheetsAction } from '@/lib/sheetsExecutor';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -75,8 +78,13 @@ export const executeWorkflow = inngest.createFunction(
       return str.replace(/\{\{([^}]+)\}\}/g, (match, rawPath) => {
         const path = rawPath.trim();
         if (path.startsWith('trigger.body.')) {
-          const keyPath = path.replace('trigger.body.', '').replace(/\[/g, '.').replace(/\]/g, '');
-          let current = execution.currentNodeState?.payload;
+          const rawKey = path.slice('trigger.body.'.length);
+          const payload = execution.currentNodeState?.payload;
+          if (payload && payload[rawKey] !== undefined) {
+            return payload[rawKey];
+          }
+          const keyPath = rawKey.replace(/\[/g, '.').replace(/\]/g, '');
+          let current = payload;
           for (const k of keyPath.split('.')) {
             if (current === undefined || current === null) return match;
             current = current[k];
@@ -89,6 +97,13 @@ export const executeWorkflow = inngest.createFunction(
             let current = execution.currentNodeState?.stepOutputs?.[sId];
             if (parts.length === 2) {
               return current !== undefined ? (typeof current === 'object' ? (current.result ?? current.output ?? current.reply_text ?? JSON.stringify(current)) : current) : match;
+            }
+            const rawKey = parts.slice(2).join('.');
+            if (current && typeof current === 'object' && current[rawKey] !== undefined) {
+              return current[rawKey];
+            }
+            if (current && typeof current === 'object' && current.output && current.output[rawKey] !== undefined) {
+              return current.output[rawKey];
             }
             const keyPath = parts.slice(2).join('.').replace(/\[/g, '.').replace(/\]/g, '').split('.');
             if (current) {
@@ -713,33 +728,21 @@ export const executeWorkflow = inngest.createFunction(
                   output = await capiRes.json();
                 }
                 // --- 13. GOOGLE SHEETS ACTION ---
-                else if (node.integrationId === 'sheets' || node.integration?.id === 'sheets') {
-                  const spreadsheetId = resolveVars(node.config?.spreadsheetId || '');
-                  const sheetName = resolveVars(node.config?.sheetName || 'Sheet1');
-                  const rowData = node.config?.rowValues ? resolveVars(JSON.stringify(node.config.rowValues)) : '[]';
+                else if (['sheets', 'google_sheets'].includes(node.integrationId) || ['sheets', 'google_sheets'].includes(node.integration?.id)) {
+                  const accessToken = await getGoogleAccessToken(node.config?.connectionId, execution.workflow?.userId);
+                  if (!accessToken) {
+                    throw new Error('No active Google authentication token found for this step.');
+                  }
 
-                  const auth = new GoogleAuth({
-                    credentials: {
-                      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                      private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-                    },
-                    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+                  output = await executeGoogleSheetsAction({
+                    config: node.config || {},
+                    accessToken,
+                    resolveVars
                   });
-                  const client = await auth.getClient();
-                  const accessToken = (await client.getAccessToken()).token;
 
-                  const appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}:append?valueInputOption=USER_ENTERED`;
-                  const sheetRes = await fetch(appendUrl, {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${accessToken}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      values: [JSON.parse(rowData)]
-                    })
-                  });
-                  output = await sheetRes.json();
+                  if (output?.success === false) {
+                    throw new Error(output.error || 'Google Sheets action failed');
+                  }
                 }
                 // --- 14. FILTER ACTION ---
                 else if (node.integrationId === 'filter' || node.integration?.id === 'filter') {

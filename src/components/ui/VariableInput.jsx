@@ -247,16 +247,6 @@ export default function VariableInput({
       ref={containerRef}
       style={{ marginBottom: extraMargin > 0 ? `${extraMargin}px` : undefined }}
     >
-      {variables.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="absolute -top-6 right-0 flex items-center justify-center p-1 text-text-tertiary hover:text-accent-blue hover:bg-accent-blue/10 rounded transition-colors"
-          title="Insert Variable"
-        >
-          <Variable className="w-3.5 h-3.5" />
-        </button>
-      )}
       <div className={`relative flex items-center w-full bg-black/50 border border-white/10 rounded-md focus-within:border-accent-blue transition-colors ${className}`}>
         <div
           ref={editorRef}
@@ -407,6 +397,17 @@ export default function VariableInput({
           className={`flex-1 min-w-0 bg-transparent px-3 py-2 text-sm text-white focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-white/30 whitespace-pre-wrap break-words [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${!multiline && 'overflow-x-auto whitespace-nowrap'}`}
           style={{ minHeight: multiline ? `${rows * 1.5 + 1}rem` : '2.5rem' }}
         />
+
+        {variables.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="shrink-0 mr-2 px-1.5 py-0.5 text-accent-blue bg-accent-blue/10 hover:bg-accent-blue/20 border border-accent-blue/30 rounded text-xs font-mono font-bold transition-colors flex items-center gap-0.5 shadow-sm"
+            title="Insert Variable ({x})"
+          >
+            <span>{`{x}`}</span>
+          </button>
+        )}
       </div>
 
       <AnimatePresence>

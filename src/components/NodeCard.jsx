@@ -67,18 +67,25 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
     } else if (integrationId === 'sheets_trigger') {
       if (key === 'spreadsheetName') label = 'Spreadsheet';
       if (key === 'range') label = 'Worksheet Tab';
-      if (key === 'triggerColumn') {
-        label = 'Trigger Column';
-        if (!value) displayValue = 'Any Column';
-      }
       if (key === 'triggerEvent') {
         label = 'Trigger Event';
-        if (value === 'row_added_updated') displayValue = 'New Row Added/Updated';
+        if (value === 'row_added') displayValue = 'New Row Added';
+        else if (value === 'row_updated') displayValue = 'Row Updated';
+        else displayValue = 'New Row Added';
       }
-      if (key === 'method') {
-        label = 'Method';
-        if (value === 'polling') displayValue = '1-Minute Polling';
-        else if (value === 'webhook') displayValue = 'Real-Time (Apps Script)';
+      if (key === 'targetRowRule' && node.config?.triggerEvent === 'row_updated') {
+        label = 'Target Row';
+        if (value === 'last') displayValue = 'Last Row Only';
+        else if (value === 'specific') displayValue = `Row #${node.config?.targetRowIndex || '?'}`;
+        else displayValue = 'Any Row';
+      }
+      if (key === 'triggerColumn') {
+        label = 'Trigger Column';
+        displayValue = value ? value : 'Any Column';
+      }
+      if (key === 'isListening') {
+        label = 'Mode';
+        displayValue = value ? 'Listening for Payload' : 'Active';
       }
     } else if (integrationId === 'schedule') {
       if (key === 'interval') label = 'Interval';
