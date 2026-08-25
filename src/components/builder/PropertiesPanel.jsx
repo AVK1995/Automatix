@@ -785,8 +785,12 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
 
     case 'sheets_trigger':
         const method = config.method || 'polling';
-        const sheetsOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-        const sheetsHookUrl = config.webhookToken ? `${sheetsOrigin}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}` : 'Generating link...';
+        const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const activeOrigin = (config.customOrigin && config.customOrigin.trim()) 
+          ? config.customOrigin.trim().replace(/\/+$/, '') 
+          : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+        const sheetsHookUrl = config.webhookToken ? `${activeOrigin}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}` : 'Generating link...';
+        const isSheetsListening = isPublished ? true : (config.isListening !== false);
         
         const handleTriggerUrlChange = (val) => {
           handleChange('sheetUrl', val);
@@ -797,7 +801,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         };
 
         const appsScriptCode = `function setupTrigger() {\n  ScriptApp.newTrigger('onEditRow')\n    .forSpreadsheet(SpreadsheetApp.getActive())\n    .onEdit()\n    .create();\n}\n\nfunction onEditRow(e) {\n  var sheet = e.source.getActiveSheet();\n  if (sheet.getName() !== "${config.range || 'Sheet1'}") return;\n  \n  var row = e.range.getRow();\n  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];\n${config.triggerColumn ? `  var triggerColIndex = headers.indexOf("${config.triggerColumn}");\n  if (triggerColIndex !== -1 && e.range.getColumn() !== (triggerColIndex + 1)) return;\n` : ''}  \n  var data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];\n  \n  var payload = {};\n  for (var i = 0; i < headers.length; i++) {\n    payload[headers[i]] = data[i];\n  }\n\n  UrlFetchApp.fetch("${sheetsHookUrl}", {\n    method: "post",\n    contentType: "application/json",\n    payload: JSON.stringify(payload)\n  });\n}`;
-        const currentSignature = `${config.spreadsheetId}-${config.range}-${config.triggerColumn || ''}`;
+        const currentSignature = `${config.spreadsheetId}-${config.range}-${config.triggerColumn || ''}-${activeOrigin}`;
 
         return (
           <div className="space-y-6">
@@ -944,11 +948,71 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
 
             {method === 'webhook' ? (
               <div className="bg-black/20 p-4 rounded-md border border-white/5 space-y-4">
+                <Toggle 
+                  label="Listening Mode (Catching for the first time)"
+                  checked={isSheetsListening}
+                  disabled={isPublished}
+                  onChange={(checked) => handleChange('isListening', checked)}
+                  description={isPublished ? "Listening mode is permanently active while workflow is published." : "Keep the webhook in listening mode to easily test and catch incoming requests."}
+                />
+
+                {isLocalhost && !config.customOrigin && (
+                  <div className="bg-amber-500/10 border border-amber-500/25 p-3 rounded-lg space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                      <AlertTriangle size={14} className="shrink-0" />
+                      <span>Localhost Webhook Notice</span>
+                    </div>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">
+                      Google Sheets executes on <strong>Google Cloud servers</strong> and cannot send HTTP webhooks directly to your private <code className="text-amber-300 font-mono">localhost:3000</code>.
+                    </p>
+                    <div className="text-[11px] text-text-secondary space-y-1">
+                      <p className="text-white font-medium">To test this trigger:</p>
+                      <ul className="list-disc pl-4 space-y-0.5 text-text-tertiary">
+                        <li>
+                          <strong className="text-white">Option 1 (No setup):</strong> Switch Trigger Method to <strong>"1-Minute Polling (No Code)"</strong>.
+                        </li>
+                        <li>
+                          <strong className="text-white">Option 2 (Local Tunnel):</strong> Start a tunnel (e.g. <code className="text-white">npx localtunnel --port 3000</code> or <code className="text-white">ngrok http 3000</code>) and enter your URL below.
+                        </li>
+                        <li>
+                          <strong className="text-white">Option 3:</strong> Test on your live production deployment.
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {isLocalhost && (
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">
+                      Public Tunnel / Domain Override (Optional for local testing)
+                    </label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. https://your-tunnel.loca.lt or https://automatix-sepia.vercel.app"
+                      value={config.customOrigin || ''}
+                      onChange={(e) => handleChange('customOrigin', e.target.value)}
+                      className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-accent-blue placeholder:text-text-tertiary"
+                    />
+                    <p className="text-[10px] text-text-tertiary mt-1">
+                      If set, the generated Apps Script code and Webhook URL will automatically use this public endpoint.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs text-text-secondary mb-1">Webhook URL</label>
-                  <input readOnly value={sheetsHookUrl} className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" />
+                  <div className="flex items-center">
+                    <input readOnly value={sheetsHookUrl} className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" />
+                    <button 
+                      disabled={!config.webhookToken}
+                      onClick={() => handleCopy(sheetsHookUrl)} 
+                      className="bg-white/10 hover:bg-white/20 disabled:opacity-50 px-3 py-2 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center text-white"
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
-                
 
                 {config.lastCopiedSignature && config.lastCopiedSignature !== currentSignature && (
                   <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-md">
@@ -957,7 +1021,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       Sheet Configuration Changed!
                     </p>
                     <p className="text-[10px] text-red-300 mt-1">
-                      You have changed the spreadsheet, worksheet tab, or trigger column. You <strong>MUST</strong> copy the updated Apps Script code below and paste it into the Apps Script editor of your sheet for the trigger to work properly.
+                      You have changed the spreadsheet, worksheet tab, trigger column, or origin. You <strong>MUST</strong> copy the updated Apps Script code below and paste it into the Apps Script editor of your sheet for the trigger to work properly.
                     </p>
                   </div>
                 )}

@@ -95,7 +95,13 @@ async function handleRequest(request, { params }, method) {
       nodes = workflow.nodesJson;
     }
 
-    const webhookNode = nodes.find(n => n.integration?.id === 'webhook' || n.type === 'trigger_instagram' || (n.type === 'TRIGGER' && n.config?.webhookToken));
+    const webhookNode = nodes.find(n => 
+      (n.config?.webhookToken === token) ||
+      n.integration?.id === 'webhook' || 
+      n.integration?.id === 'sheets_trigger' ||
+      n.type === 'trigger_instagram' || 
+      (n.type === 'TRIGGER' && n.config?.webhookToken)
+    );
     
     if (!webhookNode || webhookNode.config?.webhookToken !== token) {
       return NextResponse.json({ error: 'Invalid webhook token' }, { status: 401 });
@@ -106,7 +112,7 @@ async function handleRequest(request, { params }, method) {
       return NextResponse.json({ error: `Method ${method} not allowed for this webhook` }, { status: 405 });
     }
 
-    const isListening = webhookNode.config?.isListening === true;
+    const isListening = webhookNode.config?.isListening !== false;
 
     if (!workflow.isActive && !isListening) {
       return NextResponse.json({ error: 'Workflow is currently inactive and not listening' }, { status: 400 });
