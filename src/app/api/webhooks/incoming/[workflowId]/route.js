@@ -99,6 +99,7 @@ async function handleRequest(request, { params }, method) {
       (n.config?.webhookToken === token) ||
       n.integration?.id === 'webhook' || 
       n.integration?.id === 'sheets_trigger' ||
+      n.integration?.id === 'storage_trigger' ||
       n.type === 'trigger_instagram' || 
       (n.type === 'TRIGGER' && n.config?.webhookToken)
     );

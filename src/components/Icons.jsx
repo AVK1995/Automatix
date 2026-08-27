@@ -167,3 +167,63 @@ export const SlackIcon = ({ className = "w-5 h-5", size, ...props }) => (
     <line x1="15" y1="4" x2="15" y2="20" />
   </svg>
 );
+
+export const CloudDriveIcon = ({ className = "w-5 h-5", size, ...props }) => (
+  <svg 
+    className={className} 
+    style={size ? { width: size, height: size } : undefined} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth={1.8} 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    {...props}
+  >
+    <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+    <path d="M12 12v9" />
+    <path d="m16 16-4-4-4 4" />
+  </svg>
+);
+
+export const AiBrainIcon = ({ className = "w-5 h-5", size, ...props }) => (
+  <svg 
+    className={className} 
+    style={size ? { width: size, height: size } : undefined} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth={1.8} 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    {...props}
+  >
+    <path d="M12 2v4" />
+    <path d="M12 18v4" />
+    <path d="M4.93 4.93l2.83 2.83" />
+    <path d="M16.24 16.24l2.83 2.83" />
+    <path d="M2 12h4" />
+    <path d="M18 12h4" />
+    <path d="M4.93 19.07l2.83-2.83" />
+    <path d="M16.24 7.76l2.83-2.83" />
+    <circle cx="12" cy="12" r="3.5" fill="currentColor" fillOpacity={0.2} />
+  </svg>
+);
+
+export const InstagramPublishIcon = ({ className = "w-5 h-5", size, ...props }) => (
+  <svg 
+    className={className} 
+    style={size ? { width: size, height: size } : undefined} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth={1.8} 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    {...props}
+  >
+    <rect x="2" y="2" width="20" height="20" rx="5.5" ry="5.5" />
+    <path d="M12 8v8" />
+    <path d="m8 12 4-4 4 4" />
+  </svg>
+);

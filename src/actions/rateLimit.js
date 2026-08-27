@@ -17,9 +17,14 @@ export class RateLimitExceeded extends Error {
 export async function checkAndLogUsage(integrationId, quotaTier = 'free') {
   if (!integrationId) return true; // No integration specified
 
-  // Determine limits based on tier (requests per day for now, as minute tracking needs Redis for precision, 
-  // but we'll simulate a minute limit via daily cap for simplicity unless we use Inngest concurrency)
-  // For daily tracking:
+  // Verify that the integration actually exists in the database to prevent foreign key errors
+  const connection = await prisma.integration.findUnique({
+    where: { id: integrationId },
+    select: { id: true }
+  });
+  if (!connection) return true;
+
+  // Determine limits based on tier (requests per day)
   const dailyLimit = quotaTier === 'premium' ? 1000 : 200;
 
   const today = new Date();

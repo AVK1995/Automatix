@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Key, Mail, Lock } from 'lucide-react';
 import { addByokConnection } from '@/actions/connections';
 import { useRouter } from 'next/navigation';
+import Select from '@/components/ui/Select';
 
 export default function ByokModal({ isOpen, onClose }) {
   const router = useRouter();
@@ -57,14 +58,14 @@ export default function ByokModal({ isOpen, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">Service Type</label>
-            <select 
+            <Select 
               value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue"
-            >
-              <option value="google">Google Service Account (Sheets)</option>
-              <option value="smtp">SMTP (App Password)</option>
-            </select>
+              onChange={(val) => setProvider(val)}
+              options={[
+                { value: 'google', label: 'Google Service Account (Sheets)' },
+                { value: 'smtp', label: 'SMTP (App Password)' }
+              ]}
+            />
           </div>
 
           <div>

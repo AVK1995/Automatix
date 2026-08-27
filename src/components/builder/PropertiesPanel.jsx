@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal } from 'lucide-react';
+import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal, HardDrive, ShieldCheck, FileVideo, Image, Eye, Film, Music, FileText, Download, Zap, Lightbulb, Crown, Coins, Gauge, Clock, ChevronRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import ConnectIntegration from './ConnectIntegration';
@@ -10,10 +10,13 @@ import VariableInput from '@/components/ui/VariableInput';
 import MediaUploader from '@/components/ui/MediaUploader';
 import QuotaUpgradeModal from '@/components/ui/QuotaUpgradeModal';
 import GoogleSheetsGuideModal from './GoogleSheetsGuideModal';
+import GoogleDriveGuideModal from './GoogleDriveGuideModal';
+import MediaPreviewModal from './MediaPreviewModal';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 import WebhookGuideModal from '@/components/builder/WebhookGuideModal';
-import { testNodeAction } from '@/actions/testNode';
-import { getWebhookPayloadHistory, simulateInstagramDM } from '@/actions/workflows';
+import AiLatencyBenchmarkModal from './AiLatencyBenchmarkModal';
+import { testNodeAction, verifyAiKeyAction } from '@/actions/testNode';
+import { getWebhookPayloadHistory, simulateInstagramDM, simulateStorageUpload } from '@/actions/workflows';
 import { getRecentBookings } from '@/actions/bookings';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import HtmlEditor from '@/components/ui/HtmlEditor';
@@ -21,6 +24,8 @@ import HtmlPreviewModal from '@/components/ui/HtmlPreviewModal';
 import VariableMenu from '@/components/ui/VariableMenu';
 import ColorPicker from '@/components/ui/ColorPicker';
 import QuestionBuilder from '@/components/builder/QuestionBuilder';
+import { sanitizeAndInspectPrompt } from '@/lib/mediaAnalyzer';
+import { detectFileCategory, TASK_OPERATIONS_BY_CATEGORY } from '@/lib/aiProvider';
 import Link from 'next/link';
 import { getCalendars, getCalendarById } from '@/actions/calendars';
 import { NODE_TYPES } from '@/constants';
@@ -28,6 +33,7 @@ import { NODE_TYPES } from '@/constants';
 export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onUpdateNode, onSelectNode, onConfigureReminderStep, onSimulate, workflowId, isPublished }) {
   const [schemaValue, setSchemaValue] = useState(selectedNode?.config?.schema || '');
   const [copied, setCopied] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -51,7 +57,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         config: JSON.parse(JSON.stringify(selectedNode.config || {}))
       });
 
-      const isWebhookTrigger = ['webhook', 'sheets_trigger'].includes(selectedNode?.integration?.id) || selectedNode?.type === 'trigger_instagram';
+      const isWebhookTrigger = ['webhook', 'sheets_trigger', 'storage_trigger'].includes(selectedNode?.integration?.id) || selectedNode?.type === 'trigger_instagram';
       // Auto-generate webhook token if missing
       if (isWebhookTrigger && !selectedNode?.config?.webhookToken) {
         onUpdateNode(selectedNode.id, (prevNode) => {
@@ -61,6 +67,24 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
             config: {
               ...prevNode.config,
               webhookToken: crypto.randomUUID ? crypto.randomUUID() : 'gen-' + Date.now() + Math.random().toString(36).substring(2)
+            }
+          };
+        });
+      }
+
+      if (selectedNode?.integration?.id === 'storage_trigger') {
+        onUpdateNode(selectedNode.id, (prevNode) => {
+          if (!prevNode) return prevNode;
+          const conf = prevNode.config || {};
+          if (conf.provider && conf.folderName) return prevNode;
+          return {
+            ...prevNode,
+            config: {
+              provider: conf.provider || 'gdrive',
+              folderName: conf.folderName || 'Automatix Uploads',
+              fileFilter: conf.fileFilter || 'ALL',
+              isListening: conf.isListening !== false,
+              webhookToken: conf.webhookToken || (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : `token_${Date.now()}`)
             }
           };
         });
@@ -159,12 +183,115 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
 
   const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
   const [isWebhookGuideOpen, setIsWebhookGuideOpen] = useState(false);
+  const [isStorageGuideOpen, setIsStorageGuideOpen] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [storageSimData, setStorageSimData] = useState({
+    fileName: 'sample_upload.mp4',
+    fileUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    fileType: 'video/mp4',
+    fileSizeMB: '14.2',
+    folderName: 'Automatix Uploads'
+  });
+  const [isStorageSimulating, setIsStorageSimulating] = useState(false);
   const [payloadHistory, setPayloadHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isConnectionGuideOpen, setIsConnectionGuideOpen] = useState(false);
   const [simulatedMessage, setSimulatedMessage] = useState('');
   const [simulationError, setSimulationError] = useState('');
   const [isSimulating, setIsSimulating] = useState(false);
+  const [aiPreviewLoading, setAiPreviewLoading] = useState(false);
+  const [aiPreviewData, setAiPreviewData] = useState(null);
+  const [aiPreviewError, setAiPreviewError] = useState(null);
+  const [aiCopiedField, setAiCopiedField] = useState(null);
+  const [isVerifyingAiKey, setIsVerifyingAiKey] = useState(false);
+  const [aiKeyStatus, setAiKeyStatus] = useState(null);
+  const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
+  const [aiElapsedTime, setAiElapsedTime] = useState(0);
+
+  const handleVerifyAiKey = async () => {
+    const nodeConfig = selectedNode?.config || {};
+    if (!nodeConfig.apiKey?.trim()) {
+      toast.error('Please enter an API key first');
+      return;
+    }
+    setIsVerifyingAiKey(true);
+    setAiKeyStatus(null);
+    try {
+      const res = await verifyAiKeyAction({
+        provider: nodeConfig.provider || 'gemini',
+        apiKey: nodeConfig.apiKey,
+        baseUrl: nodeConfig.baseUrl
+      });
+      setAiKeyStatus(res);
+      if (res.valid) {
+        toast.success(res.message || 'API Key verified successfully!');
+      } else {
+        toast.error(res.error || 'Key verification failed');
+      }
+    } catch (err) {
+      setAiKeyStatus({ valid: false, error: err.message });
+      toast.error('Verification error');
+    } finally {
+      setIsVerifyingAiKey(false);
+    }
+  };
+
+  const handleTestAiMediator = async () => {
+    const nodeConfig = selectedNode?.config || {};
+    const provider = nodeConfig?.provider || 'native';
+
+    if (provider !== 'native' && provider !== 'automatix' && !nodeConfig?.apiKey?.trim()) {
+      setAiPreviewError(`Please enter a valid ${(provider || 'AI').toUpperCase()} API key, or switch to the free Automatix Native Engine.`);
+      return;
+    }
+    setAiPreviewLoading(true);
+    setAiPreviewError(null);
+    setAiElapsedTime(0);
+
+    const startTime = Date.now();
+    const timerInterval = setInterval(() => {
+      setAiElapsedTime((Date.now() - startTime) / 1000);
+    }, 100);
+
+    try {
+      const storageNode = nodes.find(n => n.integration?.id === 'storage_trigger' || n.id === 'storage_trigger');
+      const activeStorageFile = storageNode?.config?.capturedPayload || null;
+
+      const res = await testNodeAction({
+        type: 'ACTION',
+        integration: { id: 'ai_mediator' },
+        integrationId: 'ai_mediator',
+        config: {
+          ...nodeConfig,
+          fileDetails: activeStorageFile,
+          mediaUrl: nodeConfig.mediaUrl || activeStorageFile?.fileUrl || activeStorageFile?.downloadUrl || ''
+        }
+      });
+
+      clearInterval(timerInterval);
+      const totalElapsedSec = (Date.now() - startTime) / 1000;
+      setAiElapsedTime(totalElapsedSec);
+
+      if (res.success && res.data) {
+        setAiPreviewData({
+          ...res.data,
+          generationTimeSec: res.data.generationTimeSec || totalElapsedSec.toFixed(2),
+          generationTimeMs: res.data.generationTimeMs || Math.round(totalElapsedSec * 1000)
+        });
+        toast.success(`AI output generated in ${totalElapsedSec.toFixed(2)}s!`);
+      } else {
+        setAiPreviewError(res.error || 'Failed to generate output from AI model');
+      }
+    } catch (err) {
+      clearInterval(timerInterval);
+      setAiPreviewError(err.message || 'Execution error while testing AI node');
+    } finally {
+      clearInterval(timerInterval);
+      setAiPreviewLoading(false);
+    }
+  };
   const fetchPayloadHistory = async (showLoader = false) => {
     const isCalendar = selectedNode?.integration?.id === 'calendar';
     if (!isCalendar && (!workflowId || workflowId === 'new')) return;
@@ -213,16 +340,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
   };
 
   useEffect(() => {
-    if (['webhook', 'sheets_trigger', 'calendar', 'instagram'].includes(selectedNode?.integration?.id)) {
+    if (['webhook', 'sheets_trigger', 'storage_trigger', 'calendar', 'instagram'].includes(selectedNode?.integration?.id)) {
       fetchPayloadHistory(true);
     }
   }, [selectedNode?.id, workflowId, selectedNode?.config?.connectionId]);
 
   useEffect(() => {
     let intervalId;
-    const isActuallyListening = isPublished ? true : (selectedNode?.config?.isListening || false);
+    const isActuallyListening = isPublished ? true : (selectedNode?.config?.isListening !== false);
     
-    if (['webhook', 'sheets_trigger', 'instagram'].includes(selectedNode?.integration?.id) && isActuallyListening && workflowId && workflowId !== 'new') {
+    if (['webhook', 'sheets_trigger', 'storage_trigger', 'instagram'].includes(selectedNode?.integration?.id) && isActuallyListening && workflowId && workflowId !== 'new') {
       intervalId = setInterval(() => {
         fetchPayloadHistory(false);
       }, 2000);
@@ -428,7 +555,24 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       const tId = anc.integration?.id;
       const tConfig = anc.config || {};
       
-      if (tId === 'sheets_trigger') {
+      if (tId === 'storage_trigger') {
+        if (tConfig.capturedPayload && typeof tConfig.capturedPayload === 'object') {
+          try {
+            group.variables.push(...flattenObject(tConfig.capturedPayload));
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          group.variables.push(
+            { id: 'trigger.body.fileName', label: 'fileName', example: 'sample_upload.mp4' },
+            { id: 'trigger.body.fileUrl', label: 'fileUrl (Direct Media URL)', example: 'https://automatix.storage/drive/sample-media.mp4' },
+            { id: 'trigger.body.fileType', label: 'fileType', example: 'video/mp4' },
+            { id: 'trigger.body.fileSizeMB', label: 'fileSizeMB', example: '14.2' },
+            { id: 'trigger.body.folderName', label: 'folderName', example: 'Automatix Uploads' },
+            { id: 'trigger.body.uploadedAt', label: 'uploadedAt (ISO Date)', example: '2026-08-27T12:00:00.000Z' }
+          );
+        }
+      } else if (tId === 'sheets_trigger') {
         if (tConfig.capturedPayload && typeof tConfig.capturedPayload === 'object') {
           try {
             group.variables.push(...flattenObject(tConfig.capturedPayload));
@@ -514,8 +658,31 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
           }
         }
       }
-    } else if (anc.type === 'ACTION' || anc.type === 'FORMATTER' || anc.integration?.id?.includes('formatter')) {
-      if (anc.testResult?.data && typeof anc.testResult.data === 'object') {
+    } else if (anc.type === 'ACTION' || anc.type === 'FORMATTER' || anc.integration?.id?.includes('formatter') || anc.integration?.id === 'ai_mediator' || anc.integration?.id === 'instagram_publish') {
+      if (anc.integration?.id === 'ai_mediator') {
+        group.variables.push(
+          { id: `steps.${anc.id}.output`, label: 'output (Full Primary Generated Text)', example: 'Ready to level up your workflow? Check out these 3 game-changing tips!' },
+          { id: `steps.${anc.id}.caption`, label: 'caption (Social Media Caption)', example: 'Ready to level up your workflow? Check out these 3 game-changing tips! #Automation #SaaS #Productivity' },
+          { id: `steps.${anc.id}.title`, label: 'title / hook (Headline or Title Hook)', example: '3 Workflow Hacks You Need in 2026' },
+          { id: `steps.${anc.id}.hook`, label: 'hook (Scroll-Stopping First Line)', example: 'Stop scrolling if you want to elevate your content game!' },
+          { id: `steps.${anc.id}.hashtags`, label: 'hashtags (Curated Hashtags)', example: '#Automation #Growth #AI #Productivity' },
+          { id: `steps.${anc.id}.summary`, label: 'summary (Document / Media Summary & Takeaways)', example: 'Key takeaways: 1. Instant cloud uploads. 2. Visual AI captioning. 3. Zero manual publishing.' },
+          { id: `steps.${anc.id}.transcript`, label: 'transcript (Speech-to-Text Transcript)', example: '[00:00 - 00:15] Welcome to the episode! Today we are discussing scalable automated workflows...' },
+          { id: `steps.${anc.id}.actionItems`, label: 'actionItems (Extracted Tasks & Checklist)', example: '1. [High Priority] Finalize stakeholder review.\n2. [Actionable] Implement trigger validation.' },
+          { id: `steps.${anc.id}.insights`, label: 'insights (Data Trends & Analysis)', example: '📊 Overview: +28.4% efficiency improvement across automated cycles.' },
+          { id: `steps.${anc.id}.tokensUsed`, label: 'tokensUsed (Total Tokens Consumed)', example: '559' },
+          { id: `steps.${anc.id}.model`, label: 'model (AI Engine / Model Name)', example: 'Google Gemini (gemini-flash-lite-latest)' },
+          { id: `steps.${anc.id}.createdAt`, label: 'createdAt (Generation Timestamp ISO)', example: new Date().toISOString() },
+          { id: `steps.${anc.id}.timestamp`, label: 'timestamp (Execution Timestamp)', example: new Date().toISOString() },
+          { id: `steps.${anc.id}.rawOutput`, label: 'rawOutput (Raw Generated Response)', example: 'Full generated response' }
+        );
+      } else if (anc.integration?.id === 'instagram_publish') {
+        group.variables.push(
+          { id: `steps.${anc.id}.publishedPostId`, label: 'publishedPostId', example: '17923485720194857' },
+          { id: `steps.${anc.id}.permalink`, label: 'permalink (Post URL)', example: 'https://www.instagram.com/p/C_abc123/' },
+          { id: `steps.${anc.id}.status`, label: 'status', example: 'SUCCESS' }
+        );
+      } else if (anc.testResult?.data && typeof anc.testResult.data === 'object') {
         try {
           group.variables.push(...flattenObject(anc.testResult.data, '', true, anc.id));
         } catch (e) {
@@ -853,6 +1020,615 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
               <label className="block text-xs text-text-secondary mb-1">Expected JSON Schema (Optional)</label>
               <textarea rows={4} placeholder="{}" value={config.schema || ''} onChange={(e) => handleChange('schema', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue resize-none" />
             </div>
+          </div>
+        );
+
+    case 'storage_trigger':
+        const isStorageLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const currentStorageBrowserOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+        const isStorageStaleTunnel = config.customOrigin && (config.customOrigin.includes('ngrok') || config.customOrigin.includes('localtunnel') || config.customOrigin.includes('trycloudflare') || config.customOrigin.includes('localhost'));
+        
+        const activeStorageOrigin = (!isStorageLocalhost && isStorageStaleTunnel)
+          ? currentStorageBrowserOrigin
+          : ((config.customOrigin && config.customOrigin.trim()) 
+              ? config.customOrigin.trim().replace(/\/+$/, '') 
+              : currentStorageBrowserOrigin);
+        const storageHookUrl = config.webhookToken ? `${activeStorageOrigin}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}` : 'Generating link...';
+        const isStorageListening = isPublished ? true : (config.isListening !== false);
+        const currentStorageSignature = `${config.provider || 'gdrive'}-${config.folderName || ''}-${config.fileFilter || 'ALL'}-${config.webhookToken || ''}`;
+        const isStorageStale = Boolean(config.lastCopiedSignature && config.lastCopiedSignature !== currentStorageSignature);
+
+        const gdriveScriptCode = `/**
+ * Automatix Cloud Storage Trigger Script (Google Drive)
+ * Auto-registers background time triggers and pushes new uploads to your Automatix workflow.
+ */
+function setupTrigger() {
+  // Clear any existing triggers to prevent duplicates
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'watchFolderForNewFiles') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  
+  // Create 1-minute automatic background time trigger
+  ScriptApp.newTrigger('watchFolderForNewFiles')
+    .timeBased()
+    .everyMinutes(1)
+    .create();
+  
+  // Run once immediately to check folder & send test verification payload
+  watchFolderForNewFiles();
+  Logger.log("Google Drive Trigger registered and active!");
+}
+
+function watchFolderForNewFiles() {
+  var targetFolderName = "${config.folderName || 'Automatix Uploads'}".trim();
+  var webhookUrl = "${storageHookUrl}";
+  var fileFilter = "${config.fileFilter || 'ALL'}";
+  
+  var folders = DriveApp.getFoldersByName(targetFolderName);
+  if (!folders.hasNext()) {
+    Logger.log("Folder not found: " + targetFolderName + ". Please create this folder in Google Drive.");
+    return;
+  }
+  
+  var folder = folders.next();
+  var files = folder.getFiles();
+  var props = PropertiesService.getScriptProperties();
+  var processed = JSON.parse(props.getProperty("PROCESSED_FILES") || "{}");
+  
+  while (files.hasNext()) {
+    var file = files.next();
+    var fileId = file.getId();
+    var mimeType = file.getMimeType().toLowerCase();
+    
+    // Apply Media Format Filter
+    if (fileFilter === 'IMAGES_ONLY' && !mimeType.startsWith('image/')) continue;
+    if (fileFilter === 'VIDEOS_ONLY' && !mimeType.startsWith('video/')) continue;
+    if (fileFilter === 'DOCUMENTS_ONLY' && (mimeType.startsWith('image/') || mimeType.startsWith('video/'))) continue;
+    
+    if (!processed[fileId]) {
+      var fileSizeMB = (file.getSize() / (1024 * 1024)).toFixed(2);
+      if (parseFloat(fileSizeMB) > 25) {
+        Logger.log("Skipping file exceeding 25MB limit: " + file.getName());
+        continue;
+      }
+      
+      try {
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch (shareErr) {
+        Logger.log("Sharing permission warning: " + shareErr.message);
+      }
+      var downloadUrl = "https://lh3.googleusercontent.com/d/" + fileId;
+      var payload = {
+        fileName: file.getName(),
+        fileUrl: downloadUrl,
+        fileType: file.getMimeType(),
+        fileSizeMB: parseFloat(fileSizeMB),
+        folderName: targetFolderName,
+        uploadedAt: new Date().toISOString()
+      };
+      
+      var options = {
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify(payload),
+        headers: {
+          "Bypass-Tunnel-Reminder": "true",
+          "bypass-tunnel-reminder": "true",
+          "User-Agent": "Automatix-AppsScript"
+        },
+        muteHttpExceptions: true
+      };
+      
+      try {
+        var response = UrlFetchApp.fetch(webhookUrl, options);
+        Logger.log("Automatix Webhook Fired: " + file.getName() + " -> Status: " + response.getResponseCode());
+        processed[fileId] = new Date().toISOString();
+      } catch (err) {
+        Logger.log("Webhook Error: " + err.message);
+      }
+    }
+  }
+  
+  props.setProperty("PROCESSED_FILES", JSON.stringify(processed));
+}
+`;
+
+        const oneDrivePayload = `{
+  "fileName": "@{triggerOutputs()?['body/Name']}",
+  "fileUrl": "@{triggerOutputs()?['body/@odata.mediaEditLink']}",
+  "fileType": "@{triggerOutputs()?['body/ContentType']}",
+  "fileSizeMB": "@{div(triggerOutputs()?['body/Size'], 1048576)}",
+  "folderName": "${config.folderName || 'Automatix Uploads'}"
+}`;
+
+        const customCurlCode = `curl -X POST "${storageHookUrl}" -H "Content-Type: application/json" -d '{\\n  "fileName": "sample_file.mp4",\\n  "fileUrl": "https://example.com/files/sample_file.mp4",\\n  "fileType": "video/mp4",\\n  "fileSizeMB": 14.2,\\n  "folderName": "${config.folderName || 'Automatix Uploads'}"\\n}'`;
+
+        return (
+          <div className="space-y-4">
+
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Storage Provider</label>
+              <Select 
+                value={config.provider || 'gdrive'} 
+                onChange={(val) => handleChange('provider', val)}
+                options={[
+                  { value: 'gdrive', label: 'Google Drive' },
+                  { value: 'onedrive', label: 'Microsoft OneDrive' },
+                  { value: 'proton', label: 'Proton Drive' },
+                  { value: 'custom', label: 'Custom / Direct Webhook API' }
+                ]}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Target Folder Name or Path</label>
+              <input
+                type="text"
+                placeholder="e.g. Automatix Uploads, Invoices, Media, or Reports"
+                value={config.folderName || ''}
+                onChange={(e) => handleChange('folderName', e.target.value)}
+                className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue"
+              />
+              <p className="text-[10px] text-text-tertiary mt-1">Files dropped in this folder will trigger the automation.</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Media Format Filter</label>
+              <Select 
+                value={config.fileFilter || 'ALL'} 
+                onChange={(val) => handleChange('fileFilter', val)}
+                options={[
+                  { value: 'ALL', label: 'All Files (Images, Videos, Docs)' },
+                  { value: 'IMAGES_ONLY', label: 'Images Only (.jpg, .png, .webp)' },
+                  { value: 'VIDEOS_ONLY', label: 'Videos Only (.mp4, .mov)' },
+                  { value: 'DOCUMENTS_ONLY', label: 'Documents Only (.pdf, .doc, .txt)' }
+                ]}
+              />
+              <div className="mt-1.5 p-2 bg-sky-500/10 border border-sky-500/20 rounded-md text-[11px] text-sky-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 text-sky-400" />
+                  <span>Max File Size: <strong>25 MB</strong> per file</span>
+                </span>
+                <span className="text-[10px] text-white/50">Auto-enforced</span>
+              </div>
+            </div>
+
+            {isStorageLocalhost && !config.customOrigin && (
+              <div className="bg-amber-500/10 border border-amber-500/25 p-3 rounded-lg space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                  <AlertTriangle size={14} className="shrink-0" />
+                  <span>Localhost Webhook Notice</span>
+                </div>
+                <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Google Apps Script runs on <strong>Google Cloud servers</strong> and cannot send HTTP webhooks directly to your private <code className="text-amber-300 font-mono">localhost:3000</code>.
+                </p>
+                <div className="text-[11px] text-text-secondary space-y-1">
+                  <p className="text-white font-medium">How to test:</p>
+                  <ul className="list-disc pl-4 space-y-0.5 text-text-tertiary">
+                    <li>
+                      <strong className="text-white">Instant Test:</strong> Use the <strong>"Simulate File Upload"</strong> button below to test without any tunnel!
+                    </li>
+                    <li>
+                      <strong className="text-white">Real Drive Uploads:</strong> Start a public tunnel (e.g. <code className="text-white">npx ngrok http 3000</code>) and enter your URL below.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {isStorageLocalhost && (
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">
+                    Public Tunnel / Domain Override (Optional for local testing)
+                  </label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. https://xxxx.trycloudflare.com or https://xxxx.ngrok-free.app"
+                    value={config.customOrigin || ''}
+                    onChange={(e) => handleChange('customOrigin', e.target.value)}
+                    className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-accent-blue placeholder:text-text-tertiary"
+                  />
+                  <p className="text-[10px] text-text-tertiary mt-1">
+                    If set, the generated Apps Script code and Webhook URL will automatically use this public endpoint.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Ingestion Webhook URL */}
+            <div className="pt-3 border-t border-white/5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-text-secondary">Webhook Ingestion Endpoint</span>
+                <span className="text-[10px] text-text-tertiary">HTTP POST</span>
+              </div>
+
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  readOnly
+                  value={storageHookUrl}
+                  className="w-full bg-black/50 border border-white/10 rounded-md pl-3 pr-20 py-2 text-xs text-white font-mono focus:outline-none select-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(storageHookUrl);
+                    setCopied(true);
+                    toast.success('Webhook Ingestion URL copied!');
+                    onUpdateNode(selectedNode.id, (prevNode) => ({
+                      ...prevNode,
+                      config: {
+                        ...prevNode?.config,
+                        lastCopiedSignature: currentStorageSignature
+                      }
+                    }));
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="absolute right-1 top-1 bottom-1 px-3 bg-white/10 hover:bg-white/20 text-white rounded text-xs font-medium transition-colors flex items-center gap-1"
+                >
+                  {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+
+              {!isStorageLocalhost && isStorageStaleTunnel && (
+                <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-md flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-amber-300">Stale tunnel URL detected.</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange('customOrigin', currentStorageBrowserOrigin);
+                      toast.success('Live domain synchronized!');
+                    }}
+                    className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded text-[10px] font-semibold flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Sync Live Domain
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* CONFIGURATION CHANGED WARNING */}
+            {config.lastCopiedSignature && config.lastCopiedSignature !== currentStorageSignature && (
+              <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-md">
+                <p className="text-xs text-red-400 font-medium flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Storage Configuration Changed!
+                </p>
+                <p className="text-[10px] text-red-300 mt-1 leading-relaxed">
+                  You have changed the target folder, provider, or media filter. You <strong>MUST</strong> copy the updated Apps Script code below, paste it into Google Apps Script, and click <strong>Run (setupTrigger)</strong> once to apply your new settings.
+                </p>
+              </div>
+            )}
+
+            {/* DYNAMIC PROVIDER SETUP & SCRIPT SECTION */}
+            {(config.provider === 'gdrive' || !config.provider) && (
+              <div className="p-3.5 bg-black/40 border border-sky-500/20 rounded-lg space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-400 min-w-0">
+                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">Google Apps Script</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsStorageGuideOpen(true)}
+                      className="text-[11px] text-sky-400 hover:text-sky-300 font-medium flex items-center gap-1 whitespace-nowrap"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 flex-shrink-0" /> Guide
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(gdriveScriptCode);
+                        setCopiedScript(true);
+                        toast.success('Google Apps Script copied to clipboard!');
+                        onUpdateNode(selectedNode.id, (prevNode) => ({
+                          ...prevNode,
+                          config: {
+                            ...prevNode?.config,
+                            lastCopiedSignature: currentStorageSignature
+                          }
+                        }));
+                        setTimeout(() => setCopiedScript(false), 2000);
+                      }}
+                      className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 rounded text-[11px] font-semibold flex items-center gap-1.5 border border-sky-500/30 whitespace-nowrap"
+                    >
+                      {copiedScript ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0 text-green-400" /> : <Copy className="w-3.5 h-3.5 flex-shrink-0" />}
+                      <span>{copiedScript ? 'Copied' : 'Copy Script'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-text-secondary space-y-1 bg-black/50 p-2.5 rounded border border-white/5 leading-relaxed">
+                  <p><strong className="text-white">1.</strong> Open <a href="https://script.google.com" target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">script.google.com</a> & click <strong>New project</strong>.</p>
+                  <p><strong className="text-white">2.</strong> Paste the script below & click <strong>Save</strong>.</p>
+                  <p><strong className="text-white">3.</strong> Keep <code className="text-sky-300 font-mono">setupTrigger</code> selected at the top and click <strong>Run</strong> (authorize once & you're done!).</p>
+                </div>
+
+                <div className="relative">
+                  <pre className="p-2.5 bg-black/60 border border-white/10 rounded-md text-[10px] font-mono text-white/80 overflow-x-auto max-h-[140px] select-all">
+                    {gdriveScriptCode}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {config.provider === 'onedrive' && (
+              <div className="p-3.5 bg-black/40 border border-blue-500/20 rounded-lg space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-400 min-w-0">
+                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">Power Automate</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsStorageGuideOpen(true)}
+                      className="text-[11px] text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 whitespace-nowrap"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 flex-shrink-0" /> Guide
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(oneDrivePayload);
+                        toast.success('Power Automate JSON payload copied!');
+                      }}
+                      className="px-2.5 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded text-[11px] font-semibold flex items-center gap-1.5 border border-blue-500/30 whitespace-nowrap"
+                    >
+                      <Copy className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>Copy JSON</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-text-secondary space-y-1 bg-black/50 p-2.5 rounded border border-white/5 leading-relaxed">
+                  <p><strong className="text-white">1.</strong> Open <a href="https://make.powerautomate.com" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">make.powerautomate.com</a> & create an Automated Cloud Flow.</p>
+                  <p><strong className="text-white">2.</strong> Trigger: <strong>When a file is created (OneDrive)</strong> in folder <strong className="text-white">{config.folderName || 'Automatix Uploads'}</strong>.</p>
+                  <p><strong className="text-white">3.</strong> Action: <strong>HTTP (POST)</strong> → URL: your Webhook URL above, Body: JSON snippet below.</p>
+                </div>
+
+                <div className="relative">
+                  <pre className="p-2.5 bg-black/60 border border-white/10 rounded-md text-[10px] font-mono text-white/80 overflow-x-auto max-h-[140px] select-all">
+                    {oneDrivePayload}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {(config.provider === 'proton' || config.provider === 'custom') && (
+              <div className="p-3.5 bg-black/40 border border-purple-500/20 rounded-lg space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-400 min-w-0">
+                    <Terminal className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">Ingestion API</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(customCurlCode);
+                      toast.success('cURL command copied!');
+                    }}
+                    className="px-2.5 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded text-[11px] font-semibold flex items-center gap-1.5 border border-purple-500/30 whitespace-nowrap flex-shrink-0"
+                  >
+                    <Copy className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Copy cURL</span>
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-text-secondary">
+                  Send a <strong>POST</strong> request with <code>Content-Type: application/json</code> whenever a file is uploaded to your custom storage or Proton Drive sync folder:
+                </p>
+
+                <div className="relative">
+                  <pre className="p-2.5 bg-black/60 border border-white/10 rounded-md text-[10px] font-mono text-white/80 overflow-x-auto max-h-[140px] select-all">
+                    {customCurlCode}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between p-2.5 bg-black/30 rounded-md border border-white/5">
+              <div>
+                <p className="text-xs font-medium text-white">Listening for Uploads</p>
+                <p className="text-[10px] text-text-tertiary mt-0.5">Captures incoming files in real time</p>
+              </div>
+              <Toggle
+                checked={isStorageListening}
+                onChange={(val) => handleChange('isListening', val)}
+              />
+            </div>
+
+            <div className="p-3 bg-black/40 border border-white/10 rounded-lg space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-sky-400" /> Simulate File Upload
+                  </span>
+                </div>
+                <p className="text-[10px] text-text-tertiary">Send a mock file upload event to test downstream steps in your workflow.</p>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-text-secondary mb-0.5">File Name</label>
+                    <input
+                      type="text"
+                      value={storageSimData.fileName}
+                      onChange={(e) => setStorageSimData(prev => ({ ...prev, fileName: e.target.value }))}
+                      className="w-full bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-text-secondary mb-0.5">Media Type</label>
+                    <Select
+                      value={storageSimData.fileType}
+                      onChange={(val) => setStorageSimData(prev => ({ ...prev, fileType: val }))}
+                      buttonClassName="py-1 text-xs"
+                      options={[
+                        { value: 'video/mp4', label: 'Video (.mp4)' },
+                        { value: 'image/jpeg', label: 'Image (.jpg / .jpeg)' },
+                        { value: 'image/png', label: 'Image (.png)' },
+                        { value: 'application/pdf', label: 'Document (.pdf)' }
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isStorageSimulating}
+                  onClick={async () => {
+                    setIsStorageSimulating(true);
+                    try {
+                      const res = await simulateStorageUpload(workflowId, {
+                        ...storageSimData,
+                        folderName: config.folderName || 'Automatix Uploads'
+                      });
+                      if (res.success) {
+                        toast.success('Simulated file upload event dispatched!');
+                        fetchPayloadHistory(true);
+                      }
+                    } catch (e) {
+                      toast.error(e.message || 'Simulation failed');
+                    } finally {
+                      setIsStorageSimulating(false);
+                    }
+                  }}
+                  className="w-full py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-semibold rounded text-xs transition-colors border border-sky-500/30 flex items-center justify-center gap-1.5"
+                >
+                  {isStorageSimulating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <PlayCircle className="w-3.5 h-3.5" />}
+                  {isStorageSimulating ? 'Dispatching...' : 'Dispatch Test File Event'}
+                </button>
+              </div>
+
+              {/* ACTIVE CAPTURED TRIGGER FILE (SINGLE-SLOT OVERWRITE BUFFER) */}
+              {(() => {
+                const activeFile = config.capturedPayload || (payloadHistory.length > 0 ? payloadHistory[0].payload : null);
+                if (!activeFile) {
+                  return (
+                    <div className="p-3 bg-black/20 border border-white/5 rounded-lg text-center space-y-1">
+                      <p className="text-xs text-text-tertiary">No live file captured yet.</p>
+                      <p className="text-[10px] text-text-tertiary">Drop a file in your Drive folder or click Dispatch Test File Event above.</p>
+                    </div>
+                  );
+                }
+
+                const fileType = (activeFile.fileType || '').toLowerCase();
+                const isCaptVideo = fileType.startsWith('video/') || !!(activeFile.fileName || '').match(/\.(mp4|mov|webm|m4v)$/i);
+                const isCaptImage = fileType.startsWith('image/') || !!(activeFile.fileName || '').match(/\.(jpg|jpeg|png|webp|gif)$/i);
+                const isCaptPdf = fileType.includes('pdf') || !!(activeFile.fileName || '').match(/\.pdf$/i);
+
+                return (
+                  <div className="p-3.5 bg-black/50 border border-sky-500/30 rounded-xl space-y-3 shadow-lg shadow-sky-950/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span className="text-xs font-semibold text-white">Active Trigger File (Live Buffer)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleChange('capturedPayload', null);
+                          handleChange('selectedEventId', null);
+                          handleChange('clearedAt', Date.now());
+                          toast.success('Trigger buffer cleared');
+                        }}
+                        className="text-[10px] text-text-tertiary hover:text-red-400 transition-colors"
+                      >
+                        Clear Buffer
+                      </button>
+                    </div>
+
+                    {/* File details card */}
+                    <div className="p-2.5 bg-zinc-900/80 border border-white/10 rounded-lg flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`p-2 rounded-lg shrink-0 ${
+                          isCaptVideo ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' :
+                          isCaptImage ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                          isCaptPdf ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                          'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                        }`}>
+                          {isCaptVideo ? <Film className="w-4 h-4" /> :
+                           isCaptImage ? <ImageIcon className="w-4 h-4" /> :
+                           isCaptPdf ? <FileText className="w-4 h-4" /> :
+                           <HardDrive className="w-4 h-4" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-white truncate max-w-[180px]" title={activeFile.fileName || 'Uploaded File'}>
+                            {activeFile.fileName || 'Uploaded File'}
+                          </p>
+                          <p className="text-[10px] text-text-tertiary truncate" title={`${activeFile.fileSizeMB ? `${activeFile.fileSizeMB} MB` : '< 25 MB'} • ${activeFile.fileType || 'binary'}`}>
+                            {activeFile.fileSizeMB ? `${activeFile.fileSizeMB} MB` : '< 25 MB'} • {activeFile.fileType || 'binary'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewFile(activeFile);
+                          setIsPreviewModalOpen(true);
+                        }}
+                        className="px-2.5 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-semibold rounded-md text-xs transition-all border border-sky-500/30 flex items-center gap-1.5 shrink-0 shadow-sm"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Preview & Play</span>
+                      </button>
+                    </div>
+
+                    {/* Storage & Variable Mapping Pill */}
+                    <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[11px] text-emerald-300 space-y-1">
+                      <div className="flex items-center justify-between font-semibold">
+                        <span className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Single-Slot Overwrite Active</span>
+                        </span>
+                        <span className="text-[10px] bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-200 font-mono">
+                          25 MB Limit OK
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-emerald-300/80 leading-relaxed">
+                        Overwrites automatically with every new upload to prevent storage bloat. Mapped to <code className="bg-emerald-950 px-1 py-0.5 rounded text-emerald-200 font-mono select-all">{"{{trigger.body.fileUrl}}"}</code>.
+                      </p>
+                    </div>
+
+                    {/* Secondary buttons */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{trigger.body.fileUrl}}');
+                          toast.success('Variable {{trigger.body.fileUrl}} copied!');
+                        }}
+                        className="flex-1 py-1 px-2 bg-white/5 hover:bg-white/10 text-white rounded text-[11px] font-medium border border-white/5 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>Copy Variable</span>
+                      </button>
+                      {activeFile.fileUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(activeFile.fileUrl);
+                            toast.success('Direct Media URL copied!');
+                          }}
+                          className="py-1 px-2.5 bg-white/5 hover:bg-white/10 text-white rounded text-[11px] font-medium border border-white/5 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Direct URL</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
           </div>
         );
 
@@ -1797,6 +2573,64 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                         onChange={(val) => handleChange('mediaUrl', val)} 
                         variables={variableGroups} 
                       />
+
+                      {(() => {
+                        const dmStorageNode = nodes.find(n => n.integration?.id === 'storage_trigger' || n.id === 'storage_trigger');
+                        const dmActiveStorageFile = dmStorageNode?.config?.capturedPayload || null;
+                        if (!dmActiveStorageFile) return null;
+                        return (
+                          <div className="mt-2 p-2.5 rounded-lg bg-zinc-900/90 border border-blue-500/20 flex items-center justify-between gap-2.5 shadow-inner">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <div className="w-7 h-7 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0" title="Cloud Storage Trigger Payload">
+                                <HardDrive className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-xs font-medium text-white truncate max-w-[180px] sm:max-w-[240px]" title={dmActiveStorageFile.fileName || 'Captured File'}>
+                                    {dmActiveStorageFile.fileName || 'Captured File'}
+                                  </span>
+                                  <span className="text-[10px] text-text-tertiary flex-shrink-0" title={`Size: ${dmActiveStorageFile.fileSizeMB ? `${dmActiveStorageFile.fileSizeMB} MB` : 'Trigger File'}`}>
+                                    • {dmActiveStorageFile.fileSizeMB ? `${dmActiveStorageFile.fileSizeMB} MB` : 'Trigger File'}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-text-tertiary truncate" title="Active Drive File • Single-slot auto-overwritten buffer">
+                                  Active Drive File • Single-slot auto-overwritten
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleChange('mediaUrl', '{{trigger.body.fileUrl}}');
+                                  toast.success(`Mapped to ${dmActiveStorageFile.fileName || 'captured file'}`);
+                                }}
+                                className={`text-[11px] px-2.5 py-1 rounded-md font-medium flex items-center gap-1.5 transition-all ${
+                                  config.mediaUrl === '{{trigger.body.fileUrl}}'
+                                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-inner'
+                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm'
+                                }`}
+                              >
+                                <Sparkles className="w-3 h-3 text-blue-300 flex-shrink-0" />
+                                <span>{config.mediaUrl === '{{trigger.body.fileUrl}}' ? 'Mapped' : 'Auto-Fill'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPreviewFile(dmActiveStorageFile);
+                                  setIsPreviewModalOpen(true);
+                                }}
+                                className="p-1.5 text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 rounded-md border border-sky-500/20 transition-all flex items-center justify-center flex-shrink-0"
+                                title="Preview captured file"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       <p className="text-[10px] text-text-tertiary mt-1">If you upload a file, the URL will automatically appear here.</p>
                     </div>
                   </div>
@@ -1863,6 +2697,787 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        );
+
+      case 'ai_mediator':
+        return (
+          <div className="space-y-4">
+            {/* Premium Credit Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                <Crown className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                <span>AI Content Synthesizer</span>
+              </div>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/25 flex items-center gap-1">
+                <Coins className="w-2.5 h-2.5 text-amber-400 flex-shrink-0" />
+                <span>1 Credit / Run</span>
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">AI Provider</label>
+              <Select 
+                value={config.provider || 'native'} 
+                onChange={(val) => {
+                  handleChange('provider', val);
+                  setAiKeyStatus(null);
+                }}
+                options={[
+                  { value: 'native', label: 'Automatix AI Engine (Built-in • Default)' },
+                  { value: 'gemini', label: 'Google Gemini (BYOK)' },
+                  { value: 'openai', label: 'OpenAI ChatGPT (BYOK)' },
+                  { value: 'claude', label: 'Anthropic Claude (BYOK)' },
+                  { value: 'custom', label: 'Custom OpenAI-Compatible (BYOK)' }
+                ]}
+              />
+            </div>
+
+            {(!config.provider || config.provider === 'native') ? (
+              <div className="p-3 bg-gradient-to-r from-accent-blue/15 to-purple-500/10 border border-accent-blue/30 rounded-lg space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-accent-blue">
+                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Automatix AI Engine Active</span>
+                  </div>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Built-in • No API Key Needed
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/70 leading-relaxed">
+                  Automated multimodal analysis and social copy synthesis built directly into Automatix. Test generations and preview steps are free and unlimited.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-text-secondary">API Key (Bring Your Own Key)</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleVerifyAiKey}
+                      disabled={isVerifyingAiKey || !config.apiKey}
+                      className="text-[10px] text-accent-blue hover:text-accent-blue/80 font-medium disabled:opacity-40 flex items-center gap-1"
+                    >
+                      {isVerifyingAiKey ? (
+                        <>
+                          <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Verify Key</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="text-[10px] text-text-tertiary hover:text-white"
+                    >
+                      {showApiKey ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  name="ai_byok_api_key_field"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  style={{ WebkitTextSecurity: showApiKey ? 'none' : 'disc' }}
+                  placeholder={config.provider === 'gemini' ? 'AIzaSy...' : (config.provider === 'claude' ? 'sk-ant-...' : 'sk-...')}
+                  value={config.apiKey || ''}
+                  onChange={(e) => {
+                    handleChange('apiKey', e.target.value);
+                    setAiKeyStatus(null);
+                  }}
+                  className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-accent-blue"
+                />
+
+                {aiKeyStatus && (
+                  <div className={`mt-2 p-2 rounded text-[11px] border flex items-start gap-1.5 ${
+                    aiKeyStatus.valid 
+                      ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300' 
+                      : 'bg-red-950/40 border-red-500/30 text-red-300'
+                  }`}>
+                    {aiKeyStatus.valid ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-emerald-400" />
+                    ) : (
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-red-400" />
+                    )}
+                    <div className="flex-1 leading-tight">
+                      <div>{aiKeyStatus.valid ? aiKeyStatus.message : aiKeyStatus.error}</div>
+                      {!aiKeyStatus.valid && (
+                        <div className="mt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleChange('provider', 'native')}
+                            className="text-[10px] font-semibold text-accent-blue hover:underline"
+                          >
+                            Switch to built-in Automatix AI Engine ➔
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-[10px] text-text-tertiary mt-1">
+                  {config.provider === 'gemini' 
+                    ? 'Free tier keys from aistudio.google.com are supported with dynamic model discovery.' 
+                    : (config.provider === 'claude' 
+                        ? 'Get your Claude key at console.anthropic.com' 
+                        : 'Your key is securely used to process your workflow tasks.')}
+                </p>
+              </div>
+            )}
+
+            {config.provider === 'custom' && (
+              <div className="p-3 bg-black/30 rounded-lg border border-white/5 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">API Base URL</label>
+                  <input
+                    type="text"
+                    placeholder="https://api.groq.com/openai/v1 or http://localhost:11434/v1"
+                    value={config.baseUrl || ''}
+                    onChange={(e) => handleChange('baseUrl', e.target.value)}
+                    className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-xs text-white focus:outline-none focus:border-accent-blue"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Model Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. llama-3.3-70b-versatile, deepseek-chat, mistral"
+                    value={config.customModel || ''}
+                    onChange={(e) => handleChange('customModel', e.target.value)}
+                    className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-xs text-white focus:outline-none focus:border-accent-blue"
+                  />
+                </div>
+              </div>
+            )}
+
+            {(() => {
+              const storageNode = nodes.find(n => n.integration?.id === 'storage_trigger' || n.id === 'storage_trigger');
+              const activeStorageFile = storageNode?.config?.capturedPayload || null;
+              const detectedCategory = detectFileCategory(config.mediaUrl || '', activeStorageFile);
+
+              const categoryMetaMap = {
+                video: { label: 'Video Asset (Reels / MP4)', icon: Film, color: 'text-purple-400 bg-purple-500/10 border-purple-500/30' },
+                audio: { label: 'Audio Track / Voice Memo', icon: Music, color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
+                image: { label: 'Visual Graphic / Photo', icon: Image, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
+                document: { label: 'Document / PDF File', icon: FileText, color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' },
+                data: { label: 'Data & Spreadsheet (CSV)', icon: Terminal, color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' },
+                text: { label: 'Prompt & Text Engine', icon: Sparkles, color: 'text-zinc-400 bg-zinc-800 border-zinc-700' }
+              };
+
+              const currentCategoryMeta = categoryMetaMap[detectedCategory] || categoryMetaMap.video;
+              const CategoryIcon = currentCategoryMeta.icon;
+
+              const categoryTaskOptions = TASK_OPERATIONS_BY_CATEGORY[detectedCategory] || TASK_OPERATIONS_BY_CATEGORY.video;
+              
+              // Also assemble all other operations so user has full freedom
+              const allOtherOptions = Object.entries(TASK_OPERATIONS_BY_CATEGORY)
+                .filter(([cat]) => cat !== detectedCategory)
+                .flatMap(([, items]) => items)
+                .filter((item, index, self) => self.findIndex(t => t.value === item.value) === index);
+
+              const taskOptions = [
+                ...categoryTaskOptions,
+                ...allOtherOptions.filter(o => !categoryTaskOptions.some(c => c.value === o.value))
+              ];
+
+              return (
+                <>
+                  {/* Media File URL Section with Real-Time File Type Classification */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-medium text-text-secondary">
+                        Media / Document File URL
+                      </label>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border flex items-center gap-1 shrink-0 ${currentCategoryMeta.color}`}>
+                        <CategoryIcon className="w-3 h-3 shrink-0" />
+                        <span>{currentCategoryMeta.label}</span>
+                      </span>
+                    </div>
+
+                    <VariableInput 
+                      placeholder="e.g. {{trigger.body.fileUrl}} or paste file link" 
+                      value={config.mediaUrl || ''} 
+                      onChange={(val) => handleChange('mediaUrl', val)} 
+                      variables={variableGroups} 
+                    />
+
+                    {activeStorageFile && (
+                      <div className="p-2.5 rounded-lg bg-zinc-900/90 border border-purple-500/20 flex items-center justify-between gap-2.5 shadow-inner">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="w-7 h-7 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0" title="Cloud Storage Trigger Payload">
+                            <HardDrive className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-xs font-medium text-white truncate max-w-[180px] sm:max-w-[240px]" title={activeStorageFile.fileName || 'Captured File'}>
+                                {activeStorageFile.fileName || 'Captured File'}
+                              </span>
+                              <span className="text-[10px] text-text-tertiary flex-shrink-0" title={`Size: ${activeStorageFile.fileSizeMB ? `${activeStorageFile.fileSizeMB} MB` : 'Trigger File'}`}>
+                                • {activeStorageFile.fileSizeMB ? `${activeStorageFile.fileSizeMB} MB` : 'Trigger File'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-text-tertiary truncate" title="Active Trigger File • Auto-mapped to pipeline">
+                              Active Trigger File • Auto-mapped to pipeline
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleChange('mediaUrl', '{{trigger.body.fileUrl}}');
+                              toast.success(`Mapped to ${activeStorageFile.fileName || 'captured file'}`);
+                            }}
+                            className={`text-[11px] px-2.5 py-1 rounded-md font-medium flex items-center gap-1.5 transition-all ${
+                              config.mediaUrl === '{{trigger.body.fileUrl}}'
+                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 shadow-inner'
+                                : 'bg-purple-600 hover:bg-purple-500 text-white shadow-sm'
+                            }`}
+                            title="Auto-fill with variable {{trigger.body.fileUrl}}"
+                          >
+                            <Sparkles className="w-3 h-3 text-purple-300 flex-shrink-0" />
+                            <span>{config.mediaUrl === '{{trigger.body.fileUrl}}' ? 'Mapped' : 'Auto-Fill'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewFile(activeStorageFile);
+                              setIsPreviewModalOpen(true);
+                            }}
+                            className="p-1.5 text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 rounded-md border border-sky-500/20 transition-all flex items-center justify-center flex-shrink-0"
+                            title="Preview captured media file"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-text-tertiary" title="Accepts Videos, Audios, Images, PDFs, Documents, and CSV Spreadsheets for multimodal AI processing.">
+                      Accepts Videos, Audios, Images, PDFs, Documents, and CSV Spreadsheets for multimodal AI processing.
+                    </p>
+                  </div>
+
+                  {/* Context-Aware Task Operation Selector */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-text-secondary">Task Operation</label>
+                      <span className="text-[10px] text-purple-400 font-medium">Tailored for {detectedCategory.toUpperCase()}</span>
+                    </div>
+                    <Select 
+                      value={config.task || taskOptions[0]?.value || 'generate_caption'} 
+                      onChange={(val) => handleChange('task', val)}
+                      options={taskOptions}
+                    />
+                  </div>
+                </>
+              );
+            })()}
+
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Brand Tone & Persona</label>
+              <Select 
+                value={config.tone || 'engaging'} 
+                onChange={(val) => handleChange('tone', val)} 
+                options={[
+                  { value: 'engaging', label: 'Engaging & High Energy (Viral Social Hook)' },
+                  { value: 'professional', label: 'Professional & Informative' },
+                  { value: 'casual', label: 'Casual & Conversational' },
+                  { value: 'storytelling', label: 'Storytelling & Inspiring' },
+                  { value: 'minimalist', label: 'Minimalist & Punchy' }
+                ]}
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-text-secondary">Custom Instructions & Prompt Additions</label>
+                <span className="text-[10px] text-text-tertiary">Optional</span>
+              </div>
+              <VariableInput 
+                multiline 
+                rows={4} 
+                placeholder="e.g. Highlight key action items or draft a viral caption for our upcoming product launch." 
+                value={config.customPrompt || ''} 
+                onChange={(val) => handleChange('customPrompt', sanitizeAndInspectPrompt(val))} 
+                variables={variableGroups} 
+              />
+              <div className="mt-1.5 flex items-center justify-between text-[11px] text-text-tertiary gap-2" title="Provide any custom goals, campaign guidelines, or audience focus for the AI">
+                <span className="truncate pr-2 flex items-center gap-1.5 min-w-0" title="Provide any custom goals, campaign guidelines, or audience focus for the AI">
+                  <Lightbulb className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                  <span className="truncate">Provide any custom goals, campaign guidelines, or audience focus</span>
+                </span>
+                <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1 flex-shrink-0" title="Model accepts plain English text instructions and variables">
+                  <CheckCircle2 className="w-2.5 h-2.5 flex-shrink-0 text-emerald-400" /> Plain Text Ready
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Live AI Preview & Test Generator */}
+            <div className="pt-2 border-t border-white/5 space-y-2.5">
+              {/* Average Generation Times & Benchmark Calculator Trigger */}
+              <button
+                type="button"
+                onClick={() => setIsBenchmarkModalOpen(true)}
+                title="View AI Generation Latency Benchmarks & Speed Matrix (5–25 MB)"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 border border-purple-500/20 hover:border-purple-500/40 text-xs text-purple-300 transition-all group shadow-sm gap-2"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Gauge className="w-3.5 h-3.5 text-purple-400 flex-shrink-0 group-hover:rotate-12 transition-transform" />
+                  <span className="font-medium text-white/90 truncate text-left" title="AI Generation Benchmarks & Payload Latency Matrix">
+                    AI Latency & Speed Matrix
+                  </span>
+                </div>
+                <span className="text-[10px] text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 flex items-center gap-1 font-mono shrink-0 whitespace-nowrap" title="Payload size up to 25 MB">
+                  <span>5–25 MB</span>
+                  <ChevronRight className="w-3 h-3 text-purple-400 shrink-0" />
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestAiMediator}
+                disabled={aiPreviewLoading}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {aiPreviewLoading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-200" />
+                    <span>Generating with {config.provider ? config.provider.toUpperCase() : 'AI'}...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-purple-200" />
+                    <span>Generate & Preview AI Output</span>
+                  </>
+                )}
+              </button>
+
+              {/* Live Elapsed Time Counter during Generation */}
+              {aiPreviewLoading && (
+                <div className="flex items-center justify-between px-3 py-2 bg-purple-500/10 border border-purple-500/25 rounded-lg text-xs animate-pulse shadow-sm">
+                  <div className="flex items-center gap-2 text-purple-300">
+                    <Clock className="w-3.5 h-3.5 animate-spin text-purple-400 flex-shrink-0" />
+                    <span className="font-medium">Synthesizing output with {config.provider ? config.provider.toUpperCase() : 'AI'}...</span>
+                  </div>
+                  <div className="flex items-center gap-1 font-mono font-bold text-purple-200 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-500/30">
+                    <span className="text-xs">{aiElapsedTime.toFixed(1)}s</span>
+                  </div>
+                </div>
+              )}
+
+              {(() => {
+                const triggerNode = nodes?.find(n => n.type === NODE_TYPES.TRIGGER);
+                const triggerFile = triggerNode?.config?.simulatedPayload || triggerNode?.config?.latestUploadedFile || null;
+                return (
+                  <AiLatencyBenchmarkModal
+                    isOpen={isBenchmarkModalOpen}
+                    onClose={() => setIsBenchmarkModalOpen(false)}
+                    defaultFileSize={triggerFile?.sizeMB || 5}
+                    defaultFileType={triggerFile?.fileType?.includes('video') ? 'video' : (triggerFile?.fileType?.includes('image') ? 'image' : 'video')}
+                  />
+                );
+              })()}
+
+              {/* Token & Credit Lifecycle Notice */}
+              <div className="p-2.5 rounded-lg bg-zinc-900/70 border border-white/5 space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <Coins className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-white/70 leading-relaxed">
+                    <span className="font-semibold text-text-primary">Testing & Previews</span> consume API tokens directly from your connected AI provider account.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2 pt-1.5 border-t border-white/5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-text-tertiary leading-relaxed">
+                    <span className="font-semibold text-purple-300">Live Workflows</span> use Automatix AI Workflow Credits (1 credit/run). Included with Pro plans & available via add-on packs.
+                  </p>
+                </div>
+              </div>
+
+              {aiPreviewError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold text-red-400">
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Generation Failed</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">{aiPreviewError}</p>
+                </div>
+              )}
+
+              {aiPreviewData && (
+                <div className="p-3.5 bg-zinc-900/90 border border-purple-500/30 rounded-xl space-y-3 shadow-xl">
+                  {/* Clean 2-Row Header with Tokens and Generation Latency */}
+                  <div className="border-b border-white/5 pb-2.5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                        <span className="text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                          AI Output Preview
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {(aiPreviewData.generationTimeSec || aiPreviewData.generationTimeMs) && (
+                          <span 
+                            className="text-[10px] font-mono font-medium text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-full flex items-center gap-1 flex-shrink-0 shadow-sm"
+                            title="Total time taken to inspect media, send prompt, and generate structured output"
+                          >
+                            <Clock className="w-2.5 h-2.5 flex-shrink-0 text-purple-400" />
+                            <span>{aiPreviewData.generationTimeSec || ((aiPreviewData.generationTimeMs || 0) / 1000).toFixed(2)}s</span>
+                          </span>
+                        )}
+                        {aiPreviewData.tokens && (
+                          <span 
+                            className="text-[10px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 flex-shrink-0 shadow-sm" 
+                            title={`${aiPreviewData.tokens.prompt} prompt / in + ${aiPreviewData.tokens.completion} completion / out`}
+                          >
+                            <Zap className="w-2.5 h-2.5 flex-shrink-0 text-amber-400" />
+                            <span>{aiPreviewData.tokens.total} tokens</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[10px] text-text-tertiary pt-1 border-t border-white/5">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-mono text-text-tertiary">Engine:</span>
+                        <span className="font-medium text-purple-300 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded truncate max-w-[110px]" title={aiPreviewData.provider || config.provider || 'Gemini'}>
+                          {aiPreviewData.provider || config.provider || 'Gemini'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-mono text-text-tertiary">Time Taken:</span>
+                        <span className="font-mono font-semibold text-purple-300 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5 text-purple-400 flex-shrink-0" />
+                          <span>{aiPreviewData.generationTimeSec || ((aiPreviewData.generationTimeMs || 0) / 1000).toFixed(2)}s</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Speech-to-Text Transcript (if present) */}
+                  {aiPreviewData.transcript && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-text-secondary font-medium flex items-center gap-1">
+                          <Music className="w-3 h-3 text-amber-400" /> Speech-to-Text Transcript:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiPreviewData.transcript);
+                            setAiCopiedField('transcript');
+                            toast.success('Transcript copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          {aiCopiedField === 'transcript' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'transcript' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-amber-200/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
+                        {aiPreviewData.transcript}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Document Summary / Executive Recap (if present) */}
+                  {aiPreviewData.summary && !aiPreviewData.transcript && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-text-secondary font-medium flex items-center gap-1">
+                          <FileText className="w-3 h-3 text-blue-400" /> Summary & Key Takeaways:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiPreviewData.summary);
+                            setAiCopiedField('summary');
+                            toast.success('Summary copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          {aiCopiedField === 'summary' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'summary' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-blue-200/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
+                        {aiPreviewData.summary}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Items / Deliverables (if present) */}
+                  {aiPreviewData.actionItems && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-text-secondary font-medium flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Action Items & Checklist:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiPreviewData.actionItems);
+                            setAiCopiedField('actionItems');
+                            toast.success('Action items copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          {aiCopiedField === 'actionItems' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'actionItems' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-emerald-200/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
+                        {aiPreviewData.actionItems}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Data Insights (if present) */}
+                  {aiPreviewData.insights && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-text-secondary font-medium flex items-center gap-1">
+                          <Terminal className="w-3 h-3 text-cyan-400" /> Key Data Insights & Metrics:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiPreviewData.insights);
+                            setAiCopiedField('insights');
+                            toast.success('Insights copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          {aiCopiedField === 'insights' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'insights' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-cyan-200/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
+                        {aiPreviewData.insights}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Generated Caption (if present and not duplicated with summary) */}
+                  {aiPreviewData.caption && !aiPreviewData.transcript && !aiPreviewData.summary && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-text-secondary font-medium">Generated Social Caption:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiPreviewData.caption);
+                            setAiCopiedField('caption');
+                            toast.success('Caption copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          {aiCopiedField === 'caption' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'caption' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-white/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
+                        {aiPreviewData.caption}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Title & Hook */}
+                  {aiPreviewData.title && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-text-secondary font-medium">Hook / Headline:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiPreviewData.title);
+                            setAiCopiedField('title');
+                            toast.success('Hook copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          {aiCopiedField === 'title' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'title' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2 bg-black/60 border border-white/5 rounded-lg text-xs font-semibold text-white font-sans">
+                        {aiPreviewData.title}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hashtags (if present) */}
+                  {aiPreviewData.hashtags && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-text-secondary font-medium">Targeted Hashtags:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiPreviewData.hashtags);
+                            setAiCopiedField('hashtags');
+                            toast.success('Hashtags copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          {aiCopiedField === 'hashtags' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'hashtags' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2 bg-black/60 border border-white/5 rounded-lg text-xs font-mono text-purple-300">
+                        {aiPreviewData.hashtags}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'instagram_publish':
+        const igStorageNode = nodes.find(n => n.integration?.id === 'storage_trigger' || n.id === 'storage_trigger');
+        const igActiveStorageFile = igStorageNode?.config?.capturedPayload || null;
+
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Instagram Account</label>
+              <ConnectIntegration 
+                integrationId="instagram" 
+                providerName="Instagram"
+                value={config.connectionId} 
+                onChange={(val) => handleChange('connectionId', val)} 
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Publish Format</label>
+              <Select 
+                value={config.publishType || 'FEED_POST'} 
+                onChange={(val) => handleChange('publishType', val)}
+                options={[
+                  { value: 'FEED_POST', label: 'Feed Post (Image or Video)' },
+                  { value: 'REEL', label: 'Instagram Reel (Vertical 9:16 Video)' },
+                  { value: 'STORY', label: 'Instagram Story (Image or Vertical 9:16 Video)' }
+                ]}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Media Source URL</label>
+              <VariableInput 
+                placeholder="e.g. {{trigger.body.fileUrl}}" 
+                value={config.mediaUrl || ''} 
+                onChange={(val) => handleChange('mediaUrl', val)} 
+                variables={variableGroups} 
+              />
+
+              {igActiveStorageFile && (
+                <div className="mt-2 p-2.5 rounded-lg bg-zinc-900/90 border border-pink-500/20 flex items-center justify-between gap-2.5 shadow-inner">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-7 h-7 rounded-md bg-pink-500/10 border border-pink-500/20 text-pink-400 flex items-center justify-center flex-shrink-0" title="Cloud Storage Trigger Payload">
+                      <HardDrive className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs font-medium text-white truncate max-w-[180px] sm:max-w-[240px]" title={igActiveStorageFile.fileName || 'Captured File'}>
+                          {igActiveStorageFile.fileName || 'Captured File'}
+                        </span>
+                        <span className="text-[10px] text-text-tertiary flex-shrink-0" title={`Size: ${igActiveStorageFile.fileSizeMB ? `${igActiveStorageFile.fileSizeMB} MB` : 'Trigger File'}`}>
+                          • {igActiveStorageFile.fileSizeMB ? `${igActiveStorageFile.fileSizeMB} MB` : 'Trigger File'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-text-tertiary truncate" title="Active Drive File • Single-slot auto-overwritten buffer">
+                        Active Drive File • Single-slot auto-overwritten
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleChange('mediaUrl', '{{trigger.body.fileUrl}}');
+                        toast.success(`Mapped to ${igActiveStorageFile.fileName || 'captured file'}`);
+                      }}
+                      className={`text-[11px] px-2.5 py-1 rounded-md font-medium flex items-center gap-1.5 transition-all ${
+                        config.mediaUrl === '{{trigger.body.fileUrl}}'
+                          ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30 shadow-inner'
+                          : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-sm'
+                      }`}
+                    >
+                      <Sparkles className="w-3 h-3 text-pink-300 flex-shrink-0" />
+                      <span>{config.mediaUrl === '{{trigger.body.fileUrl}}' ? 'Mapped' : 'Auto-Fill'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewFile(igActiveStorageFile);
+                        setIsPreviewModalOpen(true);
+                      }}
+                      className="p-1.5 text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 rounded-md border border-sky-500/20 transition-all flex items-center justify-center flex-shrink-0"
+                      title="Preview captured media"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-2 p-2 bg-pink-500/10 border border-pink-500/20 rounded-md text-[11px] text-pink-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Image className="w-3.5 h-3.5 flex-shrink-0 text-pink-400" />
+                  <span>Formats: JPG, PNG, WEBP, MP4, MOV</span>
+                </span>
+                <span>Max 25MB</span>
+              </div>
+            </div>
+
+            {config.publishType !== 'STORY' && (
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Post Caption</label>
+                <VariableInput 
+                  multiline 
+                  rows={5} 
+                  placeholder="e.g. {{steps.step_2.caption}} or Type custom caption with #hashtags" 
+                  value={config.caption || ''} 
+                  onChange={(val) => handleChange('caption', val)} 
+                  variables={variableGroups} 
+                />
+                <p className="text-[10px] text-text-tertiary mt-1">Map the AI-generated caption or write custom copy.</p>
+              </div>
+            )}
+
+            {(config.publishType === 'REEL' || config.publishType === 'FEED_POST') && (
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Video Thumbnail Offset (Optional)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 1000 (ms from start)"
+                  value={config.thumbOffset || ''}
+                  onChange={(e) => handleChange('thumbOffset', e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue"
+                />
               </div>
             )}
           </div>
@@ -3034,7 +4649,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       <div className="space-y-2">
                         {unmappedVars.map(unmappedVar => (
                           <div key={unmappedVar} className="flex items-center gap-2 w-full">
-                            <div className="w-[140px] shrink-0 px-2.5 py-1.5 bg-black/40 border border-white/5 rounded-md font-mono text-[11px] text-[#eab308] truncate">
+                            <div className="w-[140px] shrink-0 px-2.5 py-1.5 bg-black/40 border border-white/5 rounded-md font-mono text-[11px] text-[#eab308] truncate" title={unmappedVar}>
                               {unmappedVar}
                             </div>
                             <span className="text-text-tertiary/40 font-mono text-xs">=</span>
@@ -3066,12 +4681,12 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                         
                         {mappedVars.map(mappedVar => (
                           <div key={mappedVar} className="flex items-center gap-2 w-full group">
-                            <div className="w-[140px] shrink-0 px-2.5 py-1.5 bg-black/20 border border-white/5 rounded-md font-mono text-[11px] text-[#eab308] truncate opacity-70">
+                            <div className="w-[140px] shrink-0 px-2.5 py-1.5 bg-black/20 border border-white/5 rounded-md font-mono text-[11px] text-[#eab308] truncate opacity-70" title={`{{${getVariableLabel(mappedVar).toLowerCase().replace(/[^a-z0-9]/g, '')}}}`}>
                               {`{{${getVariableLabel(mappedVar).toLowerCase().replace(/[^a-z0-9]/g, '')}}}`}
                             </div>
                             <span className="text-text-tertiary/40 font-mono text-xs">=</span>
                             <div className="flex-1 min-w-0 relative">
-                              <div className="w-full px-2.5 py-1.5 bg-accent-blue/5 border border-accent-blue/20 rounded-md font-mono text-[11px] text-accent-blue truncate pr-7">
+                              <div className="w-full px-2.5 py-1.5 bg-accent-blue/5 border border-accent-blue/20 rounded-md font-mono text-[11px] text-accent-blue truncate pr-7" title={mappedVar}>
                                 {mappedVar}
                               </div>
                               <button 
@@ -3512,14 +5127,15 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         <div className="h-8 w-1 bg-border-subtle rounded-full group-hover:bg-accent-blue/50" />
       </div>
 
-      <div className="p-4 border-b border-border-subtle flex items-center justify-between sticky top-0 bg-[#0a0a0a]/90 backdrop-blur-md z-10">
-        <div className="flex items-center gap-2">
-          <Settings className="w-4 h-4 text-text-secondary" />
-          <h2 className="font-medium text-foreground">Properties</h2>
+      <div className="p-4 border-b border-border-subtle flex items-center justify-between sticky top-0 bg-[#0a0a0a] z-10">
+        <div className="flex items-center gap-2 min-w-0 flex-1 pr-2" title={`Properties: ${selectedNode?.title || selectedNode?.integration?.name || 'Step'}`}>
+          <Settings className="w-4 h-4 text-text-secondary flex-shrink-0" />
+          <h2 className="font-medium text-foreground truncate">Properties • {selectedNode?.title || selectedNode?.integration?.name || 'Step'}</h2>
         </div>
         <button 
           onClick={onClose} 
-          className="flex items-center gap-1.5 px-2 py-1 bg-white/5 hover:bg-white/10 border border-border-subtle rounded-md text-xs font-medium text-text-secondary hover:text-white transition-colors"
+          className="flex items-center gap-1.5 px-2 py-1 bg-white/5 hover:bg-white/10 border border-border-subtle rounded-md text-xs font-medium text-text-secondary hover:text-white transition-colors flex-shrink-0"
+          title="Close Properties Panel"
         >
           <X className="w-3.5 h-3.5" /> Close
         </button>
@@ -3527,7 +5143,9 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
 
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
         <div>
-          <label className="block text-[10px] font-semibold text-text-secondary uppercase tracking-widest mb-2">Step Name</label>
+          <label className="block text-[10px] font-semibold text-text-secondary uppercase tracking-widest mb-2">
+            {selectedNode?.type === 'TRIGGER' || selectedNode?.type === 'trigger' ? 'Trigger Name' : 'Step Name'}
+          </label>
           <input 
             type="text" 
             value={selectedNode.title}
@@ -3666,7 +5284,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                 onClick={handleSaveStep}
                 className="w-full flex items-center justify-center gap-2 bg-accent-blue hover:bg-accent-blue/90 text-white font-medium py-2 rounded-md transition-colors"
               >
-                Save Step
+                Save Trigger
               </button>
               <AnimatePresence>
                 {isSaved && (
@@ -3677,7 +5295,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     className="flex items-center justify-center gap-1.5 text-xs text-green-400 mt-1"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Step saved successfully
+                    Trigger saved successfully
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -3765,6 +5383,18 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         isOpen={isWebhookGuideOpen}
         onClose={() => setIsWebhookGuideOpen(false)}
         integrationId={selectedNode?.integration?.id}
+      />
+      <GoogleDriveGuideModal
+        isOpen={isStorageGuideOpen}
+        onClose={() => setIsStorageGuideOpen(false)}
+        webhookUrl={selectedNode?.config?.webhookToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/incoming/${workflowId || 'new'}?token=${selectedNode.config.webhookToken}` : ''}
+        folderName={selectedNode?.config?.folderName}
+        provider={selectedNode?.config?.provider || 'gdrive'}
+      />
+      <MediaPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        file={previewFile}
       />
       <QuotaUpgradeModal />
     </div>

@@ -763,10 +763,8 @@ function ConnectionLine({ parentId, pathId, onDropNode, onMoveNodeTo, hasCopiedN
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <motion.div 
-      initial={false}
-      animate={{ height: isDragOver ? 112 : 48 }}
-      className="w-full max-w-2xl relative flex justify-center items-center cursor-pointer group z-10"
+    <div 
+      className={`w-full max-w-2xl relative flex justify-center items-center cursor-pointer group z-10 transition-all duration-150 ${isDragOver ? 'h-28' : 'h-12'}`}
       onClick={onClick}
       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={() => setIsDragOver(false)}
@@ -800,20 +798,13 @@ function ConnectionLine({ parentId, pathId, onDropNode, onMoveNodeTo, hasCopiedN
       {/* The actual line */}
       <div className={`absolute inset-y-0 w-px flex justify-center items-center pointer-events-none ${isDragOver ? 'opacity-0' : 'opacity-100'}`}>
         <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none">
-           <line x1="0" y1="0" x2="0" y2="100%" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeDasharray="4 4" />
-           <motion.line 
-             x1="0" y1="0" x2="0" y2="100%" 
-             stroke="rgba(59,130,246,0.6)" 
-             strokeWidth="2" 
-             strokeDasharray="4 4"
-             animate={{ strokeDashoffset: [0, -20] }}
-             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-           />
+           <line x1="0" y1="0" x2="0" y2="100%" stroke="rgba(255,255,255,0.12)" strokeWidth="2" strokeDasharray="4 4" />
+           <line x1="0" y1="0" x2="0" y2="100%" stroke="rgba(59,130,246,0.7)" strokeWidth="2" strokeDasharray="4 4" className="stroke-dash-pulse" />
         </svg>
       </div>
 
       {/* Hover/Drag + Icon */}
-      <div className={`absolute flex items-center gap-2 transition-all ${
+      <div className={`absolute flex items-center gap-2 transition-all duration-150 ${
         isHovered && !isDragOver ? 'scale-100 opacity-100' : 'scale-100 opacity-100 md:scale-50 md:opacity-0'
       }`}>
         <div className="w-6 h-6 rounded-full bg-accent-blue flex items-center justify-center shadow-lg">
@@ -838,7 +829,7 @@ function ConnectionLine({ parentId, pathId, onDropNode, onMoveNodeTo, hasCopiedN
           </button>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 

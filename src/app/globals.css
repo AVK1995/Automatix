@@ -115,3 +115,14 @@ body {
 .animate-screen-flash {
   animation: screenFlash 2.5s ease-out forwards;
 }
+
+@keyframes dashMove {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.stroke-dash-pulse {
+  animation: dashMove 1.5s linear infinite;
+  will-change: stroke-dashoffset;
+}

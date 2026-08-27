@@ -17,6 +17,7 @@ import { toast } from 'react-hot-toast';
 import { NODE_TYPES } from '@/constants';
 import { updateWorkflow, toggleWorkflowPublish, clearSimulations, getWaitingCounts } from '@/actions/workflows';
 import { INTEGRATIONS } from '@/components/builder/NodeLibrary';
+import { getNodeConnectionStatus, isNodeConfigured } from '@/lib/nodeValidation';
 
 export default function WorkflowBuilder({ workflow }) {
   let initialNodes = [];
@@ -288,12 +289,39 @@ export default function WorkflowBuilder({ workflow }) {
       parentId = lastNode.id;
     }
 
+    let initialConfig = {};
+    if (integration.id === 'storage_trigger') {
+      initialConfig = {
+        provider: 'gdrive',
+        folderName: 'Automatix Uploads',
+        fileFilter: 'ALL',
+        isListening: true,
+        webhookToken: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : `token_${Date.now()}`
+      };
+    } else if (integration.id === 'ai_mediator') {
+      initialConfig = {
+        provider: 'gemini',
+        task: 'generate_caption',
+        tone: 'engaging'
+      };
+    } else if (integration.id === 'instagram_publish') {
+      initialConfig = {
+        publishType: 'FEED_POST'
+      };
+    } else if (integration.id === 'webhook') {
+      initialConfig = {
+        triggerEvent: 'POST',
+        isListening: true,
+        webhookToken: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : `token_${Date.now()}`
+      };
+    }
+
     const newNode = {
       id: `node-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       type: type,
       title: `${integration.name || 'Unknown'}`,
       integration: integration,
-      config: {},
+      config: initialConfig,
       parentId,
       pathId,
     };
@@ -700,15 +728,11 @@ export default function WorkflowBuilder({ workflow }) {
         if (node.issue || !node.integration) {
           invalidSet.add(node.id);
         } else {
-          const reqConn = ['webhook', 'calendar', 'instagram', 'sheets', 'slack', 'twilio', 'stripe'];
-          if (node.integration && reqConn.includes(node.integration.id)) {
-            if (node.integration.id === 'webhook') {
-              // Webhooks don't need a connection
-            } else if (node.integration.id === 'calendar' && node.config?.provider === 'builtin') {
-              // Builtin doesn't need a connection
-            } else if (!node.config?.connectionId) {
-              invalidSet.add(node.id);
-            }
+          const { needsConnection, isConnected } = getNodeConnectionStatus(node);
+          if (needsConnection && !isConnected) {
+            invalidSet.add(node.id);
+          } else if (!isNodeConfigured(node)) {
+            invalidSet.add(node.id);
           }
         }
         return;
@@ -743,68 +767,15 @@ export default function WorkflowBuilder({ workflow }) {
       if (isInvalid) {
         invalidSet.add(node.id);
       } else {
-        const conf = node.config || {};
-        const id = node.integration?.id || node.type;
-        
-        let isInternalInvalid = false;
-        if (id === 'delay') {
-          const dDuration = conf.duration !== undefined ? conf.duration : 1;
-          const dUnit = conf.unit || 'minutes';
-          isInternalInvalid = !(conf.delayType === 'event_based' ? (conf.eventDate && dDuration && dUnit) : (dDuration && dUnit));
-        } else if (id === 'date_formatter') {
-          const op = conf.operation || 'format_timezone';
-          if (op === 'duration') isInternalInvalid = !conf.startDate || !conf.endDate;
-          else isInternalInvalid = !conf.dateString;
-        } else if (id === 'formatter_extract') {
-          isInternalInvalid = !conf.inputString;
-        } else if (id === 'formatter_dev') {
-          isInternalInvalid = !conf.code;
-        } else if (id === 'custom_variable') {
-          if (!conf.varName) isInternalInvalid = true;
-          else if (conf.varType === 'timestamp' && conf.useCurrentTime === false && !conf.varValue) isInternalInvalid = true;
-          else if (conf.varType !== 'timestamp' && !conf.varValue) isInternalInvalid = true;
-        } else if (id === 'http') {
-          isInternalInvalid = !conf.url || !conf.method;
-        } else if (id === 'calendar_status') {
-          isInternalInvalid = !conf.bookingId;
-        } else if (id === 'meta_capi') {
-          isInternalInvalid = !conf.pixelId || !conf.eventName;
-        }
-
-        if (isInternalInvalid) {
+        const { needsConnection, isConnected } = getNodeConnectionStatus(node);
+        if (needsConnection && !isConnected) {
           invalidSet.add(node.id);
           return;
         }
-        
-        const integrationId = node.integration?.id;
-        if (Object.keys(conf).length === 0 && node.integration) {
+        if (!isNodeConfigured(node)) {
           invalidSet.add(node.id);
           return;
         }
-
-        const requiredFields = node.integration?.fields?.filter(f => f.required) || [];
-        let missingField = false;
-        for (const field of requiredFields) {
-          if (conf[field.name] === undefined || conf[field.name] === '') {
-            missingField = true;
-            break;
-          }
-        }
-        if (missingField) {
-          invalidSet.add(node.id);
-          return;
-        }
-
-        const reqConnIds = ['slack', 'twilio', 'stripe', 'gmail', 'email', 'smtp', 'openai', 'instagram', 'instagram_action', 'calendar'];
-        if (reqConnIds.includes(id)) {
-          if (id !== 'calendar' || conf.provider !== 'builtin') {
-            if (!conf.connectionId) {
-              invalidSet.add(node.id);
-            }
-          }
-        }
-        
-        if (id === 'slack' && (!conf.channel || !conf.message)) invalidSet.add(node.id);
       }
     });
     return invalidSet;
@@ -996,8 +967,8 @@ export default function WorkflowBuilder({ workflow }) {
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute right-0 top-0 bottom-0 z-20 w-full md:w-auto"
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="absolute right-0 top-0 bottom-0 z-30 w-full md:w-auto shadow-2xl"
             >
               <PropertiesPanel 
                 selectedNode={selectedNode} 

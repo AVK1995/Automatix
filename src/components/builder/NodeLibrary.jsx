@@ -6,7 +6,7 @@ import {
   Blocks, Filter, Webhook, CalendarClock,
   CalendarPlus, CalendarCheck, Hourglass, BellRing,
   GitFork, SendHorizontal, CaseSensitive, ScanText,
-  Code2, Variable, Smartphone, Lock, X
+  Code2, Variable, Smartphone, Lock, X, Crown
 } from 'lucide-react';
 import { 
   GoogleSheetsIcon, 
@@ -14,13 +14,17 @@ import {
   InstagramIcon, 
   InstagramSendIcon, 
   MetaIcon, 
-  SlackIcon 
+  SlackIcon,
+  CloudDriveIcon,
+  AiBrainIcon,
+  InstagramPublishIcon
 } from '@/components/Icons';
 import { useState, useEffect, useRef } from 'react';
 
 export const INTEGRATIONS = {
   [NODE_TYPES.TRIGGER]: [
     { id: 'webhook', name: 'Catch Webhook', icon: Webhook, color: 'bg-accent-blue/10 text-accent-blue border-accent-blue/20', description: 'Trigger from an external HTTP request' },
+    { id: 'storage_trigger', name: 'Cloud Storage File', icon: CloudDriveIcon, color: 'bg-sky-500/10 text-sky-500 border-sky-500/20', description: 'Trigger on new files uploaded to Drive' },
     { id: 'sheets_trigger', name: 'Google Sheets', icon: GoogleSheetsIcon, color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', description: 'Trigger on new rows in a Google Sheet' },
     { id: 'schedule', name: 'Schedule', icon: CalendarClock, color: 'bg-green-500/10 text-green-500 border-green-500/20', description: 'Run at a specific time or recurring interval' },
     { id: 'stripe', name: 'Stripe Event', icon: StripeIcon, color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', description: 'Trigger on payment or subscription updates' },
@@ -28,6 +32,8 @@ export const INTEGRATIONS = {
     { id: 'instagram', name: 'Instagram DM', icon: InstagramIcon, color: 'bg-pink-600/10 text-pink-600 border-pink-600/20', description: 'Trigger when you receive a DM' }
   ],
   [NODE_TYPES.ACTION]: [
+    { id: 'ai_mediator', name: 'AI Content & Vision Engine', icon: AiBrainIcon, color: 'bg-purple-500/10 text-purple-400 border-purple-500/20', description: 'Visual media analysis, caption & transcript generator', isPro: true },
+    { id: 'instagram_publish', name: 'Publish Instagram Post/Story', icon: InstagramPublishIcon, color: 'bg-pink-500/10 text-pink-500 border-pink-500/20', description: 'Auto-publish Feed Posts, Reels, or Stories' },
     { id: 'formatter_text', name: 'Data Modification & Formatting', icon: CaseSensitive, color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20', description: 'Modify, format, or capitalize text' },
     { id: 'formatter_math', name: 'Mathematical & Developer Operations', icon: Calculator, color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', description: 'Add, subtract, or format numbers' },
     { id: 'formatter_extract', name: 'Data Extraction & Parsing', icon: ScanText, color: 'bg-amber-500/10 text-amber-500 border-amber-500/20', description: 'Extract emails, phones, or Regex' },
@@ -119,7 +125,7 @@ export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIs
 
   const NodeLibraryContent = () => (
     <>
-      <div className="p-4 border-b border-border-subtle sticky top-0 bg-[#0a0a0a]/90 backdrop-blur-md z-10">
+      <div className="p-4 border-b border-border-subtle sticky top-0 bg-[#0a0a0a] z-10">
         <div className="flex justify-between items-start">
           <div>
             <h2 className="font-medium text-foreground">Integration Library</h2>
@@ -127,7 +133,7 @@ export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIs
           </div>
           <button 
             onClick={() => setIsExpanded(false)}
-            className="p-1.5 rounded-md transition-colors text-text-secondary hover:text-white hover:bg-white/10 hidden md:flex"
+            className="p-1.5 rounded-md transition-colors text-text-secondary hover:text-white hover:bg-white/10 flex"
             title="Close panel"
           >
             <X className="w-4 h-4" />
@@ -180,8 +186,16 @@ export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIs
                   <div className={`w-10 h-10 rounded-md border flex items-center justify-center shrink-0 ${integration.color} ${isDisabled ? 'grayscale' : ''}`}>
                     <integration.icon size={18} />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground">{integration.name}</h4>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <h4 className="text-sm font-medium text-foreground truncate">{integration.name}</h4>
+                      {integration.isPro && (
+                        <span className="inline-flex items-center justify-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0 shadow-sm leading-none">
+                          <Crown className="w-2.5 h-2.5 text-amber-400 shrink-0 -translate-y-[0.5px]" />
+                          <span className="leading-none">PRO</span>
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-text-secondary mt-0.5 leading-snug">{integration.description}</p>
                   </div>
                 </motion.div>
@@ -217,10 +231,18 @@ export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIs
                 <div className={`w-10 h-10 rounded-md border flex items-center justify-center shrink-0 ${integration.color} ${isDisabled ? 'grayscale' : ''}`}>
                   <integration.icon size={18} />
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium text-foreground">{integration.name}</h4>
-                  <p className="text-xs text-text-secondary mt-0.5 leading-snug">{integration.description}</p>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <h4 className="text-sm font-medium text-foreground truncate">{integration.name}</h4>
+                      {integration.isPro && (
+                        <span className="inline-flex items-center justify-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0 shadow-sm leading-none">
+                          <Crown className="w-2.5 h-2.5 text-amber-400 shrink-0 -translate-y-[0.5px]" />
+                          <span className="leading-none">PRO</span>
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-secondary mt-0.5 leading-snug">{integration.description}</p>
+                  </div>
               </motion.div>
               );
             })}
@@ -326,36 +348,48 @@ export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIs
         </div>
       )}
 
-      {/* Desktop Panel */}
+      {/* Tablet Overlay Backdrop when expanded on tablet (< lg) */}
+      {isExpanded && (
+        <div 
+          onClick={() => setIsExpanded(false)}
+          className="lg:hidden hidden md:block fixed inset-0 z-30 bg-black/50 transition-opacity"
+        />
+      )}
+
+      {/* Desktop & Tablet Panel */}
       <motion.div 
         initial={false}
         animate={{ width: isExpanded ? panelWidth : 48 }}
-        transition={{ type: isResizing ? "tween" : "spring", duration: isResizing ? 0 : undefined, stiffness: 300, damping: 30 }}
-        className={`h-full bg-[#0a0a0a] hidden md:flex shrink-0 relative z-40 overflow-visible group ${isExpanded ? 'border-r border-border-subtle' : ''}`}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        className={`h-full bg-[#0a0a0a] hidden md:flex shrink-0 z-40 overflow-visible group ${
+          isExpanded 
+            ? 'border-r border-border-subtle lg:relative absolute left-0 top-0 bottom-0 shadow-2xl' 
+            : 'relative'
+        }`}
       >
         <div 
-          className={`h-full flex flex-col overflow-y-auto overflow-x-hidden absolute left-0 top-0 transition-opacity duration-200 ${isExpanded ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+          className={`h-full flex flex-col overflow-y-auto overflow-x-hidden absolute left-0 top-0 bg-[#0a0a0a] transition-opacity duration-150 ${isExpanded ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
           style={{ width: panelWidth }}
         >
           {NodeLibraryContent()}
         </div>
         
         {!isExpanded && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-opacity bg-[#111] border-r border-border-subtle cursor-pointer" onClick={() => setIsExpanded(true)}>
-          <Blocks className="w-5 h-5 text-accent-blue mb-4" />
-          <div className="w-1 h-12 bg-white/20 rounded-full" />
-        </div>
-      )}
+          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-opacity bg-[#111] border-r border-border-subtle cursor-pointer" onClick={() => setIsExpanded(true)}>
+            <Blocks className="w-5 h-5 text-accent-blue mb-4" />
+            <div className="w-1 h-12 bg-white/20 rounded-full" />
+          </div>
+        )}
 
-      {isExpanded && (
-        <div 
-          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-accent-blue/30 z-50 transition-colors flex items-center justify-center -mr-1"
-          onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }}
-        >
-          <div className="h-8 w-1 bg-border-subtle rounded-full group-hover:bg-accent-blue/50" />
-        </div>
-      )}
-    </motion.div>
+        {isExpanded && (
+          <div 
+            className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-accent-blue/30 z-50 transition-colors hidden lg:flex items-center justify-center -mr-1"
+            onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }}
+          >
+            <div className="h-8 w-1 bg-border-subtle rounded-full group-hover:bg-accent-blue/50" />
+          </div>
+        )}
+      </motion.div>
     </>
   );
 }

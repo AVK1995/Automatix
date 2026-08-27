@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { inngest } from '@/inngest/client';
 import { checkKeywordMatch } from '@/lib/keywordUtils';
+import { getNodeConnectionStatus, isNodeConfigured } from '@/lib/nodeValidation';
 
 export async function createWorkflow() {
   const session = await auth();
@@ -171,16 +172,17 @@ export async function updateWorkflow(workflowId, data) {
           message: 'Trigger has configuration issues.'
         });
       } else {
-        const reqConn = ['webhook', 'calendar', 'instagram', 'sheets', 'slack', 'twilio', 'stripe', 'gmail', 'smtp', 'openai'];
-        if (trigger.integration && reqConn.includes(trigger.integration.id)) {
-          if (trigger.integration.id !== 'webhook' && !(trigger.integration.id === 'calendar' && trigger.config?.provider === 'builtin')) {
-            if (!trigger.config?.connectionId) {
-              issues.push({
-                nodeId: trigger.id,
-                message: 'Missing required connection.'
-              });
-            }
-          }
+        const { needsConnection, isConnected } = getNodeConnectionStatus(trigger);
+        if (needsConnection && !isConnected) {
+          issues.push({
+            nodeId: trigger.id,
+            message: 'Missing required connection for trigger.'
+          });
+        } else if (!isNodeConfigured(trigger)) {
+          issues.push({
+            nodeId: trigger.id,
+            message: 'Trigger requires complete configuration.'
+          });
         }
       }
 
@@ -198,80 +200,19 @@ export async function updateWorkflow(workflowId, data) {
             continue;
           }
           
-          const id = node.integration?.id;
-          const conf = node.config || {};
-
-          // Comprehensive validation for all action nodes
-
-
-          let isInternalInvalid = false;
-          if (id === 'delay') {
-            const dDuration = conf.duration !== undefined ? conf.duration : 1;
-            const dUnit = conf.unit || 'minutes';
-            isInternalInvalid = !(conf.delayType === 'event_based' ? (conf.eventDate && dDuration && dUnit) : (dDuration && dUnit));
-          } else if (id === 'date_formatter') {
-            const op = conf.operation || 'format_timezone';
-            if (op === 'duration') isInternalInvalid = !conf.startDate || !conf.endDate;
-            else isInternalInvalid = !conf.dateString;
-          } else if (id === 'formatter_extract') {
-            isInternalInvalid = !conf.inputString;
-          } else if (id === 'formatter_dev') {
-            isInternalInvalid = !conf.code;
-          } else if (id === 'custom_variable') {
-            if (!conf.varName) isInternalInvalid = true;
-            else if (conf.varType === 'timestamp' && conf.useCurrentTime === false && !conf.varValue) isInternalInvalid = true;
-            else if (conf.varType !== 'timestamp' && !conf.varValue) isInternalInvalid = true;
-          } else if (id === 'http') {
-            isInternalInvalid = !conf.url || !conf.method;
-          } else if (id === 'calendar_status') {
-            isInternalInvalid = !conf.bookingId;
-          } else if (id === 'meta_capi') {
-            isInternalInvalid = !conf.pixelId || !conf.eventName;
-          }
-
-          if (isInternalInvalid) {
+          const { needsConnection, isConnected } = getNodeConnectionStatus(node);
+          if (needsConnection && !isConnected) {
             issues.push({
               nodeId: node.id,
-              message: `Step "${node.title || node.type}" requires configuration.`
+              message: `Step "${node.title || node.integration?.name || node.type}" is missing a required connection.`
             });
             continue;
           }
 
-          // Check required fields based on integration schema
-          const requiredFields = node.integration?.fields?.filter(f => f.required) || [];
-          let missingField = false;
-          for (const field of requiredFields) {
-            if (conf[field.name] === undefined || conf[field.name] === '') {
-              missingField = true;
-              break;
-            }
-          }
-          if (missingField) {
+          if (!isNodeConfigured(node)) {
             issues.push({
               nodeId: node.id,
-              message: `Step "${node.title || node.type}" is missing required fields.`
-            });
-            continue;
-          }
-
-          // Connection validation for nodes that require it
-          const reqConnIds = ['slack', 'twilio', 'stripe', 'gmail', 'email', 'smtp', 'openai', 'instagram', 'instagram_action', 'calendar'];
-          if (reqConnIds.includes(id)) {
-            if (id !== 'calendar' || conf.provider !== 'builtin') {
-              if (!conf.connectionId) {
-                issues.push({
-                  nodeId: node.id,
-                  message: `Step "${node.title || node.integration?.name || node.type}" is missing a required connection.`
-                });
-                continue;
-              }
-            }
-          }
-          
-          if (id === 'slack' && (!conf.channel || !conf.message)) {
-            issues.push({
-              nodeId: node.id,
-              message: `Step "${node.title || 'Slack'}" is missing channel or message.`
+              message: `Step "${node.title || node.integration?.name || node.type}" requires complete configuration.`
             });
             continue;
           }
@@ -734,3 +675,46 @@ export async function clearSimulations(workflowId) {
   }
   return { success: true };
 }
+
+export async function simulateStorageUpload(workflowId, fileData = {}) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error('Unauthorized');
+
+  const workflow = await prisma.workflow.findUnique({
+    where: { id: workflowId },
+    select: { id: true, nodesJson: true }
+  });
+
+  if (!workflow) throw new Error('Workflow not found');
+
+  const payload = {
+    fileName: fileData.fileName || 'sample_upload.mp4',
+    fileUrl: fileData.fileUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1080&auto=format&fit=crop',
+    fileType: fileData.fileType || 'video/mp4',
+    fileSizeMB: Number(fileData.fileSizeMB || 14.2),
+    folderName: fileData.folderName || 'Automatix Uploads',
+    uploadedAt: new Date().toISOString()
+  };
+
+  const executionLog = await prisma.executionLog.create({
+    data: {
+      workflowId: workflow.id,
+      status: 'ACTIVE',
+      currentNodeState: { step: 'TRIGGER', payload }
+    }
+  });
+
+  try {
+    await inngest.send({
+      name: 'engine/workflow.start',
+      data: {
+        executionLogId: executionLog.id,
+      }
+    });
+  } catch (e) {
+    console.warn('Inngest start warning:', e.message);
+  }
+
+  return { success: true, payload };
+}
+

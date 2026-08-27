@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { getNodeConnectionStatus, isNodeConfigured } from '@/lib/nodeValidation';
 
 export async function GET() {
   try {
@@ -31,16 +32,17 @@ export async function GET() {
             message: 'Trigger has configuration issues.'
           });
         } else {
-          const reqConn = ['webhook', 'calendar', 'instagram', 'sheets', 'slack', 'twilio', 'stripe', 'gmail', 'smtp', 'openai'];
-          if (trigger.integration && reqConn.includes(trigger.integration.id)) {
-            if (trigger.integration.id !== 'webhook' && !(trigger.integration.id === 'calendar' && trigger.config?.provider === 'builtin')) {
-              if (!trigger.config?.connectionId) {
-                issues.push({
-                  nodeId: trigger.id,
-                  message: 'Missing required connection.'
-                });
-              }
-            }
+          const { needsConnection, isConnected } = getNodeConnectionStatus(trigger);
+          if (needsConnection && !isConnected) {
+            issues.push({
+              nodeId: trigger.id,
+              message: 'Missing required connection.'
+            });
+          } else if (!isNodeConfigured(trigger)) {
+            issues.push({
+              nodeId: trigger.id,
+              message: 'Trigger requires complete configuration.'
+            });
           }
         }
 
@@ -57,77 +59,19 @@ export async function GET() {
               continue;
             }
             
-            const id = node.integration?.id;
-            const conf = node.config || {};
-
-
-
-            let isInternalInvalid = false;
-            if (id === 'delay') {
-              const dDuration = conf.duration !== undefined ? conf.duration : 1;
-              const dUnit = conf.unit || 'minutes';
-              isInternalInvalid = !(conf.delayType === 'event_based' ? (conf.eventDate && dDuration && dUnit) : (dDuration && dUnit));
-            } else if (id === 'date_formatter') {
-              const op = conf.operation || 'format_timezone';
-              if (op === 'duration') isInternalInvalid = !conf.startDate || !conf.endDate;
-              else isInternalInvalid = !conf.dateString;
-            } else if (id === 'formatter_extract') {
-              isInternalInvalid = !conf.inputString;
-            } else if (id === 'formatter_dev') {
-              isInternalInvalid = !conf.code;
-            } else if (id === 'custom_variable') {
-              if (!conf.varName) isInternalInvalid = true;
-              else if (conf.varType === 'timestamp' && conf.useCurrentTime === false && !conf.varValue) isInternalInvalid = true;
-              else if (conf.varType !== 'timestamp' && !conf.varValue) isInternalInvalid = true;
-            } else if (id === 'http') {
-              isInternalInvalid = !conf.url || !conf.method;
-            } else if (id === 'calendar_status') {
-              isInternalInvalid = !conf.bookingId;
-            } else if (id === 'meta_capi') {
-              isInternalInvalid = !conf.pixelId || !conf.eventName;
-            }
-
-            if (isInternalInvalid) {
+            const { needsConnection, isConnected } = getNodeConnectionStatus(node);
+            if (needsConnection && !isConnected) {
               issues.push({
                 nodeId: node.id,
-                message: `Step "${node.title || node.type}" requires configuration.`
+                message: `Step "${node.title || node.integration?.name || node.type}" is missing a required connection.`
               });
               continue;
             }
 
-            const requiredFields = node.integration?.fields?.filter(f => f.required) || [];
-            let missingField = false;
-            for (const field of requiredFields) {
-              if (conf[field.name] === undefined || conf[field.name] === '') {
-                missingField = true;
-                break;
-              }
-            }
-            if (missingField) {
+            if (!isNodeConfigured(node)) {
               issues.push({
                 nodeId: node.id,
-                message: `Step "${node.title || node.type}" is missing required fields.`
-              });
-              continue;
-            }
-
-            const reqConnIds = ['slack', 'twilio', 'stripe', 'gmail', 'email', 'smtp', 'openai', 'instagram', 'instagram_action', 'calendar'];
-            if (reqConnIds.includes(id)) {
-              if (id !== 'calendar' || conf.provider !== 'builtin') {
-                if (!conf.connectionId) {
-                  issues.push({
-                    nodeId: node.id,
-                    message: `Step "${node.title || node.integration?.name || node.type}" is missing a required connection.`
-                  });
-                  continue;
-                }
-              }
-            }
-            
-            if (id === 'slack' && (!conf.channel || !conf.message)) {
-              issues.push({
-                nodeId: node.id,
-                message: `Step "${node.title || 'Slack'}" is missing channel or message.`
+                message: `Step "${node.title || node.integration?.name || node.type}" requires complete configuration.`
               });
               continue;
             }

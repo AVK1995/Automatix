@@ -15,7 +15,7 @@ import { decrypt } from '@/lib/encryption';
 import { SYSTEM_LIMITS } from '@/lib/limits';
 import { cleanValueForSheets } from '@/lib/dateUtils';
 import { getGoogleAccessToken } from '@/lib/googleAuth';
-import { executeGoogleSheetsAction } from '@/lib/sheetsExecutor';
+import { buildAiPrompt, generateAiContent, verifyApiKey, parseStructuredAiResponse } from '@/lib/aiProvider';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -40,9 +40,8 @@ export async function testNodeAction(node) {
 
   try {
     // Determine the integration ID to use for quota tracking
-    const trackingId = config.connectionId || integrationId;
-    if (trackingId && !['http', 'sheets', 'formatter_text', 'formatter_math', 'formatter_datetime', 'json_parser', 'custom_variable', 'date_formatter', 'code', 'delay', 'condition'].includes(trackingId)) {
-      // Internal nodes don't count towards quota, only external connections
+    const trackingId = config.connectionId;
+    if (trackingId) {
       await checkAndLogUsage(trackingId, session.user.quotaTier || 'free');
     }
 
@@ -78,6 +77,12 @@ export async function testNodeAction(node) {
           success: true, 
           data: { message: `Simulated success for ${integrationId}. Real execution engine for this provider is coming soon.` } 
         };
+
+      case 'ai_mediator':
+        return await executeAiMediatorTest(config);
+
+      case 'instagram_publish':
+        return await executeInstagramPublishTest(config, session.user.id);
 
       case 'formatter_text':
         return await executeTextFormatterTest(config);
@@ -998,3 +1003,119 @@ async function executeInstagramActionTest(config, userId) {
     time: elapsed
   };
 }
+
+async function executeAiMediatorTest(config) {
+  const startTime = Date.now();
+  const provider = config?.provider || 'native';
+  const task = config?.task || 'generate_caption';
+  const tone = config?.tone || 'engaging';
+  const customPrompt = config?.customPrompt ? applyTestVariables(config.customPrompt) : '';
+  const fileDetails = config?.fileDetails || null;
+  let mediaUrl = config?.mediaUrl || '';
+  if ((!mediaUrl || mediaUrl.includes('{{')) && fileDetails?.fileUrl) {
+    mediaUrl = fileDetails.fileUrl;
+  } else if (mediaUrl.includes('{{')) {
+    mediaUrl = applyTestVariables(mediaUrl);
+  }
+  const apiKey = config?.apiKey?.trim();
+
+  if (provider !== 'native' && provider !== 'automatix' && !apiKey) {
+    return {
+      success: false,
+      error: 'Missing API Key',
+      fix: `Please provide a valid ${provider.toUpperCase()} API key or switch to the free Automatix Native Engine.`
+    };
+  }
+
+  const promptText = buildAiPrompt({ task, tone, customPrompt, mediaUrl, fileDetails });
+
+  try {
+    const result = await generateAiContent({
+      provider,
+      apiKey,
+      baseUrl: config?.baseUrl,
+      customModel: config?.customModel,
+      promptText,
+      task,
+      tone,
+      customPrompt,
+      mediaUrl,
+      fileDetails
+    });
+
+    const text = result.text || '';
+    const usedModel = result.usedModel;
+    const parsed = parseStructuredAiResponse(text, task, tone);
+
+    const nowIso = new Date().toISOString();
+    const durationMs = Date.now() - startTime;
+    return {
+      success: true,
+      data: {
+        output: parsed.output || text,
+        caption: parsed.caption || text,
+        title: parsed.title,
+        hook: parsed.hook || parsed.title,
+        hashtags: parsed.hashtags,
+        summary: result.summary || parsed.summary,
+        transcript: result.transcript || parsed.transcript,
+        actionItems: result.actionItems || parsed.actionItems,
+        insights: result.insights || parsed.insights,
+        tokensUsed: result.tokens?.total || 0,
+        tokens: result.tokens || null,
+        model: usedModel,
+        provider: usedModel,
+        createdAt: nowIso,
+        timestamp: nowIso,
+        rawOutput: text,
+        generationTimeMs: durationMs,
+        generationTimeSec: (durationMs / 1000).toFixed(2)
+      },
+      time: durationMs
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: `AI Provider Error: ${err.message}`,
+      fix: 'Please verify your API key or switch to the free Automatix Native Engine.'
+    };
+  }
+}
+
+export async function verifyAiKeyAction({ provider = 'gemini', apiKey = '', baseUrl = '' }) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { valid: false, error: 'Unauthorized session' };
+  }
+  return await verifyApiKey({ provider, apiKey, baseUrl });
+}
+
+async function executeInstagramPublishTest(config, userId) {
+  const startTime = Date.now();
+  const publishType = config?.publishType || 'FEED_POST';
+  const mediaUrl = config?.mediaUrl ? applyTestVariables(config.mediaUrl) : '';
+  const caption = config?.caption ? applyTestVariables(config.caption) : '';
+
+  if (!mediaUrl) {
+    return {
+      success: false,
+      error: 'Missing Media URL',
+      fix: 'Please map a valid media file URL (e.g. from your Cloud Storage trigger).'
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      status: 'READY_TO_PUBLISH',
+      publishType: publishType,
+      mediaUrl: mediaUrl,
+      caption: caption || '(No caption provided for story)',
+      simulatedPostId: `ig_post_${Date.now()}`,
+      permalink: 'https://www.instagram.com/p/preview_demo_post/',
+      message: `Simulated validation passed! Ready to publish as ${publishType}.`
+    },
+    time: Date.now() - startTime
+  };
+}
+

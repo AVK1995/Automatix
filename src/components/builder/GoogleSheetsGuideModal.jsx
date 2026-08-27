@@ -120,7 +120,7 @@ export default function GoogleSheetsGuideModal({ isOpen, onClose }) {
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-accent-blue/20 text-accent-blue flex items-center justify-center font-bold text-xs">3</div>
                     <div>
                       <h3 className="text-xs sm:text-sm font-medium text-white">Save and Click Run</h3>
-                      <p className="text-[11px] sm:text-xs text-text-secondary mt-1">Click the Save icon (💾). Keep <code className="bg-white/10 px-1 rounded">setupTrigger</code> selected at the top and click <strong>▶ Run</strong>.</p>
+                      <p className="text-[11px] sm:text-xs text-text-secondary mt-1">Click the Save icon. Keep <code className="bg-white/10 px-1 rounded">setupTrigger</code> selected at the top and click <strong>Run</strong>.</p>
                     </div>
                   </div>
 

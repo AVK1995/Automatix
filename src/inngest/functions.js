@@ -12,7 +12,7 @@ import timezone from 'dayjs/plugin/timezone.js';
 import customParseFormat from 'dayjs/plugin/customParseFormat.js';
 import { cleanValueForSheets } from '@/lib/dateUtils';
 import { getGoogleAccessToken } from '@/lib/googleAuth';
-import { executeGoogleSheetsAction } from '@/lib/sheetsExecutor';
+import { buildAiPrompt, generateAiContent, parseStructuredAiResponse } from '@/lib/aiProvider';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -853,6 +853,185 @@ export const executeWorkflow = inngest.createFunction(
                       apiResponse: apiData
                     };
                   }
+                // --- 16. AI MEDIATOR (CONTENT & VISION ENGINE) ---
+                else if (node.integrationId === 'ai_mediator' || node.integration?.id === 'ai_mediator') {
+                  const provider = node.config?.provider || 'gemini';
+                  const task = node.config?.task || 'generate_caption';
+                  const tone = node.config?.tone || 'engaging';
+                  const customPrompt = node.config?.customPrompt ? resolveVars(node.config.customPrompt) : '';
+                  const mediaUrl = node.config?.mediaUrl ? resolveVars(node.config.mediaUrl) : '';
+                  const apiKey = node.config?.apiKey?.trim();
+
+                  const triggerPayload = execution.currentNodeState?.payload || {};
+                  const promptText = buildAiPrompt({
+                    task,
+                    tone,
+                    customPrompt,
+                    mediaUrl,
+                    fileDetails: triggerPayload
+                  });
+
+                  let generatedCaption = '';
+                  let generatedTitle = '';
+                  let generatedHashtags = '';
+                  let generatedTranscript = '';
+                  let generatedSummary = '';
+                  const aiResult = await generateAiContent({
+                    provider,
+                    apiKey,
+                    baseUrl: node.config?.baseUrl,
+                    customModel: node.config?.customModel,
+                    promptText,
+                    task,
+                    tone,
+                    customPrompt,
+                    mediaUrl,
+                    fileDetails: triggerPayload
+                  });
+
+                  const rawOutput = aiResult.text || '';
+                  const parsed = parseStructuredAiResponse(rawOutput, task, tone);
+
+                  const nowIso = new Date().toISOString();
+                  output = {
+                    output: parsed.output || rawOutput,
+                    caption: parsed.caption || rawOutput,
+                    title: parsed.title,
+                    hook: parsed.hook || parsed.title,
+                    hashtags: parsed.hashtags,
+                    summary: aiResult.summary || parsed.summary,
+                    transcript: aiResult.transcript || parsed.transcript,
+                    actionItems: aiResult.actionItems || parsed.actionItems,
+                    insights: aiResult.insights || parsed.insights,
+                    tokensUsed: aiResult.tokens?.total || 0,
+                    tokens: aiResult.tokens || null,
+                    model: aiResult.usedModel || provider,
+                    provider: aiResult.usedModel || provider,
+                    createdAt: nowIso,
+                    timestamp: nowIso,
+                    rawOutput
+                  };
+                }
+                // --- 17. INSTAGRAM POST / STORY / REEL PUBLISHER ---
+                else if (node.integrationId === 'instagram_publish' || node.integration?.id === 'instagram_publish') {
+                  const publishType = node.config?.publishType || 'FEED_POST';
+                  const rawMediaUrl = node.config?.mediaUrl ? resolveVars(node.config.mediaUrl) : '';
+                  const captionText = node.config?.caption ? resolveVars(node.config.caption) : '';
+                  const thumbOffset = node.config?.thumbOffset ? parseInt(resolveVars(node.config.thumbOffset), 10) : undefined;
+
+                  if (!rawMediaUrl) throw new Error("Missing media URL for Instagram publishing");
+
+                  const connectionId = node.config?.connectionId || node.integrationId || node.id;
+                  const connection = await prisma.integration.findUnique({
+                    where: { id: connectionId }
+                  });
+                  if (!connection) throw new Error("Connected Instagram account not found");
+
+                  let accessToken = connection.apiKey;
+                  let igUserId = connection.accountEmail;
+                  try {
+                    const parsed = JSON.parse(connection.apiKey);
+                    if (parsed.access_token) accessToken = parsed.access_token;
+                    if (parsed.instagram_business_account_id) igUserId = parsed.instagram_business_account_id;
+                  } catch(e) {}
+
+                  let resolvedMediaUrl = rawMediaUrl;
+                  if (rawMediaUrl.includes('drive.google.com') || rawMediaUrl.includes('googleusercontent.com')) {
+                    const driveMatch = rawMediaUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || rawMediaUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                    if (driveMatch && driveMatch[1]) {
+                      // lh3 CDN serves direct raw binary without HTML virus scan warnings
+                      resolvedMediaUrl = `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+                    }
+                  }
+
+                  const triggerPayload = execution.currentNodeState?.payload || {};
+                  const triggerFileType = (triggerPayload.fileType || '').toLowerCase();
+                  const triggerFileName = (triggerPayload.fileName || '').toLowerCase();
+
+                  const cleanUrl = rawMediaUrl.split('?')[0].toLowerCase();
+                  const isVideo = publishType === 'REEL' ||
+                                  triggerFileType.startsWith('video') ||
+                                  !!triggerFileName.match(/\.(mp4|mov|avi|webm|mkv|m4v)$/i) ||
+                                  !!cleanUrl.match(/\.(mp4|mov|avi|webm|mkv|m4v)$/) ||
+                                  !!rawMediaUrl.match(/\.(mp4|mov|avi|webm|mkv|m4v)($|\?)/i);
+
+                  // 1. Create Media Container
+                  let containerPayload = {
+                    access_token: accessToken
+                  };
+
+                  if (publishType === 'STORY') {
+                    containerPayload.media_type = 'STORIES';
+                    if (isVideo) {
+                      containerPayload.video_url = resolvedMediaUrl;
+                    } else {
+                      containerPayload.image_url = resolvedMediaUrl;
+                    }
+                  } else if (publishType === 'REEL') {
+                    containerPayload.media_type = 'REELS';
+                    containerPayload.video_url = resolvedMediaUrl;
+                    if (captionText) containerPayload.caption = captionText;
+                    if (thumbOffset) containerPayload.thumb_offset = thumbOffset;
+                  } else {
+                    // FEED_POST
+                    if (isVideo) {
+                      containerPayload.media_type = 'VIDEO';
+                      containerPayload.video_url = resolvedMediaUrl;
+                    } else {
+                      containerPayload.image_url = resolvedMediaUrl;
+                    }
+                    if (captionText) containerPayload.caption = captionText;
+                  }
+
+                  const containerRes = await fetch(`https://graph.facebook.com/v20.0/${igUserId}/media`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(containerPayload)
+                  });
+                  const containerData = await containerRes.json();
+                  if (!containerRes.ok || !containerData.id) {
+                    throw new Error(containerData.error?.message || 'Meta API Container Creation Error');
+                  }
+
+                  const creationId = containerData.id;
+
+                  // 2. Poll Container Status if video
+                  if (isVideo) {
+                    let attempts = 0;
+                    while (attempts < 15) {
+                      await new Promise((resolve) => setTimeout(resolve, 3000));
+                      const statusRes = await fetch(`https://graph.facebook.com/v20.0/${creationId}?fields=status_code&access_token=${accessToken}`);
+                      const statusData = await statusRes.json();
+                      if (statusData.status_code === 'FINISHED') break;
+                      if (statusData.status_code === 'ERROR') throw new Error('Meta video encoding failed');
+                      attempts++;
+                    }
+                  }
+
+                  // 3. Publish Media Container
+                  const publishRes = await fetch(`https://graph.facebook.com/v20.0/${igUserId}/media_publish`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      creation_id: creationId,
+                      access_token: accessToken
+                    })
+                  });
+                  const publishData = await publishRes.json();
+                  if (!publishRes.ok || !publishData.id) {
+                    throw new Error(publishData.error?.message || 'Meta API Media Publish Error');
+                  }
+
+                  const publishedPostId = publishData.id;
+
+                  output = {
+                    publishedPostId,
+                    permalink: `https://www.instagram.com/p/${publishedPostId}/`,
+                    publishType,
+                    mediaUrl: rawMediaUrl,
+                    status: 'SUCCESS'
+                  };
+                }
                 
                 // Save output to stepOutputs
                 if (output !== null && output !== undefined) {

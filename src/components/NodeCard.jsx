@@ -1,7 +1,8 @@
 import { NODE_TYPES } from '@/constants';
 import { TrashIcon, TriggerIcon, ActionIcon, DelayIcon } from './Icons';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Copy, ArrowUpDown, CheckCircle2, Play, ClipboardPaste, User } from 'lucide-react';
+import { AlertTriangle, Copy, ArrowUpDown, CheckCircle2, Play, ClipboardPaste, User, Crown } from 'lucide-react';
+import { getNodeConnectionStatus, isNodeConfigured } from '@/lib/nodeValidation';
 
 export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isActiveSimulation, waitingCount = 0, onClick, onDelete, onCopy, onPaste, onReplace, onStartMove, onViewWaitingLeads }) {
   const isTrigger = node.type === NODE_TYPES.TRIGGER;
@@ -87,6 +88,61 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
         label = 'Mode';
         displayValue = value ? 'Listening for Payload' : 'Active';
       }
+    } else if (integrationId === 'storage_trigger') {
+      if (key === 'provider') {
+        label = 'Storage Provider';
+        if (value === 'gdrive') displayValue = 'Google Drive';
+        else if (value === 'onedrive') displayValue = 'OneDrive';
+        else if (value === 'proton') displayValue = 'Proton Drive';
+        else displayValue = 'Custom Cloud Storage';
+      }
+      if (key === 'folderName') label = 'Folder';
+      if (key === 'fileFilter') {
+        label = 'Filter';
+        if (value === 'IMAGES_ONLY') displayValue = 'Images Only (.jpg, .png, .webp)';
+        else if (value === 'VIDEOS_ONLY') displayValue = 'Videos Only (.mp4, .mov)';
+        else if (value === 'DOCUMENTS_ONLY') displayValue = 'Documents Only (.pdf, .doc)';
+        else displayValue = 'All Files (<=25MB)';
+      }
+      if (key === 'isListening') {
+        label = 'Mode';
+        displayValue = value ? 'Listening for Uploads' : 'Active';
+      }
+    } else if (integrationId === 'ai_mediator') {
+      if (key === 'provider') {
+        label = 'AI Provider';
+        if (value === 'gemini') displayValue = 'Google Gemini (Flash/Pro)';
+        else if (value === 'openai') displayValue = 'OpenAI ChatGPT (GPT-4o)';
+        else if (value === 'claude') displayValue = 'Anthropic Claude (3.5 Sonnet)';
+        else displayValue = 'Custom AI Engine';
+      }
+      if (key === 'task') {
+        label = 'Task';
+        if (value === 'generate_caption') displayValue = 'Generate Caption & Hashtags';
+        else if (value === 'generate_title') displayValue = 'Generate Hooks & Titles';
+        else if (value === 'generate_transcript') displayValue = 'Speech-to-Text Transcription';
+        else if (value === 'summarize_content') displayValue = 'Executive Summary & Takeaways';
+        else if (value === 'doc_action_items') displayValue = 'Extract Action Items & Tasks';
+        else if (value === 'doc_qna_review') displayValue = 'Document Review & FAQs';
+        else if (value === 'data_insights') displayValue = 'Data Insights & Trends';
+        else if (value === 'data_action_recommendations') displayValue = 'Strategic Recommendations';
+        else if (value === 'image_visual_analysis') displayValue = 'Visual Element Breakdown';
+        else if (value === 'custom_analysis') displayValue = 'Custom AI Analysis';
+        else displayValue = 'AI Content Generation';
+      }
+      if (key === 'tone') {
+        label = 'Tone';
+        displayValue = String(value);
+      }
+    } else if (integrationId === 'instagram_publish') {
+      if (key === 'publishType') {
+        label = 'Publish Format';
+        if (value === 'FEED_POST') displayValue = 'Instagram Feed Post';
+        else if (value === 'REEL') displayValue = 'Instagram Reel (Video)';
+        else if (value === 'STORY') displayValue = 'Instagram Story';
+      }
+      if (key === 'mediaUrl') label = 'Media Source';
+      if (key === 'caption') label = 'Caption';
     } else if (integrationId === 'schedule') {
       if (key === 'interval') label = 'Interval';
       if (key === 'unit') label = 'Unit';
@@ -167,49 +223,17 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
             <div className="flex items-center gap-2">
               <h3 className="text-sm sm:text-base font-semibold text-white truncate" title={node.title}>{node.title}</h3>
               {(() => {
-                const reqConn = ['slack', 'twilio', 'stripe', 'gmail', 'email', 'openai', 'instagram', 'instagram_action', 'interactive_prompt', 'calendly', 'calcom'];
-                let isConnected = false;
-                let needsConnection = false;
-                
-                if (node.integration && reqConn.includes(node.integration.id)) {
-                  needsConnection = true;
-                  if (node.config?.connectionId) isConnected = true;
-                } else if (node.integration && node.integration.id === 'sheets') {
-                  needsConnection = true;
-                  if (node.config?.spreadsheetId) isConnected = true;
-                }
-
-                let isConfigured = !isInvalid && !node.issue;
-                
-                if (node.integration?.id === 'reminder_sequence') {
-                  const branches = node.config?.branches || [{ id: '1', name: 'Reminder 1', color: 'purple-500' }];
-                  let anyEmpty = false;
-                  for (const branch of branches) {
-                    const branchChild = (node.children || []).find(c => c.pathId === branch.id);
-                    if (!branchChild) {
-                      anyEmpty = true;
-                      break;
-                    }
-                  }
-                  isConfigured = !anyEmpty;
-                } else if (node.integration?.id === 'delay') {
-                  if (node.config?.delayType === 'until') {
-                    isConfigured = !!node.config.untilDate && !isInvalid && !node.issue;
-                  } else if (node.config?.delayType === 'event_based') {
-                    isConfigured = !!node.config.eventDate && !isInvalid && !node.issue;
-                  } else {
-                    isConfigured = !!node.config?.delayType && !isInvalid && !node.issue;
-                  }
-                }
+                const { needsConnection, isConnected } = getNodeConnectionStatus(node);
+                const configured = isNodeConfigured(node, isInvalid);
                 
                 if (needsConnection) {
                   return isConnected ? (
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 items-center">
                       <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded border border-green-500/20 shrink-0">
                         <CheckCircle2 className="w-2.5 h-2.5" />
                         Connected
                       </span>
-                      {!isConfigured && (
+                      {!configured && (
                         <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-orange-500/10 text-orange-400 px-1.5 py-0.5 rounded border border-orange-500/20 shrink-0">
                           <AlertTriangle className="w-2.5 h-2.5" />
                           Needs Config
@@ -223,7 +247,7 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
                     </span>
                   );
                 } else {
-                  return isConfigured ? (
+                  return configured ? (
                     <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 shrink-0">
                       <CheckCircle2 className="w-2.5 h-2.5" />
                       Configured
@@ -237,7 +261,17 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
                 }
               })()}
             </div>
-            <p className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-widest mt-0.5 truncate">{node.integration?.name || node.type}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-widest truncate" title={node.integration?.name || node.type}>
+                {node.integration?.name || node.type}
+              </p>
+              {node.integration?.id === 'ai_mediator' && (
+                <span className="inline-flex items-center justify-center gap-1 text-[9px] font-bold tracking-wider text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded shrink-0 shadow-sm leading-none">
+                  <Crown className="w-2.5 h-2.5 text-amber-400 shrink-0 -translate-y-[0.5px]" />
+                  <span className="leading-none">PRO</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
         

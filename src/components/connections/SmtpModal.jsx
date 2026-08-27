@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { saveConnection, testSmtpConnection } from '@/actions/connections';
-import { X, Loader2, AlertTriangle } from 'lucide-react';
+import { X, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 export default function SmtpModal({ isOpen, onClose, onSuccess, initialData = null }) {
@@ -227,7 +227,8 @@ export default function SmtpModal({ isOpen, onClose, onSuccess, initialData = nu
                 <div className="mt-4 space-y-4">
                   <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-md">
                     <div className="flex items-center gap-2 text-green-500 font-medium mb-1">
-                      <span>✓ Connection Successful</span>
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                      <span>Connection Successful</span>
                     </div>
                     <p className="text-sm text-green-400 opacity-90">Test email was successfully sent to {formData.testEmail}.</p>
                   </div>

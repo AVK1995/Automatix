@@ -1,0 +1,232 @@
+/**
+ * Centralized Node Validation & Connection Status Engine for Automatix
+ * Ensures consistent badge indicators (Connected, Missing Connection, Configured, Needs Config)
+ * and publish/execution validation across the entire application.
+ */
+
+export function getNodeConnectionStatus(node) {
+  if (!node || !node.integration) {
+    return { needsConnection: false, isConnected: false };
+  }
+
+  const integrationId = node.integration.id;
+  const config = node.config || {};
+
+  // Integrations that strictly require an OAuth / Connected Account
+  const oauthIntegrations = [
+    'instagram',
+    'instagram_action',
+    'instagram_publish',
+    'slack',
+    'twilio',
+    'stripe',
+    'gmail',
+    'openai',
+    'calendly',
+    'calcom'
+  ];
+
+  if (oauthIntegrations.includes(integrationId)) {
+    return {
+      needsConnection: true,
+      isConnected: !!config.connectionId
+    };
+  }
+
+  // Google Sheets Action
+  if (integrationId === 'sheets') {
+    return {
+      needsConnection: true,
+      isConnected: !!(config.connectionId || config.spreadsheetId)
+    };
+  }
+
+  // Email (Only if SMTP provider is selected)
+  if (integrationId === 'email' && config.provider === 'smtp') {
+    return {
+      needsConnection: true,
+      isConnected: !!config.connectionId
+    };
+  }
+
+  // Calendar Trigger
+  if (integrationId === 'calendar' && config.provider !== 'builtin') {
+    return {
+      needsConnection: true,
+      isConnected: !!config.connectionId
+    };
+  }
+
+  return { needsConnection: false, isConnected: false };
+}
+
+export function isNodeConfigured(node, isInvalid = false) {
+  if (!node) return false;
+  if (isInvalid || node.issue) return false;
+
+  const id = node.integration?.id || node.type;
+  const config = node.config || {};
+
+  // 1. Trigger Nodes
+  if (id === 'webhook') {
+    return !!config.webhookToken;
+  }
+
+  if (id === 'storage_trigger') {
+    const hasFolder = !!(config.folderName?.trim() || config.folderId?.trim() || config.provider);
+    return !!config.webhookToken && hasFolder;
+  }
+
+  if (id === 'sheets_trigger') {
+    const hasSheet = !!(config.spreadsheetId?.trim() || config.spreadsheetName?.trim());
+    return !!config.webhookToken && hasSheet;
+  }
+
+  if (id === 'schedule') {
+    return !!(config.cron?.trim() || config.interval || config.scheduleType || config.time);
+  }
+
+  if (id === 'stripe') {
+    return !!(config.connectionId || config.event || config.eventType);
+  }
+
+  if (id === 'calendar') {
+    if (config.provider === 'builtin') {
+      return !!config.calendarId;
+    }
+    return !!config.connectionId;
+  }
+
+  if (id === 'instagram') {
+    if (!config.connectionId) return false;
+    if (config.condition === 'keyword' || config.condition === 'exact') {
+      return !!config.keyword?.trim();
+    }
+    return true;
+  }
+
+  // 2. Action Nodes
+  if (id === 'ai_mediator') {
+    // CRITICAL BYOK RULE: API Key is required
+    const hasKey = !!config.apiKey?.trim();
+    if (!hasKey) return false;
+
+    if (config.provider === 'custom') {
+      if (!config.baseUrl?.trim() || !config.customModel?.trim()) return false;
+    }
+
+    const hasTaskOrInput = !!(config.task?.trim() || config.mediaUrl?.trim() || config.customPrompt?.trim());
+    return hasTaskOrInput;
+  }
+
+  if (id === 'instagram_publish') {
+    const hasAccount = !!config.connectionId;
+    const hasMedia = !!config.mediaUrl?.trim();
+    return hasAccount && hasMedia;
+  }
+
+  if (id === 'instagram_action') {
+    if (!config.connectionId) return false;
+    if (config.messageType === 'media') {
+      return !!config.mediaUrl?.trim();
+    }
+    return !!config.message?.trim();
+  }
+
+  if (id === 'slack') {
+    return !!config.connectionId && !!config.channel?.trim() && !!config.message?.trim();
+  }
+
+  if (id === 'twilio') {
+    return !!config.connectionId && !!config.to?.trim() && !!config.message?.trim();
+  }
+
+  if (id === 'email') {
+    const hasTo = !!config.to?.trim();
+    const hasContent = !!(config.subject?.trim() || config.body?.trim() || config.message?.trim());
+    if (!hasTo || !hasContent) return false;
+    if (config.provider === 'smtp' && !config.connectionId) return false;
+    return true;
+  }
+
+  if (id === 'sheets') {
+    const hasAuth = !!(config.connectionId || config.spreadsheetId);
+    const hasTarget = !!(config.sheetName?.trim() || config.range?.trim() || config.rowValues || config.columnData);
+    return hasAuth && hasTarget;
+  }
+
+  if (id === 'formatter_text') {
+    const hasInput = config.input !== undefined && config.input !== null && String(config.input).trim() !== '';
+    if (!hasInput) return false;
+    if (config.operation === 'replace') {
+      return config.find !== undefined && config.find !== null && String(config.find) !== '';
+    }
+    return !!config.operation;
+  }
+
+  if (id === 'formatter_math') {
+    const hasInput1 = config.input1 !== undefined && config.input1 !== null && String(config.input1).trim() !== '';
+    return hasInput1 && !!config.operation;
+  }
+
+  if (id === 'formatter_extract') {
+    return !!(config.inputString?.trim() || config.input?.trim());
+  }
+
+  if (id === 'formatter_dev') {
+    return !!config.code?.trim();
+  }
+
+  if (id === 'date_formatter') {
+    if (config.operation === 'duration') {
+      return !!(config.startDate?.trim() && config.endDate?.trim());
+    }
+    return !!config.dateString?.trim();
+  }
+
+  if (id === 'custom_variable') {
+    if (!config.varName?.trim()) return false;
+    if (config.varType === 'timestamp' && config.useCurrentTime !== false) return true;
+    return config.varValue !== undefined && config.varValue !== null && String(config.varValue).trim() !== '';
+  }
+
+  if (id === 'calendar_status') {
+    return !!config.bookingId?.trim();
+  }
+
+  if (id === 'http') {
+    return !!config.url?.trim() && !!config.method;
+  }
+
+  if (id === 'meta_capi') {
+    return !!config.pixelId?.trim() && !!config.eventName?.trim();
+  }
+
+  // 3. Logic & Sequences
+  if (id === 'delay') {
+    if (config.delayType === 'until') {
+      return !!config.untilDate;
+    }
+    if (config.delayType === 'event_based') {
+      return !!config.eventDate && config.duration !== undefined && config.duration !== '';
+    }
+    return config.duration !== undefined && config.duration !== '' && !!config.unit;
+  }
+
+  if (id === 'condition' || id === 'filter') {
+    return !!(config.field?.trim() || (config.rules && config.rules.length > 0)) && !!config.operator;
+  }
+
+  if (id === 'reminder_sequence') {
+    const branches = config.branches || [{ id: '1', name: 'Reminder 1', color: 'purple-500' }];
+    for (const branch of branches) {
+      const branchChild = (node.children || []).find(c => c.pathId === branch.id);
+      if (!branchChild) return false;
+    }
+    return true;
+  }
+
+  // Generic fallback
+  const configKeys = Object.keys(config).filter(k => k !== 'webhookToken' && config[k] !== '' && config[k] !== undefined && config[k] !== null);
+  return configKeys.length > 0;
+}

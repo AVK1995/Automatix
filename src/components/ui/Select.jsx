@@ -4,10 +4,22 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Check, Search } from 'lucide-react';
 
-export default function Select({ value, onChange, options, placeholder = 'Select an option', className = '', buttonClassName = 'py-2', creatable = false }) {
+export default function Select({ 
+  value, 
+  onChange, 
+  options = [], 
+  placeholder = 'Select an option', 
+  className = '', 
+  buttonClassName = 'py-2', 
+  creatable = false,
+  searchable
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef(null);
+
+  // Only enable search input if explicitly requested or if list has more than 7 options or is creatable
+  const isSearchEnabled = searchable !== undefined ? searchable : (creatable || options.length > 7);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -30,29 +42,37 @@ export default function Select({ value, onChange, options, placeholder = 'Select
   }, [options, creatable, value]);
 
   const filteredOptions = useMemo(() => {
-    if (!searchQuery.trim()) return allOptions;
+    if (!isSearchEnabled || !searchQuery.trim()) return allOptions;
     const q = searchQuery.toLowerCase();
     return allOptions.filter(opt => {
       const textToSearch = opt.searchLabel || (typeof opt.label === 'string' ? opt.label : opt.value);
       return textToSearch.toLowerCase().includes(q);
     });
-  }, [allOptions, searchQuery]);
+  }, [allOptions, searchQuery, isSearchEnabled]);
 
   const exactMatch = useMemo(() => {
+    if (!isSearchEnabled) return false;
     return allOptions.some(opt => {
       const textToSearch = opt.searchLabel || (typeof opt.label === 'string' ? opt.label : opt.value);
       return opt.value.toLowerCase() === searchQuery.trim().toLowerCase() || 
              textToSearch.toLowerCase() === searchQuery.trim().toLowerCase();
     });
-  }, [allOptions, searchQuery]);
+  }, [allOptions, searchQuery, isSearchEnabled]);
   
   const showCustomOption = creatable && searchQuery.trim() !== '' && !exactMatch;
+
+  const toggleOpen = () => {
+    if (!isOpen) {
+      setSearchQuery('');
+    }
+    setIsOpen(!isOpen);
+  };
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleOpen}
         className={`w-full flex items-center justify-between bg-black/50 border border-white/10 rounded-md px-3 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors ${buttonClassName} ${isOpen ? 'border-accent-blue' : ''}`}
       >
         <span className={`truncate text-left flex items-center gap-2 ${selectedOption ? 'text-white' : 'text-white/50'}`}>
@@ -71,18 +91,29 @@ export default function Select({ value, onChange, options, placeholder = 'Select
             transition={{ duration: 0.15 }}
             className="absolute z-50 w-full mt-1 bg-[#111] backdrop-blur-xl border border-white/10 rounded-md shadow-2xl overflow-hidden max-h-72 flex flex-col"
           >
-            <div className="p-2 border-b border-white/5 shrink-0 bg-black/20">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
-                <input
-                  type="text"
-                  placeholder="Search options..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded px-2 pl-8 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue placeholder:text-white/30"
-                />
+            {isSearchEnabled && (
+              <div className="p-2 border-b border-white/5 shrink-0 bg-black/20">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
+                  <input
+                    type="search"
+                    inputMode="search"
+                    name="select_search_filter"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-form-type="other"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    placeholder="Search options..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded px-2 pl-8 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue placeholder:text-white/30"
+                  />
+                </div>
               </div>
-            </div>
+            )}
             
             <div className="flex-1 overflow-y-auto py-1">
               {showCustomOption && (
