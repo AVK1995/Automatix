@@ -871,7 +871,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         }
 
         const appsScriptCode = `function setupTrigger() {\n  // Clear any existing triggers to prevent duplicates\n  var triggers = ScriptApp.getProjectTriggers();\n  for (var i = 0; i < triggers.length; i++) {\n    if (triggers[i].getHandlerFunction() === 'onEditRow') {\n      ScriptApp.deleteTrigger(triggers[i]);\n    }\n  }\n  ScriptApp.newTrigger('onEditRow')\n    .forSpreadsheet(SpreadsheetApp.getActive())\n    .onEdit()\n    .create();\n  \n  // Automatically send the latest row as a test payload immediately\n  testSendLastRow();\n  Logger.log("Trigger setup and test payload sent successfully!");\n}\n\nfunction onEditRow(e) {\n  // If run manually from Apps Script without edit event e, fallback to sending the last row\n  if (!e || !e.source) {\n    testSendLastRow();\n    return;\n  }\n\n  var sheet = e.source.getActiveSheet();\n  if (sheet.getName().trim().toLowerCase() !== "${targetTab}".trim().toLowerCase()) {\n    Logger.log("Ignored: edit was on sheet '" + sheet.getName() + "', but target tab is '${targetTab}'");\n    return;\n  }\n  \n  var row = e.range.getRow();\n  if (row <= 1) return; // Skip header row\n${rowConditionCode}${columnFilterCode}\n  // Smart Debounce & Multi-Column Delay:\n  // If user or an automation is populating columns across this row, debounce rapid edits\n  // and wait 3.5 seconds so all remaining columns have time to settle.\n  var cache = CacheService.getScriptCache();\n  var lockKey = "edit_row_" + sheet.getName() + "_" + row;\n  if (cache.get(lockKey)) {\n    Logger.log("Debouncing rapid edit on row " + row);\n    return;\n  }\n  cache.put(lockKey, "1", 6);\n\n  // Wait 3.5 seconds to capture all populated column values\n  Utilities.sleep(3500);\n  SpreadsheetApp.flush();\n\n  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];\n  var data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];\n  var now = new Date();\n  \n  var payload = {\n    _event: "${currentEvent}",\n    _row: row,\n    _triggeredAt: now.toISOString(),\n    _triggeredDate: Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT", "yyyy-MM-dd"),\n    _triggeredTime: Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT", "HH:mm:ss")\n  };\n  for (var i = 0; i < headers.length; i++) {\n    var key = String(headers[i]).trim();\n    if (key) {\n      var cellVal = data[i];\n      if (cellVal instanceof Date) {\n        payload[key] = cellVal.toISOString();\n      } else {\n        payload[key] = (cellVal !== undefined && cellVal !== null) ? cellVal : "";\n      }\n    }\n  }\n\n  var response = UrlFetchApp.fetch("${sheetsHookUrl}", {\n    method: "post",\n    contentType: "application/json",\n    headers: {\n      "Bypass-Tunnel-Reminder": "true",\n      "bypass-tunnel-reminder": "true",\n      "ngrok-skip-browser-warning": "true",\n      "User-Agent": "Automatix-AppsScript"\n    },\n    muteHttpExceptions: true,\n    payload: JSON.stringify(payload)\n  });\n  Logger.log("Webhook fired for row " + row + " | Status: " + response.getResponseCode() + " | Body: " + response.getContentText());\n}\n\nfunction testSendLastRow() {\n  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("${targetTab}") || SpreadsheetApp.getActiveSheet();\n  var lastRow = sheet.getLastRow();\n  if (lastRow <= 1) {\n    Logger.log("No data rows found below header.");\n    return;\n  }\n  SpreadsheetApp.flush();\n  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];\n  var data = sheet.getRange(lastRow, 1, 1, sheet.getLastColumn()).getValues()[0];\n  var now = new Date();\n  \n  var payload = {\n    _event: "${currentEvent}",\n    _row: lastRow,\n    _triggeredAt: now.toISOString(),\n    _triggeredDate: Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT", "yyyy-MM-dd"),\n    _triggeredTime: Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT", "HH:mm:ss")\n  };\n  for (var i = 0; i < headers.length; i++) {\n    var key = String(headers[i]).trim();\n    if (key) {\n      var cellVal = data[i];\n      if (cellVal instanceof Date) {\n        payload[key] = cellVal.toISOString();\n      } else {\n        payload[key] = (cellVal !== undefined && cellVal !== null) ? cellVal : "";\n      }\n    }\n  }\n\n  var response = UrlFetchApp.fetch("${sheetsHookUrl}", {\n    method: "post",\n    contentType: "application/json",\n    headers: {\n      "Bypass-Tunnel-Reminder": "true",\n      "bypass-tunnel-reminder": "true",\n      "ngrok-skip-browser-warning": "true",\n      "User-Agent": "Automatix-AppsScript"\n    },\n    muteHttpExceptions: true,\n    payload: JSON.stringify(payload)\n  });\n  Logger.log("Test payload sent for row " + lastRow + " | Status: " + response.getResponseCode() + " | Body: " + response.getContentText());\n}`;
-        const currentSignature = `${config.spreadsheetId}-${config.range}-${currentEvent}-${targetRowRule}-${config.targetRowIndex || ''}-${triggerCol}-${activeOrigin}`;
+        const currentSignature = `${config.spreadsheetId || ''}-${config.range || ''}-${currentEvent}-${targetRowRule}-${config.targetRowIndex || ''}-${triggerCol}`;
 
         return (
           <div className="space-y-6">
@@ -1130,38 +1130,6 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                 </div>
               )}
 
-              {!isLocalhost && config.customOrigin && (
-                <div className="bg-accent-blue/10 border border-accent-blue/20 p-3 rounded-lg flex items-center justify-between gap-3 text-xs">
-                  <div className="min-w-0">
-                    <p className="text-accent-blue font-medium truncate">
-                      {isStaleTunnel ? 'Stale Local Tunnel Overridden' : `Custom Domain Override: ${config.customOrigin}`}
-                    </p>
-                    <p className="text-[11px] text-text-secondary mt-0.5">
-                      {isStaleTunnel 
-                        ? 'Using live production domain for webhook and Apps Script generation.' 
-                        : 'Custom origin active for generated URLs.'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const live = typeof window !== 'undefined' ? window.location.origin : '';
-                      onUpdateNode(selectedNode.id, {
-                        ...selectedNode,
-                        config: {
-                          ...selectedNode.config,
-                          customOrigin: ''
-                        }
-                      });
-                      toast.success(`Webhook synced to ${live}`);
-                    }}
-                    className="px-3 py-1.5 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-md text-xs font-semibold shrink-0 transition-colors"
-                  >
-                    Reset to Live Domain
-                  </button>
-                </div>
-              )}
-
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-medium text-text-secondary">Webhook URL</label>
@@ -1173,10 +1141,11 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                         ...selectedNode,
                         config: {
                           ...selectedNode.config,
-                          customOrigin: ''
+                          customOrigin: '',
+                          lastCopiedSignature: currentSignature
                         }
                       });
-                      toast.success(`Webhook URL synced to ${liveOrigin}`);
+                      toast.success(`Webhook URL synced & locked to ${liveOrigin}`);
                     }}
                     className="text-[10px] text-accent-blue hover:text-white transition-colors flex items-center gap-1 bg-accent-blue/10 hover:bg-accent-blue/20 px-2 py-0.5 rounded border border-accent-blue/20 font-medium"
                     title="Sync Webhook URL with current browser domain"
@@ -1189,7 +1158,19 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   <input readOnly value={sheetsHookUrl} className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" />
                   <button 
                     disabled={!config.webhookToken}
-                    onClick={() => handleCopy(sheetsHookUrl, 'sheets_webhook')} 
+                    onClick={() => {
+                      handleCopy(sheetsHookUrl, 'sheets_webhook');
+                      if (!isLocalhost && isStaleTunnel) {
+                        onUpdateNode(selectedNode.id, {
+                          ...selectedNode,
+                          config: {
+                            ...selectedNode.config,
+                            customOrigin: '',
+                            lastCopiedSignature: currentSignature
+                          }
+                        });
+                      }
+                    }} 
                     className="bg-white/10 hover:bg-white/20 disabled:opacity-50 px-3 py-2 border border-l-0 border-white/10 rounded-r-md text-xs font-medium transition-colors w-16 text-center text-white"
                   >
                     {copiedKey === 'sheets_webhook' ? 'Copied' : 'Copy'}
@@ -1243,7 +1224,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                         type="button"
                         onClick={() => {
                           handleCopy(appsScriptCode, 'sheets_code');
-                          handleChange('lastCopiedSignature', currentSignature);
+                          onUpdateNode(selectedNode.id, {
+                            ...selectedNode,
+                            config: {
+                              ...selectedNode.config,
+                              customOrigin: !isLocalhost && isStaleTunnel ? '' : (selectedNode.config.customOrigin || ''),
+                              lastCopiedSignature: currentSignature
+                            }
+                          });
                         }}
                         className="flex items-center gap-1.5 text-xs bg-accent-blue/20 hover:bg-accent-blue/30 text-accent-blue hover:text-white border border-accent-blue/30 px-3 py-1.5 rounded transition-all font-medium backdrop-blur-sm"
                       >
@@ -1258,7 +1246,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     type="button"
                     onClick={() => {
                       handleCopy(appsScriptCode, 'sheets_code');
-                      handleChange('lastCopiedSignature', currentSignature);
+                      onUpdateNode(selectedNode.id, {
+                        ...selectedNode,
+                        config: {
+                          ...selectedNode.config,
+                          customOrigin: !isLocalhost && isStaleTunnel ? '' : (selectedNode.config.customOrigin || ''),
+                          lastCopiedSignature: currentSignature
+                        }
+                      });
                     }}
                     className="w-full flex items-center justify-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-white border border-white/10 py-2 rounded transition-colors font-medium"
                   >
