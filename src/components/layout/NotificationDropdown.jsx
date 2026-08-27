@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Bell, 
   X, 
@@ -27,8 +28,13 @@ export default function NotificationDropdown() {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [activeModalNotification, setActiveModalNotification] = useState(null);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef(null);
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchNotifications = async () => {
     try {
@@ -61,9 +67,19 @@ export default function NotificationDropdown() {
         setIsOpen(false);
       }
     };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (activeModalNotification) setActiveModalNotification(null);
+        else if (isOpen) setIsOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeModalNotification, isOpen]);
 
   const cleanHtmlPreview = (text) => {
     if (!text) return '';
@@ -246,36 +262,38 @@ export default function NotificationDropdown() {
         </button>
 
         {isOpen && (
-          <div className="fixed inset-x-4 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[440px] bg-[#111] border border-border-subtle rounded-xl shadow-2xl z-[100] overflow-hidden flex flex-col max-h-[calc(100vh-80px)] sm:max-h-[32rem]">
+          <div className="fixed inset-x-3 top-14 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[440px] bg-[#111] border border-border-subtle rounded-xl shadow-2xl z-[100] overflow-hidden flex flex-col max-h-[calc(100vh-80px)] sm:max-h-[32rem]">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-white/[0.02]">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-white">
+            <div className="flex items-center justify-between p-3.5 sm:p-4 border-b border-white/5 bg-white/[0.02] gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="text-xs sm:text-sm font-semibold text-white truncate whitespace-nowrap">
                   Notifications & Alerts
                 </h3>
                 {unreadCount > 0 && (
-                  <span className="bg-accent-blue/15 text-accent-blue text-[11px] font-bold px-2 py-0.5 rounded-full border border-accent-blue/20">
+                  <span className="bg-accent-blue/15 text-accent-blue text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full border border-accent-blue/20 shrink-0 whitespace-nowrap">
                     {unreadCount} pending
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
                     title="Mark all as read"
-                    className="text-[11px] font-medium text-text-secondary hover:text-accent-blue flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-white/5"
+                    className="text-[10px] sm:text-[11px] font-medium text-text-secondary hover:text-accent-blue flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-white/5 shrink-0 whitespace-nowrap"
                   >
-                    <CheckCheck size={13} />
-                    Mark all read
+                    <CheckCheck size={13} className="shrink-0" />
+                    <span className="hidden xs:inline sm:inline">Mark all read</span>
+                    <span className="xs:hidden sm:hidden">Read all</span>
                   </button>
                 )}
                 <button 
                   onClick={() => setIsOpen(false)} 
-                  className="p-1 rounded-md text-text-tertiary hover:text-white hover:bg-white/5 transition-colors"
+                  className="p-1 rounded-md text-text-tertiary hover:text-white hover:bg-white/5 transition-colors shrink-0"
+                  aria-label="Close notifications"
                 >
-                  <X size={15} />
+                  <X size={15} className="shrink-0" />
                 </button>
               </div>
             </div>
@@ -340,10 +358,10 @@ export default function NotificationDropdown() {
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2 mt-3">
+                          <div className="flex items-center gap-2 mt-3 flex-wrap sm:flex-nowrap">
                             <button 
                               onClick={() => handleAction(notification)}
-                              className={`text-xs px-3.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-colors ${
+                              className={`text-xs px-3.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-colors shrink-0 whitespace-nowrap ${
                                 notification.type === 'SUPPORT_REPLY'
                                   ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
                                   : isAnnouncement
@@ -353,23 +371,24 @@ export default function NotificationDropdown() {
                             >
                               {notification.type === 'SUPPORT_REPLY' ? (
                                 <>
-                                  <MessageSquare size={12} />
-                                  Respond in Chat
+                                  <MessageSquare size={12} className="shrink-0" />
+                                  <span>Respond in Chat</span>
                                 </>
                               ) : isAnnouncement ? (
                                 <>
-                                  <Sparkles size={12} />
-                                  Read Full Notice &rarr;
+                                  <Sparkles size={12} className="shrink-0" />
+                                  <span>Read Full Notice &rarr;</span>
                                 </>
                               ) : (
                                 <>
-                                  View & Action <ArrowRight size={12} />
+                                  <span>View & Action</span>
+                                  <ArrowRight size={12} className="shrink-0" />
                                 </>
                               )}
                             </button>
                             <button 
                               onClick={(e) => handleDismiss(e, notification.id)}
-                              className="text-xs border border-white/10 text-text-secondary px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/5 font-medium flex items-center gap-1.5 transition-colors"
+                              className="text-xs border border-white/10 text-text-secondary px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/5 font-medium flex items-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
                             >
                               Dismiss
                             </button>
@@ -386,19 +405,26 @@ export default function NotificationDropdown() {
       </div>
 
       {/* Rich Patch Notes & Announcement Detail Modal */}
-      {activeModalNotification && (
-        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
-          <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col">
-            
+      {activeModalNotification && mounted && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setActiveModalNotification(null);
+          }}
+        >
+          <div 
+            className="bg-[#0d0d0d] border border-white/10 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="p-5 border-b border-white/5 bg-white/[0.02] flex items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 rounded-xl bg-accent-blue/10 text-accent-blue shrink-0">
-                  <Megaphone size={20} />
+                <div className="p-2.5 rounded-xl bg-accent-blue/10 text-accent-blue shrink-0">
+                  <Megaphone size={20} className="shrink-0" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-accent-blue/10 text-accent-blue border border-accent-blue/20">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-accent-blue/10 text-accent-blue border border-accent-blue/20 shrink-0">
                       {activeModalNotification.metadata?.category || activeModalNotification.type || 'Announcement'}
                     </span>
                     <span className="text-xs text-text-tertiary">
@@ -406,16 +432,17 @@ export default function NotificationDropdown() {
                     </span>
                   </div>
                   <h3 className="text-base font-bold text-white tracking-tight mt-1 truncate">
-                    {activeModalNotification.metadata?.subject || activeModalNotification.message.split(':')[0] || 'System Notice'}
+                    {activeModalNotification.metadata?.subject || (activeModalNotification.message?.includes(':') ? activeModalNotification.message.split(':')[0] : activeModalNotification.message) || 'System Notice'}
                   </h3>
                 </div>
               </div>
 
               <button 
                 onClick={() => setActiveModalNotification(null)}
-                className="text-text-tertiary hover:text-white p-1.5 rounded-lg hover:bg-white/5 shrink-0"
+                className="text-text-tertiary hover:text-white p-1.5 rounded-lg hover:bg-white/5 shrink-0 transition-colors"
+                title="Close"
               >
-                <X size={18} />
+                <X size={18} className="shrink-0" />
               </button>
             </div>
 
@@ -439,19 +466,23 @@ export default function NotificationDropdown() {
                   dangerouslySetInnerHTML={{ __html: activeModalNotification.metadata.htmlContent }}
                 />
               ) : (
-                <p className="text-white text-sm whitespace-pre-wrap leading-relaxed">
-                  {cleanHtmlPreview(activeModalNotification.message)}
-                </p>
+                <div className="text-white text-sm whitespace-pre-wrap leading-relaxed">
+                  {activeModalNotification.metadata?.content || activeModalNotification.metadata?.note || (
+                    activeModalNotification.message?.includes(':') 
+                      ? activeModalNotification.message.substring(activeModalNotification.message.indexOf(':') + 1).trim()
+                      : cleanHtmlPreview(activeModalNotification.message)
+                  )}
+                </div>
               )}
             </div>
 
             {/* Modal Footer */}
             <div className="p-4 border-t border-white/5 bg-black/40 flex items-center justify-between gap-3 shrink-0">
-              <span className="text-xs text-text-tertiary flex items-center gap-1.5">
-                <Clock size={13} /> Published {new Date(activeModalNotification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              <span className="text-xs text-text-tertiary flex items-center gap-1.5 shrink-0">
+                <Clock size={13} className="shrink-0" /> Published {new Date(activeModalNotification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {activeModalNotification.metadata?.targetUrl && (
                   <button
                     onClick={() => {
@@ -459,23 +490,24 @@ export default function NotificationDropdown() {
                       handleCloseModalAndResolve();
                       router.push(url);
                     }}
-                    className="px-4 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center gap-1.5 shrink-0"
                   >
-                    Open Page <ExternalLink size={13} />
+                    Open Page <ExternalLink size={13} className="shrink-0" />
                   </button>
                 )}
                 <button
                   onClick={handleCloseModalAndResolve}
-                  className="px-5 py-2 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-colors shadow-lg shadow-accent-blue/20 flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-colors shadow-lg shadow-accent-blue/20 flex items-center gap-1.5 shrink-0"
                 >
-                  <Check size={13} />
+                  <Check size={13} className="shrink-0" />
                   Mark as Read & Close
                 </button>
               </div>
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

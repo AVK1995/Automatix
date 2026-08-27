@@ -417,7 +417,7 @@ export default function VariableInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-[100] left-0 right-0 w-full mt-1 bg-[#111] backdrop-blur-xl border border-border-subtle rounded-md shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden max-h-80 flex flex-col"
+            className="absolute z-[100] left-0 right-0 w-full mt-1 bg-[#111] border border-border-subtle rounded-md shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden max-h-80 flex flex-col"
           >
             <div className="px-3 py-2 border-b border-border-subtle bg-white/5 shrink-0 flex items-center justify-between">
               <span className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider">Available Variables</span>
