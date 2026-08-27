@@ -503,7 +503,7 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
                 {/* Images */}
                 <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg space-y-2">
                   <span className="text-xs font-semibold text-white flex items-center gap-1.5">
-                    <Image size={14} className="text-emerald-400" /> Images
+                    <ImageIcon size={14} className="text-emerald-400" /> Images
                   </span>
                   <div>
                     <label className="block text-[11px] text-text-secondary mb-1">Max Images Allowed</label>

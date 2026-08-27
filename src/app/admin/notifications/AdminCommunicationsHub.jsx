@@ -38,16 +38,20 @@ const TEMPLATE_PRESETS = [
     name: 'Feature Release & System Updates',
     category: 'ANNOUNCEMENT',
     icon: Sparkles,
-    subject: 'Important System Updates & New Features on Automatix',
+    subject: '🚀 Major Platform Updates: Multimodal AI Mediator, Cloud Storage Triggers & 60fps Engine',
     body: `<p>Hello {{USER_NAME}},</p>
-<p>We are pleased to introduce new workflow and performance enhancements to the Automatix platform.</p>
-<h3>Key Enhancements:</h3>
+<p>We are thrilled to announce a major platform upgrade on Automatix with brand new workflow automations, intelligent AI processing, and extreme performance enhancements.</p>
+
+<h3>🔥 What's New Today:</h3>
 <ul>
-  <li><strong>Optimized Engine:</strong> Real-time event execution with zero cold-start delay.</li>
-  <li><strong>Storage Quotas:</strong> Dedicated storage bucket capacity with high-speed media delivery.</li>
-  <li><strong>Integration Health:</strong> Improved Meta Graph API token verification.</li>
+  <li><strong>Multimodal AI Mediator:</strong> Automatically detect and process <em>Videos (.mp4, .mov)</em>, <em>Audio (.mp3, .wav)</em>, <em>Images</em>, <em>Documents (.pdf, .docx)</em>, and <em>Spreadsheets (.csv)</em>. Generate viral captions, speech-to-text transcripts, executive summaries, meeting action items, and data insights with structured downstream variables.</li>
+  <li><strong>Cloud Storage & Google Drive Automation:</strong> Connect cloud folders with single-slot auto-overwritten buffers, direct Google Drive Apps Script intake, and instant live test payloads.</li>
+  <li><strong>16:9 HD Video Player:</strong> Stream automation media in native 16:9 aspect ratio with direct high-speed CDN playback on mobile, tablet, and desktop.</li>
+  <li><strong>Live Generation Latency Stopwatch:</strong> Real-time countdown and stopwatch timer during AI generation with full performance benchmark calculators.</li>
+  <li><strong>60fps Canvas & Tablet Overlay Drawers:</strong> Full-width edge-to-edge workflow canvas with hardware-accelerated pan/zoom gestures and responsive slide-out panels.</li>
 </ul>
-<p>You can access these features directly from your client dashboard today.</p>`
+
+<p>All updates are live on your account now. Explore the new nodes and triggers directly in your workflow builder!</p>`
   },
   {
     id: 'billing_reminder',
