@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { 
   CreditCard, 
@@ -25,6 +26,11 @@ export default function BillingClient({ initialUser }) {
   const [user, setUser] = useState(initialUser);
   const [isUpdatingAutoPay, setIsUpdatingAutoPay] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const storagePercentage = Math.min((user.totalStorageUsedMB / user.maxStorageMB) * 100, 100);
   const isGracePeriod = user.storageStatus === 'GRACE_PERIOD';
@@ -314,86 +320,89 @@ export default function BillingClient({ initialUser }) {
       </div>
 
       {/* Invoice Receipt Modal (Solid Dark Background, No Blur as per UI Rules) */}
-      <AnimatePresence>
-        {selectedInvoice && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div 
-              className="absolute inset-0 bg-black/60" 
-              onClick={() => setSelectedInvoice(null)} 
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-lg bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl p-6 space-y-6 z-10"
-            >
-              {/* Receipt Header */}
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                <div>
-                  <h3 className="text-base font-bold text-white">Payment Receipt</h3>
-                  <span className="font-mono text-xs text-text-tertiary">{selectedInvoice.invoiceNumber}</span>
-                </div>
-                <button
-                  onClick={() => setSelectedInvoice(null)}
-                  className="p-1.5 text-white/40 hover:text-white rounded-md hover:bg-white/5 transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Receipt Details */}
-              <div className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-4 bg-white/[0.02] p-3.5 rounded-lg border border-white/5">
+      {mounted && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedInvoice && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+              <div 
+                className="absolute inset-0 bg-black/70" 
+                onClick={() => setSelectedInvoice(null)} 
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-lg bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl p-6 space-y-6 z-10 my-auto"
+              >
+                {/* Receipt Header */}
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
                   <div>
-                    <span className="text-text-tertiary block mb-0.5">Billed To:</span>
-                    <span className="text-white font-medium block">{user.name || user.email}</span>
-                    <span className="text-text-secondary">{user.email}</span>
+                    <h3 className="text-base font-bold text-white">Payment Receipt</h3>
+                    <span className="font-mono text-xs text-text-tertiary">{selectedInvoice.invoiceNumber}</span>
                   </div>
-                  <div>
-                    <span className="text-text-tertiary block mb-0.5">Payment Date:</span>
-                    <span className="text-white font-medium block">
-                      {new Date(selectedInvoice.createdAt).toLocaleDateString()}
-                    </span>
-                    <span className="text-text-secondary">Method: {selectedInvoice.paymentMethod || 'UPI / Card'}</span>
+                  <button
+                    onClick={() => setSelectedInvoice(null)}
+                    className="p-1.5 text-white/40 hover:text-white rounded-md hover:bg-white/5 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Receipt Details */}
+                <div className="space-y-4 text-xs">
+                  <div className="grid grid-cols-2 gap-4 bg-white/[0.02] p-3.5 rounded-lg border border-white/5">
+                    <div>
+                      <span className="text-text-tertiary block mb-0.5">Billed To:</span>
+                      <span className="text-white font-medium block">{user.name || user.email}</span>
+                      <span className="text-text-secondary">{user.email}</span>
+                    </div>
+                    <div>
+                      <span className="text-text-tertiary block mb-0.5">Payment Date:</span>
+                      <span className="text-white font-medium block">
+                        {new Date(selectedInvoice.createdAt).toLocaleDateString()}
+                      </span>
+                      <span className="text-text-secondary">Method: {selectedInvoice.paymentMethod || 'UPI / Card'}</span>
+                    </div>
+                  </div>
+
+                  <div className="border border-white/10 rounded-lg overflow-hidden">
+                    <div className="flex justify-between p-3 bg-black/40 border-b border-white/10 font-semibold text-text-secondary">
+                      <span>Description</span>
+                      <span>Amount</span>
+                    </div>
+                    <div className="flex justify-between p-3 text-white">
+                      <span>{selectedInvoice.serviceName}</span>
+                      <span className="font-bold">₹{selectedInvoice.amountRs}</span>
+                    </div>
+                    <div className="flex justify-between p-3 bg-white/[0.02] border-t border-white/5 text-sm font-bold text-accent-blue">
+                      <span>Total Paid</span>
+                      <span>₹{selectedInvoice.amountRs}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="border border-white/10 rounded-lg overflow-hidden">
-                  <div className="flex justify-between p-3 bg-black/40 border-b border-white/10 font-semibold text-text-secondary">
-                    <span>Description</span>
-                    <span>Amount</span>
-                  </div>
-                  <div className="flex justify-between p-3 text-white">
-                    <span>{selectedInvoice.serviceName}</span>
-                    <span className="font-bold">₹{selectedInvoice.amountRs}</span>
-                  </div>
-                  <div className="flex justify-between p-3 bg-white/[0.02] border-t border-white/5 text-sm font-bold text-accent-blue">
-                    <span>Total Paid</span>
-                    <span>₹{selectedInvoice.amountRs}</span>
-                  </div>
+                {/* Receipt Actions */}
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/10">
+                  <button
+                    onClick={() => window.print()}
+                    className="px-4 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center gap-1.5"
+                  >
+                    <Printer size={14} />
+                    Print Receipt
+                  </button>
+                  <button
+                    onClick={() => setSelectedInvoice(null)}
+                    className="px-4 py-2 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-colors"
+                  >
+                    Done
+                  </button>
                 </div>
-              </div>
-
-              {/* Receipt Actions */}
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/10">
-                <button
-                  onClick={() => window.print()}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center gap-1.5"
-                >
-                  <Printer size={14} />
-                  Print Receipt
-                </button>
-                <button
-                  onClick={() => setSelectedInvoice(null)}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-colors"
-                >
-                  Done
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

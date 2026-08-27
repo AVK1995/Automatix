@@ -76,14 +76,14 @@ export default function DashboardAnalytics({ logs, isAdmin = false }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[400px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:h-[400px]">
         {/* Area Chart */}
-        <div className="md:col-span-2 bg-card border border-border-subtle rounded-sm p-6 flex flex-col">
-          <div className="mb-6">
+        <div className="md:col-span-2 bg-card border border-border-subtle rounded-sm p-4 sm:p-6 flex flex-col h-[320px] md:h-full">
+          <div className="mb-4 sm:mb-6">
             <h2 className="text-base font-medium text-foreground">Execution Volume (Last 14 Days)</h2>
             <p className="text-xs text-text-secondary mt-1">Click on a point to view specific runs.</p>
           </div>
-          <div className="flex-1 w-full min-h-[200px]">
+          <div className="flex-1 w-full min-h-[180px]">
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <AreaChart
                 data={areaData}
@@ -102,13 +102,13 @@ export default function DashboardAnalytics({ logs, isAdmin = false }) {
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 12, fill: '#A3A3A3' }} 
+                  tick={{ fontSize: 11, fill: '#A3A3A3' }} 
                   dy={10}
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 12, fill: '#A3A3A3' }}
+                  tick={{ fontSize: 11, fill: '#A3A3A3' }}
                 />
                 <RechartsTooltip 
                   contentStyle={{ backgroundColor: '#1A1A1A', borderColor: '#333', borderRadius: '8px', color: '#fff' }}
@@ -130,20 +130,20 @@ export default function DashboardAnalytics({ logs, isAdmin = false }) {
         </div>
 
         {/* Donut Chart */}
-        <div className="bg-card border border-border-subtle rounded-sm p-6 flex flex-col">
+        <div className="bg-card border border-border-subtle rounded-sm p-4 sm:p-6 flex flex-col h-[320px] md:h-full">
           <div className="mb-2">
             <h2 className="text-base font-medium text-foreground">Status Ratio</h2>
             <p className="text-xs text-text-secondary mt-1">Click a slice to drill down.</p>
           </div>
-          <div className="flex-1 w-full min-h-[200px]">
+          <div className="flex-1 w-full min-h-[180px] relative">
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <PieChart>
+              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                 <Pie
                   data={pieData}
                   cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
+                  cy="45%"
+                  innerRadius={50}
+                  outerRadius={70}
                   paddingAngle={5}
                   dataKey="value"
                   onClick={handlePieClick}
@@ -157,7 +157,7 @@ export default function DashboardAnalytics({ logs, isAdmin = false }) {
                   contentStyle={{ backgroundColor: '#1A1A1A', borderColor: '#333', borderRadius: '8px', color: '#fff' }}
                   itemStyle={{ color: '#fff' }}
                 />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '8px', fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

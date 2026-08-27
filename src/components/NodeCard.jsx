@@ -25,7 +25,7 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
         : 'border-border-subtle hover:border-white/20';
 
   const priorityKeys = ['provider', 'calendarName', 'spreadsheetName', 'range', 'triggerColumn', 'triggerEvent', 'method', 'actionType'];
-  const hiddenKeys = ['webhookToken', 'sheetUrl', 'schema', 'connectionId', 'selectedEventId', 'capturedPayload', 'lastCopiedSignature'];
+  const hiddenKeys = ['webhookToken', 'sheetUrl', 'schema', 'connectionId', 'selectedEventId', 'capturedPayload', 'lastCopiedSignature', 'customOrigin'];
 
   // Ensure default values are displayed for specific integrations
   const displayConfig = { ...node.config };

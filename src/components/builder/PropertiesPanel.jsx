@@ -641,8 +641,15 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
 
     switch (id) {
       case 'webhook':
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-        const hookUrl = config.webhookToken ? `${origin}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}` : 'Generating link...';
+        const genericLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const genericBrowserOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+        const genericStaleTunnel = config.customOrigin && (config.customOrigin.includes('ngrok') || config.customOrigin.includes('localtunnel') || config.customOrigin.includes('trycloudflare') || config.customOrigin.includes('localhost'));
+        const activeGenericOrigin = (!genericLocalhost && genericStaleTunnel)
+          ? genericBrowserOrigin
+          : ((config.customOrigin && config.customOrigin.trim()) 
+              ? config.customOrigin.trim().replace(/\/+$/, '') 
+              : genericBrowserOrigin);
+        const hookUrl = config.webhookToken ? `${activeGenericOrigin}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}` : 'Generating link...';
         
         // Force Listening Mode ON if published
         const isListening = isPublished ? true : (config.isListening || false);
@@ -650,7 +657,28 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         return (
           <div className="space-y-6">
             <div>
-              <label className="block text-xs text-text-secondary mb-1">Webhook URL</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-text-secondary">Webhook URL</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const liveOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+                    onUpdateNode(selectedNode.id, {
+                      ...selectedNode,
+                      config: {
+                        ...selectedNode.config,
+                        customOrigin: ''
+                      }
+                    });
+                    toast.success(`Webhook URL synced to ${liveOrigin}`);
+                  }}
+                  className="text-[10px] text-accent-blue hover:text-white transition-colors flex items-center gap-1 bg-accent-blue/10 hover:bg-accent-blue/20 px-2 py-0.5 rounded border border-accent-blue/20 font-medium"
+                  title="Sync Webhook URL with current browser domain"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Sync Live Domain</span>
+                </button>
+              </div>
               <div className="flex items-center mt-1">
                 <input readOnly value={hookUrl} className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-sm text-text-secondary font-mono focus:outline-none" />
                 <button 
@@ -800,9 +828,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
 
     case 'sheets_trigger':
         const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-        const activeOrigin = (config.customOrigin && config.customOrigin.trim()) 
-          ? config.customOrigin.trim().replace(/\/+$/, '') 
-          : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+        const currentBrowserOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+        const isStaleTunnel = config.customOrigin && (config.customOrigin.includes('ngrok') || config.customOrigin.includes('localtunnel') || config.customOrigin.includes('trycloudflare') || config.customOrigin.includes('localhost'));
+        
+        const activeOrigin = (!isLocalhost && isStaleTunnel)
+          ? currentBrowserOrigin
+          : ((config.customOrigin && config.customOrigin.trim()) 
+              ? config.customOrigin.trim().replace(/\/+$/, '') 
+              : currentBrowserOrigin);
         const sheetsHookUrl = config.webhookToken ? `${activeOrigin}/api/webhooks/incoming/${workflowId || 'new'}?token=${config.webhookToken}` : 'Generating link...';
         const isSheetsListening = isPublished ? true : (config.isListening !== false);
         
@@ -1097,8 +1130,61 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                 </div>
               )}
 
+              {!isLocalhost && config.customOrigin && (
+                <div className="bg-accent-blue/10 border border-accent-blue/20 p-3 rounded-lg flex items-center justify-between gap-3 text-xs">
+                  <div className="min-w-0">
+                    <p className="text-accent-blue font-medium truncate">
+                      {isStaleTunnel ? 'Stale Local Tunnel Overridden' : `Custom Domain Override: ${config.customOrigin}`}
+                    </p>
+                    <p className="text-[11px] text-text-secondary mt-0.5">
+                      {isStaleTunnel 
+                        ? 'Using live production domain for webhook and Apps Script generation.' 
+                        : 'Custom origin active for generated URLs.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const live = typeof window !== 'undefined' ? window.location.origin : '';
+                      onUpdateNode(selectedNode.id, {
+                        ...selectedNode,
+                        config: {
+                          ...selectedNode.config,
+                          customOrigin: ''
+                        }
+                      });
+                      toast.success(`Webhook synced to ${live}`);
+                    }}
+                    className="px-3 py-1.5 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-md text-xs font-semibold shrink-0 transition-colors"
+                  >
+                    Reset to Live Domain
+                  </button>
+                </div>
+              )}
+
               <div>
-                <label className="block text-xs text-text-secondary mb-1">Webhook URL</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-text-secondary">Webhook URL</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const liveOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+                      onUpdateNode(selectedNode.id, {
+                        ...selectedNode,
+                        config: {
+                          ...selectedNode.config,
+                          customOrigin: ''
+                        }
+                      });
+                      toast.success(`Webhook URL synced to ${liveOrigin}`);
+                    }}
+                    className="text-[10px] text-accent-blue hover:text-white transition-colors flex items-center gap-1 bg-accent-blue/10 hover:bg-accent-blue/20 px-2 py-0.5 rounded border border-accent-blue/20 font-medium"
+                    title="Sync Webhook URL with current browser domain"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Sync Live Domain</span>
+                  </button>
+                </div>
                 <div className="flex items-center">
                   <input readOnly value={sheetsHookUrl} className="w-full bg-black/50 border border-white/10 rounded-l-md px-3 py-2 text-xs text-text-secondary font-mono focus:outline-none" />
                   <button 
