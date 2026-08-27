@@ -468,8 +468,14 @@ export default function WorkflowBuilder({ workflow }) {
     if (selectedNodeId === id) setSelectedNodeId(null);
   };
 
-  const handleUpdateNode = (id, updatedNode) => {
-    updateNodesWithHistory(prevNodes => prevNodes.map(node => node.id === id ? updatedNode : node));
+  const handleUpdateNode = (id, updatedNodeOrUpdater) => {
+    updateNodesWithHistory(prevNodes => prevNodes.map(node => {
+      if (node.id !== id) return node;
+      if (typeof updatedNodeOrUpdater === 'function') {
+        return updatedNodeOrUpdater(node);
+      }
+      return updatedNodeOrUpdater;
+    }));
   };
 
   const handlePublishToggle = () => {

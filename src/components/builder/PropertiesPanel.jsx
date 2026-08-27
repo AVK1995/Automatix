@@ -54,12 +54,15 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       const isWebhookTrigger = ['webhook', 'sheets_trigger'].includes(selectedNode?.integration?.id) || selectedNode?.type === 'trigger_instagram';
       // Auto-generate webhook token if missing
       if (isWebhookTrigger && !selectedNode?.config?.webhookToken) {
-        onUpdateNode(selectedNode.id, {
-          ...selectedNode,
-          config: {
-            ...selectedNode.config,
-            webhookToken: crypto.randomUUID ? crypto.randomUUID() : 'gen-' + Date.now() + Math.random().toString(36).substring(2)
-          }
+        onUpdateNode(selectedNode.id, (prevNode) => {
+          if (!prevNode || prevNode.config?.webhookToken) return prevNode;
+          return {
+            ...prevNode,
+            config: {
+              ...prevNode.config,
+              webhookToken: crypto.randomUUID ? crypto.randomUUID() : 'gen-' + Date.now() + Math.random().toString(36).substring(2)
+            }
+          };
         });
       }
     }
@@ -181,21 +184,25 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       const isActuallyListening = isPublished ? true : (selectedNode?.config?.isListening !== false);
       if (history && history.length > 0 && isActuallyListening) {
         const mostRecent = history[0];
-        const currentSelectedId = selectedNode.config?.selectedEventId;
-        const clearedAt = selectedNode.config?.clearedAt || 0;
+        const clearedAt = selectedNode?.config?.clearedAt || 0;
         const payloadTime = new Date(mostRecent.createdAt).getTime();
         
         if (payloadTime > clearedAt) {
-          if (!selectedNode.config?.capturedPayload || (currentSelectedId && mostRecent.id !== currentSelectedId)) {
-            onUpdateNode(selectedNode.id, {
-              ...selectedNode,
-              config: {
-                ...selectedNode.config,
-                capturedPayload: mostRecent.payload,
-                selectedEventId: mostRecent.id
-              }
-            });
-          }
+          onUpdateNode(selectedNode.id, (prevNode) => {
+            if (!prevNode) return prevNode;
+            const currentSelectedId = prevNode.config?.selectedEventId;
+            if (!prevNode.config?.capturedPayload || (currentSelectedId && mostRecent.id !== currentSelectedId)) {
+              return {
+                ...prevNode,
+                config: {
+                  ...prevNode.config,
+                  capturedPayload: mostRecent.payload,
+                  selectedEventId: mostRecent.id
+                }
+              };
+            }
+            return prevNode;
+          });
         }
       }
     } catch (e) {
@@ -262,8 +269,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
       const data = await res.json();
       if (data.success && data.sheets) {
         setAvailableSheets(data.sheets.map(s => ({ value: s, label: s })));
-        if (data.spreadsheetName && data.spreadsheetName !== selectedNode?.config?.spreadsheetName) {
-          onUpdateNode(selectedNode.id, { ...selectedNode, config: { ...selectedNode.config, spreadsheetName: data.spreadsheetName }});
+        if (data.spreadsheetName) {
+          onUpdateNode(selectedNode.id, (prevNode) => {
+            if (!prevNode || prevNode.config?.spreadsheetName === data.spreadsheetName) return prevNode;
+            return {
+              ...prevNode,
+              config: { ...prevNode.config, spreadsheetName: data.spreadsheetName }
+            };
+          });
         }
       }
     } catch (err) {
@@ -288,8 +301,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
           const data = await res.json();
           if (data.success && data.sheets) {
             setAvailableSheets(data.sheets.map(s => ({ value: s, label: s })));
-            if (data.spreadsheetName && data.spreadsheetName !== selectedNode?.config?.spreadsheetName) {
-              onUpdateNode(selectedNode.id, { ...selectedNode, config: { ...selectedNode.config, spreadsheetName: data.spreadsheetName }});
+            if (data.spreadsheetName) {
+              onUpdateNode(selectedNode.id, (prevNode) => {
+                if (!prevNode || prevNode.config?.spreadsheetName === data.spreadsheetName) return prevNode;
+                return {
+                  ...prevNode,
+                  config: { ...prevNode.config, spreadsheetName: data.spreadsheetName }
+                };
+              });
             }
           }
         } catch (err) {
@@ -321,11 +340,18 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
             
             // Auto-populate mapping if it's currently empty and action is WRITE or UPDATE
             if (['WRITE', 'UPDATE'].includes(actionType)) {
-              const currentMapping = selectedNode?.config?.rowDataMapping || [];
-              if (currentMapping.length === 0 && data.headers.length > 0) {
-                const autoMap = data.headers.map(h => ({ key: h, value: '' }));
-                onUpdateNode(selectedNode.id, { ...selectedNode, config: { ...selectedNode.config, rowDataMapping: autoMap }});
-              }
+              onUpdateNode(selectedNode.id, (prevNode) => {
+                if (!prevNode) return prevNode;
+                const currentMapping = prevNode.config?.rowDataMapping || [];
+                if (currentMapping.length === 0 && data.headers.length > 0) {
+                  const autoMap = data.headers.map(h => ({ key: h, value: '' }));
+                  return {
+                    ...prevNode,
+                    config: { ...prevNode.config, rowDataMapping: autoMap }
+                  };
+                }
+                return prevNode;
+              });
             }
           }
         } catch (err) {
@@ -585,32 +611,36 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
   };
 
   const handleChange = (field, value) => {
-    const newConfig = { ...selectedNode.config, [field]: value };
-    
-    // Clear out irrelevant delay fields when switching types to prevent canvas UI clutter
-    if (field === 'delayType') {
-      if (value === 'duration') {
-        delete newConfig.untilDate;
-        delete newConfig.eventDate;
-      } else if (value === 'until') {
-        delete newConfig.duration;
-        delete newConfig.unit;
-        delete newConfig.eventDate;
-        delete newConfig.eventTiming;
-      } else if (value === 'event_based') {
-        delete newConfig.untilDate;
-        newConfig.eventTiming = newConfig.eventTiming || 'before';
-      } else if (value === 'wait_for_reply') {
-        delete newConfig.untilDate;
-        delete newConfig.eventDate;
-        delete newConfig.eventTiming;
+    onUpdateNode(selectedNode.id, (prevNode) => {
+      if (!prevNode) return prevNode;
+      const currentConfig = prevNode.config || {};
+      const newConfig = { ...currentConfig, [field]: value };
+      
+      // Clear out irrelevant delay fields when switching types to prevent canvas UI clutter
+      if (field === 'delayType') {
+        if (value === 'duration') {
+          delete newConfig.untilDate;
+          delete newConfig.eventDate;
+        } else if (value === 'until') {
+          delete newConfig.duration;
+          delete newConfig.unit;
+          delete newConfig.eventDate;
+          delete newConfig.eventTiming;
+        } else if (value === 'event_based') {
+          delete newConfig.untilDate;
+          newConfig.eventTiming = newConfig.eventTiming || 'before';
+        } else if (value === 'wait_for_reply') {
+          delete newConfig.untilDate;
+          delete newConfig.eventDate;
+          delete newConfig.eventTiming;
+        }
       }
-    }
 
-    onUpdateNode(selectedNode.id, {
-      ...selectedNode,
-      config: newConfig,
-      issue: null
+      return {
+        ...prevNode,
+        config: newConfig,
+        issue: null
+      };
     });
   };
 
@@ -740,14 +770,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   onChange={(val) => {
                     const selected = payloadHistory.find(h => h.id === val);
                     if (selected) {
-                      onUpdateNode(selectedNode.id, {
-                        ...selectedNode,
+                      onUpdateNode(selectedNode.id, (prevNode) => ({
+                        ...prevNode,
                         config: {
-                          ...selectedNode.config,
+                          ...prevNode?.config,
                           capturedPayload: selected.payload,
                           selectedEventId: selected.id
                         }
-                      });
+                      }));
                     }
                   }}
                   options={payloadHistory.map((item) => ({
@@ -764,16 +794,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   <label className="block text-[11px] font-medium text-brand-primary">Selected Payload Schema</label>
                   <button
                     onClick={() => {
-                      onUpdateNode(selectedNode.id, {
-                        ...selectedNode,
+                      onUpdateNode(selectedNode.id, (prevNode) => ({
+                        ...prevNode,
                         config: {
-                          ...selectedNode.config,
+                          ...prevNode?.config,
                           capturedPayload: null,
                           clearedAt: Date.now(),
                           selectedEventId: null,
                           isListening: true
                         }
-                      });
+                      }));
                     }}
                     className="text-[10px] text-text-secondary hover:text-white transition-colors flex items-center gap-1"
                   >
@@ -793,13 +823,13 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
               onClose={() => setIsRegenerateModalOpen(false)}
               onConfirm={() => {
                 setIsRegenerateModalOpen(false);
-                onUpdateNode(selectedNode.id, {
-                  ...selectedNode,
+                onUpdateNode(selectedNode.id, (prevNode) => ({
+                  ...prevNode,
                   config: {
-                    ...selectedNode.config,
+                    ...prevNode?.config,
                     webhookToken: crypto.randomUUID().replace(/-/g, '')
                   }
-                });
+                }));
               }}
               title="Regenerate Webhook Link"
               message="Are you sure? Any existing external applications sending data to the old URL will fail."
@@ -887,15 +917,15 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       if (val) {
                         const sheet = pseudoConnections.find(s => s.id === val);
                         if (sheet) {
-                          onUpdateNode(selectedNode.id, {
-                            ...selectedNode,
+                          onUpdateNode(selectedNode.id, (prevNode) => ({
+                            ...prevNode,
                             config: {
-                              ...selectedNode.config,
+                              ...prevNode?.config,
                               sheetUrl: `https://docs.google.com/spreadsheets/d/${sheet.id}/edit`,
                               spreadsheetId: sheet.id,
                               spreadsheetName: sheet.name
                             }
-                          });
+                          }));
                         }
                       }
                     }}
@@ -1224,14 +1254,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                         type="button"
                         onClick={() => {
                           handleCopy(appsScriptCode, 'sheets_code');
-                          onUpdateNode(selectedNode.id, {
-                            ...selectedNode,
+                          onUpdateNode(selectedNode.id, (prevNode) => ({
+                            ...prevNode,
                             config: {
-                              ...selectedNode.config,
-                              customOrigin: !isLocalhost && isStaleTunnel ? '' : (selectedNode.config.customOrigin || ''),
+                              ...prevNode?.config,
+                              customOrigin: !isLocalhost && isStaleTunnel ? '' : (prevNode?.config?.customOrigin || ''),
                               lastCopiedSignature: currentSignature
                             }
-                          });
+                          }));
                         }}
                         className="flex items-center gap-1.5 text-xs bg-accent-blue/20 hover:bg-accent-blue/30 text-accent-blue hover:text-white border border-accent-blue/30 px-3 py-1.5 rounded transition-all font-medium backdrop-blur-sm"
                       >
@@ -1246,14 +1276,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     type="button"
                     onClick={() => {
                       handleCopy(appsScriptCode, 'sheets_code');
-                      onUpdateNode(selectedNode.id, {
-                        ...selectedNode,
+                      onUpdateNode(selectedNode.id, (prevNode) => ({
+                        ...prevNode,
                         config: {
-                          ...selectedNode.config,
-                          customOrigin: !isLocalhost && isStaleTunnel ? '' : (selectedNode.config.customOrigin || ''),
+                          ...prevNode?.config,
+                          customOrigin: !isLocalhost && isStaleTunnel ? '' : (prevNode?.config?.customOrigin || ''),
                           lastCopiedSignature: currentSignature
                         }
-                      });
+                      }));
                     }}
                     className="w-full flex items-center justify-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-white border border-white/10 py-2 rounded transition-colors font-medium"
                   >
@@ -1288,14 +1318,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     onChange={(val) => {
                       const selected = payloadHistory.find(h => h.id === val);
                       if (selected) {
-                        onUpdateNode(selectedNode.id, {
-                          ...selectedNode,
+                        onUpdateNode(selectedNode.id, (prevNode) => ({
+                          ...prevNode,
                           config: {
-                            ...selectedNode.config,
+                            ...prevNode?.config,
                             capturedPayload: selected.payload,
                             selectedEventId: selected.id
                           }
-                        });
+                        }));
                       }
                     }}
                     options={payloadHistory.map((item) => ({
@@ -1312,16 +1342,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     <label className="block text-[11px] font-medium text-brand-primary">Selected Payload Schema (Variables)</label>
                     <button
                       onClick={() => {
-                        onUpdateNode(selectedNode.id, {
-                          ...selectedNode,
+                        onUpdateNode(selectedNode.id, (prevNode) => ({
+                          ...prevNode,
                           config: {
-                            ...selectedNode.config,
+                            ...prevNode?.config,
                             capturedPayload: null,
                             clearedAt: Date.now(),
                             selectedEventId: null,
                             isListening: true
                           }
-                        });
+                        }));
                       }}
                       className="text-[10px] text-text-secondary hover:text-white transition-colors flex items-center gap-1"
                     >
@@ -1452,14 +1482,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                         onChange={(val) => {
                           const selected = payloadHistory.find(h => h.id === val);
                           if (selected) {
-                            onUpdateNode(selectedNode.id, {
-                              ...selectedNode,
+                            onUpdateNode(selectedNode.id, (prevNode) => ({
+                              ...prevNode,
                               config: {
-                                ...selectedNode.config,
+                                ...prevNode?.config,
                                 capturedPayload: selected.payload,
                                 selectedEventId: selected.id
                               }
-                            });
+                            }));
                           }
                         }}
                         options={payloadHistory.map((item) => ({
@@ -1477,15 +1507,15 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       <label className="block text-[11px] font-medium text-brand-primary">Selected Payload Schema</label>
                       <button
                         onClick={() => {
-                          onUpdateNode(selectedNode.id, {
-                            ...selectedNode,
+                          onUpdateNode(selectedNode.id, (prevNode) => ({
+                            ...prevNode,
                             config: {
-                              ...selectedNode.config,
+                              ...prevNode?.config,
                               capturedPayload: null,
                               clearedAt: Date.now(),
                               selectedEventId: null
                             }
-                          });
+                          }));
                         }}
                         className="text-[10px] text-text-secondary hover:text-white transition-colors flex items-center gap-1"
                       >
@@ -1654,14 +1684,14 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     onChange={(val) => {
                       const selected = payloadHistory.find(h => h.id === val);
                       if (selected) {
-                        onUpdateNode(selectedNode.id, {
-                          ...selectedNode,
+                        onUpdateNode(selectedNode.id, (prevNode) => ({
+                          ...prevNode,
                           config: {
-                            ...selectedNode.config,
+                            ...prevNode?.config,
                             capturedPayload: selected.payload,
                             selectedEventId: selected.id
                           }
-                        });
+                        }));
                       }
                     }}
                     options={payloadHistory.map((item) => ({
@@ -1679,16 +1709,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   <label className="block text-[11px] font-medium text-brand-primary">Selected Payload Schema</label>
                   <button
                     onClick={() => {
-                      onUpdateNode(selectedNode.id, {
-                        ...selectedNode,
+                      onUpdateNode(selectedNode.id, (prevNode) => ({
+                        ...prevNode,
                         config: {
-                          ...selectedNode.config,
+                          ...prevNode?.config,
                           capturedPayload: null,
                           clearedAt: Date.now(),
                           selectedEventId: null,
                           isListening: true
                         }
-                      });
+                      }));
                     }}
                     className="text-[10px] text-text-tertiary hover:text-white transition-colors"
                   >
@@ -2425,15 +2455,15 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                     if (val) {
                       const sheet = pseudoConnections.find(s => s.id === val);
                       if (sheet) {
-                        onUpdateNode(selectedNode.id, {
-                          ...selectedNode,
+                        onUpdateNode(selectedNode.id, (prevNode) => ({
+                          ...prevNode,
                           config: {
-                            ...selectedNode.config,
+                            ...prevNode?.config,
                             sheetUrl: `https://docs.google.com/spreadsheets/d/${sheet.id}/edit`,
                             spreadsheetId: sheet.id,
                             spreadsheetName: sheet.name
                           }
-                        });
+                        }));
                       }
                     }
                   }}
@@ -3501,7 +3531,13 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
           <input 
             type="text" 
             value={selectedNode.title}
-            onChange={(e) => onUpdateNode(selectedNode.id, { ...selectedNode, title: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value;
+              onUpdateNode(selectedNode.id, (prevNode) => ({
+                ...prevNode,
+                title: val
+              }));
+            }}
             className="w-full bg-background border border-border-subtle rounded-md px-3 py-2 text-sm font-medium text-white focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/50 transition-colors"
           />
         </div>
@@ -3526,7 +3562,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                   onClick={async () => {
                     handleSaveStep();
                     setIsTesting(true);
-                    onUpdateNode(selectedNode.id, { ...selectedNode, testResult: null });
+                    onUpdateNode(selectedNode.id, (prevNode) => ({ ...prevNode, testResult: null }));
                     try {
                       // Helper to resolve variables with their actual example values before sending to backend
                       const resolveConfigVariables = (configObj, varGroups) => {
@@ -3573,10 +3609,10 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       const targetDate = resolvedConfig.delayType === 'until' ? resolvedConfig.untilDate : resolvedConfig.eventDate;
                       const formatRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
                       if (!targetDate || !formatRegex.test(String(targetDate).trim())) {
-                        onUpdateNode(selectedNode.id, { 
-                          ...selectedNode, 
+                        onUpdateNode(selectedNode.id, (prevNode) => ({ 
+                          ...prevNode, 
                           testResult: { success: false, error: 'Invalid Date Format', fix: 'Format must be exactly YYYY-MM-DD HH:mm:ss. The delay will not work otherwise.' } 
-                        });
+                        }));
                         setIsTesting(false);
                         return;
                       }
@@ -3588,12 +3624,12 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                       config: resolvedConfig
                     });
                     
-                    onUpdateNode(selectedNode.id, { ...selectedNode, testResult: res });
+                    onUpdateNode(selectedNode.id, (prevNode) => ({ ...prevNode, testResult: res }));
                   } catch (e) {
-                    onUpdateNode(selectedNode.id, { 
-                      ...selectedNode, 
+                    onUpdateNode(selectedNode.id, (prevNode) => ({ 
+                      ...prevNode, 
                       testResult: { success: false, error: e.message, fix: 'Check your network connection.' } 
-                    });
+                    }));
                   } finally {
                     setIsTesting(false);
                   }
@@ -3688,21 +3724,21 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         onClose={() => setSheetToClear(null)}
         onConfirm={() => {
           if (sheetToClear === 'trigger') {
-            onUpdateNode(selectedNode.id, {
-              ...selectedNode,
+            onUpdateNode(selectedNode.id, (prevNode) => ({
+              ...prevNode,
               config: {
-                ...selectedNode.config,
+                ...prevNode?.config,
                 sheetUrl: '',
                 spreadsheetId: '',
                 spreadsheetName: '',
                 range: ''
               }
-            });
+            }));
           } else if (sheetToClear === 'action') {
-            onUpdateNode(selectedNode.id, {
-              ...selectedNode,
+            onUpdateNode(selectedNode.id, (prevNode) => ({
+              ...prevNode,
               config: {
-                ...selectedNode.config,
+                ...prevNode?.config,
                 sheetUrl: '',
                 spreadsheetId: '',
                 spreadsheetName: '',
@@ -3711,7 +3747,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
                 newSheetName: '',
                 searchQuery: ''
               }
-            });
+            }));
           }
           setSheetToClear(null);
         }}
