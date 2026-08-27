@@ -1,49 +1,57 @@
 import { motion } from 'framer-motion';
 import { NODE_TYPES } from '@/constants';
 import { 
-  Zap, Clock, Globe, Mail, MessageSquare, 
-  Database, Calendar, FileText, Smartphone, Camera,
-  Lock, Type, Calculator, Code, Search, CalendarDays,
-  Blocks, Pin, PinOff, Filter
+  Zap, Mail,
+  Calculator, Search, CalendarDays,
+  Blocks, Filter, Webhook, CalendarClock,
+  CalendarPlus, CalendarCheck, Hourglass, BellRing,
+  GitFork, SendHorizontal, CaseSensitive, ScanText,
+  Code2, Variable, Smartphone, Lock, X
 } from 'lucide-react';
+import { 
+  GoogleSheetsIcon, 
+  StripeIcon, 
+  InstagramIcon, 
+  InstagramSendIcon, 
+  MetaIcon, 
+  SlackIcon 
+} from '@/components/Icons';
 import { useState, useEffect, useRef } from 'react';
 
 export const INTEGRATIONS = {
   [NODE_TYPES.TRIGGER]: [
-    { id: 'webhook', name: 'Catch Webhook', icon: Globe, color: 'bg-accent-blue/10 text-accent-blue border-accent-blue/20', description: 'Trigger from an external HTTP request' },
-    { id: 'sheets_trigger', name: 'Google Sheets', icon: Database, color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', description: 'Trigger on new rows in a Google Sheet' },
-    { id: 'schedule', name: 'Schedule', icon: Clock, color: 'bg-green-500/10 text-green-500 border-green-500/20', description: 'Run at a specific time or recurring interval' },
-    { id: 'stripe', name: 'Stripe Event', icon: Database, color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', description: 'Trigger on payment or subscription updates' },
-    { id: 'calendar', name: 'Calendar Event', icon: Calendar, color: 'bg-blue-400/10 text-blue-400 border-blue-400/20', description: 'Trigger when a new meeting is scheduled' },
-    { id: 'instagram', name: 'Instagram DM', icon: Camera, color: 'bg-pink-600/10 text-pink-600 border-pink-600/20', description: 'Trigger when you receive a DM' }
+    { id: 'webhook', name: 'Catch Webhook', icon: Webhook, color: 'bg-accent-blue/10 text-accent-blue border-accent-blue/20', description: 'Trigger from an external HTTP request' },
+    { id: 'sheets_trigger', name: 'Google Sheets', icon: GoogleSheetsIcon, color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', description: 'Trigger on new rows in a Google Sheet' },
+    { id: 'schedule', name: 'Schedule', icon: CalendarClock, color: 'bg-green-500/10 text-green-500 border-green-500/20', description: 'Run at a specific time or recurring interval' },
+    { id: 'stripe', name: 'Stripe Event', icon: StripeIcon, color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', description: 'Trigger on payment or subscription updates' },
+    { id: 'calendar', name: 'Calendar Event', icon: CalendarPlus, color: 'bg-blue-400/10 text-blue-400 border-blue-400/20', description: 'Trigger when a new meeting is scheduled' },
+    { id: 'instagram', name: 'Instagram DM', icon: InstagramIcon, color: 'bg-pink-600/10 text-pink-600 border-pink-600/20', description: 'Trigger when you receive a DM' }
   ],
   [NODE_TYPES.ACTION]: [
-    { id: 'formatter_text', name: 'Data Modification & Formatting', icon: Type, color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20', description: 'Modify, format, or capitalize text' },
+    { id: 'formatter_text', name: 'Data Modification & Formatting', icon: CaseSensitive, color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20', description: 'Modify, format, or capitalize text' },
     { id: 'formatter_math', name: 'Mathematical & Developer Operations', icon: Calculator, color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', description: 'Add, subtract, or format numbers' },
-    { id: 'formatter_extract', name: 'Data Extraction & Parsing', icon: Search, color: 'bg-amber-500/10 text-amber-500 border-amber-500/20', description: 'Extract emails, phones, or Regex' },
-    { id: 'formatter_dev', name: 'Custom JS Code Snippets', icon: Code, color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20', description: 'Run custom JavaScript code snippets' },
+    { id: 'formatter_extract', name: 'Data Extraction & Parsing', icon: ScanText, color: 'bg-amber-500/10 text-amber-500 border-amber-500/20', description: 'Extract emails, phones, or Regex' },
+    { id: 'formatter_dev', name: 'Custom JS Code Snippets', icon: Code2, color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20', description: 'Run custom JavaScript code snippets' },
     { id: 'date_formatter', name: 'Date & Time Formatter', icon: CalendarDays, color: 'bg-teal-500/10 text-teal-500 border-teal-500/20', description: 'Modify and format dates and times' },
-    { id: 'custom_variable', name: 'Custom Variable', icon: Blocks, color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', description: 'Create a reusable timestamp, date, text, or number' },
-    { id: 'calendar_status', name: 'Check Calendar Status', icon: Calendar, color: 'bg-blue-400/10 text-blue-400 border-blue-400/20', description: 'Halt workflow if calendar event is cancelled/rescheduled' },
-    { id: 'http', name: 'API by Automatix', icon: Globe, color: 'bg-accent-blue/10 text-accent-blue border-accent-blue/20', description: 'Send data hits to specific webhooks' },
+    { id: 'custom_variable', name: 'Custom Variable', icon: Variable, color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', description: 'Create a reusable timestamp, date, text, or number' },
+    { id: 'calendar_status', name: 'Check Calendar Status', icon: CalendarCheck, color: 'bg-blue-400/10 text-blue-400 border-blue-400/20', description: 'Halt workflow if calendar event is cancelled/rescheduled' },
+    { id: 'http', name: 'API by Automatix', icon: SendHorizontal, color: 'bg-accent-blue/10 text-accent-blue border-accent-blue/20', description: 'Send data hits to specific webhooks' },
     { id: 'email', name: 'Send Email', icon: Mail, color: 'bg-orange-500/10 text-orange-500 border-orange-500/20', description: 'Send an email via Resend or SMTP' },
-    { id: 'slack', name: 'Slack Message', icon: MessageSquare, color: 'bg-pink-500/10 text-pink-500 border-pink-500/20', description: 'Send a message to a Slack channel' },
-    { id: 'instagram_action', name: 'Instagram DM', icon: Camera, color: 'bg-pink-600/10 text-pink-600 border-pink-600/20', description: 'Send a direct message on Instagram' },
-    { id: 'meta_capi', name: 'Meta Conversions API', icon: Database, color: 'bg-blue-600/10 text-blue-600 border-blue-600/20', description: 'Send server-side events to FB Ads' },
+    { id: 'slack', name: 'Slack Message', icon: SlackIcon, color: 'bg-pink-500/10 text-pink-500 border-pink-500/20', description: 'Send a message to a Slack channel' },
+    { id: 'instagram_action', name: 'Instagram DM', icon: InstagramSendIcon, color: 'bg-pink-600/10 text-pink-600 border-pink-600/20', description: 'Send a direct message on Instagram' },
+    { id: 'meta_capi', name: 'Meta Conversions API', icon: MetaIcon, color: 'bg-blue-600/10 text-blue-600 border-blue-600/20', description: 'Send server-side events to FB Ads' },
     { id: 'twilio', name: 'Send SMS', icon: Smartphone, color: 'bg-red-500/10 text-red-500 border-red-500/20', description: 'Send a text message via Twilio' },
-    { id: 'sheets', name: 'Google Sheets', icon: FileText, color: 'bg-green-600/10 text-green-600 border-green-600/20', description: 'Add or update a row in Sheets' },
+    { id: 'sheets', name: 'Google Sheets', icon: GoogleSheetsIcon, color: 'bg-green-600/10 text-green-600 border-green-600/20', description: 'Add or update a row in Sheets' },
   ],
   [NODE_TYPES.CONDITION]: [
-    { id: 'condition', name: 'Router / IF-ELSE', icon: Zap, color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20', description: 'Split your workflow into multiple conditional paths' },
+    { id: 'condition', name: 'Router / IF-ELSE', icon: GitFork, color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20', description: 'Split your workflow into multiple conditional paths' },
     { id: 'filter', type: NODE_TYPES.ACTION, name: 'Filter', icon: Filter, color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20', description: 'Only allow workflow to continue if conditions are met' }
   ],
   [NODE_TYPES.REMINDER_SEQUENCE]: [
-    { id: 'reminder_sequence', name: 'Reminder Sequence', icon: Clock, color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', description: 'Create a timeline of sequential reminders' },
-    { id: 'delay', type: NODE_TYPES.ACTION, name: 'Smart Delay', icon: Clock, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', description: 'Pause execution for a set duration' }
+    { id: 'reminder_sequence', name: 'Reminder Sequence', icon: BellRing, color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', description: 'Create a timeline of sequential reminders' },
+    { id: 'delay', type: NODE_TYPES.ACTION, name: 'Smart Delay', icon: Hourglass, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', description: 'Pause execution for a set duration' }
   ]
 };
-
-import { X } from 'lucide-react';
 
 export default function NodeLibrary({ onAddNode, hasTrigger, isMobileOpen, setIsMobileOpen, mobileInsertionTarget, setMobileInsertionTarget, insertionPoint }) {
   const [searchQuery, setSearchQuery] = useState('');
