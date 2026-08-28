@@ -111,6 +111,9 @@ export default function CalendarPicker({ selectedDate, onSelectDate, calendar })
           
           const available = !isPast && !isTooFar && hasHours(d);
           const disabled = !isCurrentMonth || !available;
+          const theme = calendar?.themeColor || '#3B82F6';
+          const isSharp = calendar?.buttonStyle === 'sharp';
+          const radiusClass = isSharp ? 'rounded-sm' : 'rounded-full';
 
           return (
             <button
@@ -118,17 +121,26 @@ export default function CalendarPicker({ selectedDate, onSelectDate, calendar })
               key={i}
               onClick={() => !disabled && onSelectDate(d.format('YYYY-MM-DD'))}
               disabled={disabled}
+              style={{
+                borderRadius: isSharp ? '3px' : '9999px',
+                ...(isSelected ? { backgroundColor: theme, borderColor: theme } : {}),
+                ...(!isSelected && isToday ? { borderColor: theme, color: '#ffffff' } : {})
+              }}
               className={`
-                aspect-square rounded-full flex flex-col items-center justify-center text-sm font-medium transition-all relative
+                cal-date-btn aspect-square flex flex-col items-center justify-center text-sm font-medium transition-all relative
+                ${radiusClass}
                 ${disabled ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'}
-                ${isSelected ? 'bg-accent-blue text-white shadow-lg shadow-accent-blue/30 scale-110 z-10' : ''}
-                ${!disabled && !isSelected && !isToday ? 'bg-white/5 text-white hover:bg-accent-blue/20 hover:text-accent-blue hover:border-accent-blue/50 border border-white/10' : ''}
-                ${!isSelected && isToday ? 'bg-accent-blue/20 border-2 border-accent-blue text-white font-bold' : ''}
+                ${isSelected ? 'cal-date-selected text-white shadow-lg scale-110 z-10 font-bold' : ''}
+                ${!disabled && !isSelected && !isToday ? 'bg-white/5 text-white hover:bg-white/10 border border-white/10 hover:border-white/20' : ''}
+                ${!isSelected && isToday ? 'border-2 font-bold bg-white/[0.04]' : ''}
               `}
             >
               <span className={!disabled && !isSelected ? 'mb-1' : ''}>{d.date()}</span>
               {!disabled && !isSelected && (
-                <div className={`w-1 h-1 rounded-full absolute bottom-2 ${isToday ? 'bg-white shadow-[0_0_4px_theme(colors.accent-blue)]' : 'bg-accent-blue/60'}`}></div>
+                <div 
+                  className="cal-date-active w-1.5 h-1.5 rounded-full absolute bottom-1.5"
+                  style={{ backgroundColor: isToday ? '#ffffff' : theme }}
+                />
               )}
             </button>
           );

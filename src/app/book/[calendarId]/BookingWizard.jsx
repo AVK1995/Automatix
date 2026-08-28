@@ -114,11 +114,31 @@ export default function BookingWizard({ calendar, questions }) {
             ) : (
               availableSlots.map(slot => {
                 const formattedTime = dayjs(slot).tz(localTimezone).format('h:mm A');
+                const theme = calendar?.themeColor || '#3B82F6';
+                const isSharp = calendar?.buttonStyle === 'sharp';
+                const isPill = calendar?.buttonStyle === 'pill';
+                const borderRadius = isSharp ? '2px' : isPill ? '9999px' : '10px';
+
                 return (
                   <button
                     key={slot}
                     onClick={() => handleSlotSelect(slot)}
-                    className="py-3 px-4 rounded-lg border border-accent-blue/30 text-accent-blue font-medium text-sm hover:bg-accent-blue hover:text-white transition-all text-center"
+                    style={{
+                      borderRadius,
+                      borderColor: `${theme}40`,
+                      color: theme,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme;
+                      e.currentTarget.style.color = '#ffffff';
+                      e.currentTarget.style.borderColor = theme;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = theme;
+                      e.currentTarget.style.borderColor = `${theme}40`;
+                    }}
+                    className="cal-slot-btn py-3 px-4 border font-semibold text-sm transition-all text-center bg-white/[0.02] shadow-sm hover:shadow-md"
                   >
                     {formattedTime}
                   </button>

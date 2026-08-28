@@ -18,7 +18,11 @@ import {
   Globe,
   X,
   Sparkles,
-  Users
+  Users,
+  Code2,
+  Palette,
+  Layers,
+  Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -276,7 +280,192 @@ function AvailabilityModal({ calendar, onChange, onClose }) {
   );
 }
 
+function CssGuideModal({ onClose }) {
+  const [copiedSnippet, setCopiedSnippet] = useState('');
+
+  const copyCode = (code, id) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(code);
+      setCopiedSnippet(id);
+      toast.success('CSS snippet copied to clipboard!');
+      setTimeout(() => setCopiedSnippet(''), 2000);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-[#111] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[88vh] shadow-2xl overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-accent-blue/10 text-accent-blue border border-accent-blue/20">
+              <Code2 size={18} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Calendar CSS Customization Guide</h3>
+              <p className="text-xs text-text-secondary">Full styling control via CSS Variables & Component Class Selectors</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-text-tertiary hover:text-white rounded-lg hover:bg-white/5 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto space-y-6 text-xs text-text-secondary leading-relaxed custom-scrollbar">
+          {/* Section 1: CSS Variables */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-white flex items-center gap-1.5">
+                <Palette size={14} className="text-accent-blue" />
+                1. Core CSS Theme Variables
+              </h4>
+              <button 
+                onClick={() => copyCode(`:root {
+  --cal-accent: #F43F5E;       /* Brand Primary Color */
+  --cal-radius: 12px;          /* Corner radius for slots/cards */
+  --cal-bg: #0a0a0a;           /* Outer page background */
+  --cal-card-bg: #111111;      /* Booking card container */
+  --cal-border: rgba(255,255,255,0.1);
+  --cal-text: #ffffff;
+  --cal-subtext: #9ca3af;
+}`, 'vars')}
+                className="text-[11px] text-accent-blue hover:text-white flex items-center gap-1 px-2.5 py-1 rounded bg-accent-blue/10 border border-accent-blue/20 transition-colors"
+              >
+                {copiedSnippet === 'vars' ? <Check size={12} /> : <Copy size={12} />}
+                {copiedSnippet === 'vars' ? 'Copied' : 'Copy Variables'}
+              </button>
+            </div>
+            <p className="text-[11px] text-text-tertiary">
+              Override these variables in your parent website or iframe stylesheet to instantly rebrand the entire booking widget:
+            </p>
+            <pre className="p-3 bg-black/60 border border-white/10 rounded-lg font-mono text-[11px] text-zinc-300 overflow-x-auto">
+{`:root {
+  --cal-accent: #F43F5E;       /* Brand Primary Color */
+  --cal-radius: 12px;          /* Corner radius for slots/cards */
+  --cal-bg: #0a0a0a;           /* Outer page background */
+  --cal-card-bg: #111111;      /* Booking card container */
+  --cal-border: rgba(255,255,255,0.1);
+  --cal-text: #ffffff;
+  --cal-subtext: #9ca3af;
+}`}
+            </pre>
+          </div>
+
+          {/* Section 2: Class Selectors */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-white flex items-center gap-1.5">
+              <Layers size={14} className="text-accent-blue" />
+              2. Targetable Component Classes
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+              <div className="p-2.5 bg-black/40 border border-white/5 rounded-lg">
+                <code className="text-accent-blue font-bold">.cal-container</code>
+                <p className="text-text-tertiary mt-0.5">Main booking widget wrapper box</p>
+              </div>
+              <div className="p-2.5 bg-black/40 border border-white/5 rounded-lg">
+                <code className="text-accent-blue font-bold">.cal-sidebar</code>
+                <p className="text-text-tertiary mt-0.5">Left host details & logo card</p>
+              </div>
+              <div className="p-2.5 bg-black/40 border border-white/5 rounded-lg">
+                <code className="text-accent-blue font-bold">.cal-title</code>
+                <p className="text-text-tertiary mt-0.5">Public calendar event title header</p>
+              </div>
+              <div className="p-2.5 bg-black/40 border border-white/5 rounded-lg">
+                <code className="text-accent-blue font-bold">.cal-date-btn</code>
+                <p className="text-text-tertiary mt-0.5">Calendar date picker day numbers</p>
+              </div>
+              <div className="p-2.5 bg-black/40 border border-white/5 rounded-lg">
+                <code className="text-accent-blue font-bold">.cal-date-selected</code>
+                <p className="text-text-tertiary mt-0.5">Currently active chosen date cell</p>
+              </div>
+              <div className="p-2.5 bg-black/40 border border-white/5 rounded-lg">
+                <code className="text-accent-blue font-bold">.cal-slot-btn</code>
+                <p className="text-text-tertiary mt-0.5">Available meeting time buttons</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Embed Preset Snippets */}
+          <div className="space-y-3 pt-2 border-t border-white/10">
+            <h4 className="text-sm font-semibold text-white flex items-center gap-1.5">
+              <Sparkles size={14} className="text-accent-blue" />
+              3. Ready-To-Paste Embed Styling Presets
+            </h4>
+
+            {/* Glassmorphic Dark */}
+            <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-white text-xs">✨ Glassmorphism & Translucent Glow</span>
+                <button
+                  onClick={() => copyCode(`/* Glassmorphic Embed Iframe Styling */
+.cal-embed-wrapper {
+  background: rgba(18, 18, 18, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}`, 'glass')}
+                  className="text-[11px] text-accent-blue hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  {copiedSnippet === 'glass' ? <Check size={12} /> : <Copy size={12} />}
+                  {copiedSnippet === 'glass' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <pre className="p-2.5 bg-black/60 rounded font-mono text-[10px] text-zinc-300 overflow-x-auto">
+{`.cal-embed-wrapper {
+  background: rgba(18, 18, 18, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+}`}
+              </pre>
+            </div>
+
+            {/* Custom Typography */}
+            <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-white text-xs">🔤 Brand Typography Matching</span>
+                <button
+                  onClick={() => copyCode(`/* Custom Brand Font Integration */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
+
+.cal-wrapper, .cal-container {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+}`, 'font')}
+                  className="text-[11px] text-accent-blue hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  {copiedSnippet === 'font' ? <Check size={12} /> : <Copy size={12} />}
+                  {copiedSnippet === 'font' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <pre className="p-2.5 bg-black/60 rounded font-mono text-[10px] text-zinc-300 overflow-x-auto">
+{`@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
+.cal-wrapper, .cal-container {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+}`}
+              </pre>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-white/10 bg-white/[0.02] flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 rounded-lg bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-xs transition-colors"
+          >
+            Got it, Close Guide
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ShareEmbedModal({ calendarId, onClose }) {
+  const [showCssGuide, setShowCssGuide] = useState(false);
   const url = typeof window !== 'undefined' ? `${window.location.origin}/book/${calendarId}` : `/book/${calendarId}`;
   const embedCode = `<iframe \n  src="${url}?embed=true" \n  width="100%" \n  height="700px" \n  frameborder="0" \n  style="border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);"\n></iframe>`;
 
@@ -288,59 +477,72 @@ function ShareEmbedModal({ calendarId, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-[#111] border-0 sm:border sm:border-white/10 rounded-none sm:rounded-xl w-full h-[100dvh] sm:h-auto sm:max-w-lg shadow-2xl shadow-black/50 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
-        <div className="flex justify-between items-center p-5 border-b border-white/10">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Share2 className="w-5 h-5 text-accent-blue" /> Share Calendar
-          </h3>
-          <button onClick={onClose} className="p-1.5 text-text-tertiary hover:text-white rounded-md hover:bg-white/5 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        
-        <div className="p-5 space-y-6 flex-1 overflow-y-auto">
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">Direct Link</label>
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                readOnly 
-                value={url} 
-                className="flex-1 bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none" 
-              />
-              <button 
-                onClick={() => copyToClipboard(url)}
-                className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white transition-colors"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-text-tertiary mt-1.5">Share this link directly via email or social media.</p>
+    <>
+      {showCssGuide && <CssGuideModal onClose={() => setShowCssGuide(false)} />}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
+        <div className="bg-[#111] border-0 sm:border sm:border-white/10 rounded-none sm:rounded-xl w-full h-[100dvh] sm:h-auto sm:max-w-lg shadow-2xl shadow-black/50 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+          <div className="flex justify-between items-center p-5 border-b border-white/10">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Share2 className="w-5 h-5 text-accent-blue" /> Share Calendar
+            </h3>
+            <button onClick={onClose} className="p-1.5 text-text-tertiary hover:text-white rounded-md hover:bg-white/5 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">Embed Code (Responsive iframe)</label>
-            <div className="relative group">
-              <textarea 
-                readOnly 
-                value={embedCode} 
-                rows={8}
-                className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-xs text-text-tertiary font-mono focus:outline-none resize-none" 
-              />
-              <button 
-                onClick={() => copyToClipboard(embedCode)}
-                className="absolute top-2 right-2 p-2 bg-[#222]/80 backdrop-blur border border-white/10 rounded-md text-white transition-colors hover:bg-white/10"
-                title="Copy embed code"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
+          
+          <div className="p-5 space-y-6 flex-1 overflow-y-auto">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Direct Link</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={url} 
+                  className="flex-1 bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none" 
+                />
+                <button 
+                  onClick={() => copyToClipboard(url)}
+                  className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white transition-colors"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-text-tertiary mt-1.5">Share this link directly via email or social media.</p>
             </div>
-            <p className="text-xs text-text-tertiary mt-1.5">Paste this into Webflow, WordPress, or any HTML builder. It adapts perfectly to mobile devices.</p>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-text-secondary">Embed Code (Responsive iframe)</label>
+                <button
+                  type="button"
+                  onClick={() => setShowCssGuide(true)}
+                  className="text-xs text-accent-blue hover:text-white flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent-blue/10 hover:bg-accent-blue/20 border border-accent-blue/30 transition-colors font-medium cursor-pointer"
+                >
+                  <Code2 size={13} />
+                  CSS Guide
+                </button>
+              </div>
+              <div className="relative group">
+                <textarea 
+                  readOnly 
+                  value={embedCode} 
+                  rows={8}
+                  className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-xs text-text-tertiary font-mono focus:outline-none resize-none" 
+                />
+                <button 
+                  onClick={() => copyToClipboard(embedCode)}
+                  className="absolute top-2 right-2 p-2 bg-[#222]/80 backdrop-blur border border-white/10 rounded-md text-white transition-colors hover:bg-white/10"
+                  title="Copy embed code"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-text-tertiary mt-1.5">Paste this into Webflow, WordPress, or any HTML builder. It adapts perfectly to mobile devices.</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -631,44 +833,65 @@ export default function CalendarManager({ initialCalendars }) {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-gradient-to-b from-accent-blue/10 to-transparent p-5 rounded-lg border border-accent-blue/20 space-y-4">
+            <div className="bg-gradient-to-b from-accent-blue/10 to-transparent p-5 rounded-lg border border-accent-blue/20 space-y-5">
               <div className="flex items-center gap-2 border-b border-white/10 pb-2">
                 <Sparkles className="w-4 h-4 text-accent-blue" />
                 <h3 className="text-sm font-semibold text-white">Premium UI Customization</h3>
               </div>
               
+              {/* Theme Color with Quick Presets */}
               <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">Theme Color</label>
+                <label className="block text-xs font-medium text-text-secondary mb-2">Theme Accent Color</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {[
+                    { hex: '#F43F5E', name: 'Rose' },
+                    { hex: '#3B82F6', name: 'Blue' },
+                    { hex: '#8B5CF6', name: 'Violet' },
+                    { hex: '#10B981', name: 'Emerald' },
+                    { hex: '#F59E0B', name: 'Amber' },
+                    { hex: '#06B6D4', name: 'Cyan' },
+                    { hex: '#EC4899', name: 'Pink' },
+                    { hex: '#FFFFFF', name: 'White' },
+                  ].map(preset => (
+                    <button
+                      key={preset.hex}
+                      type="button"
+                      onClick={() => setEditingCalendar({...editingCalendar, themeColor: preset.hex})}
+                      className={`w-7 h-7 rounded-full transition-all flex items-center justify-center border ${
+                        editingCalendar.themeColor?.toLowerCase() === preset.hex.toLowerCase()
+                          ? 'scale-115 border-white ring-2 ring-white/30 shadow-lg' 
+                          : 'border-white/20 hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: preset.hex }}
+                      title={preset.name}
+                    >
+                      {editingCalendar.themeColor?.toLowerCase() === preset.hex.toLowerCase() && (
+                        <div className={`w-2 h-2 rounded-full ${preset.hex === '#FFFFFF' ? 'bg-black' : 'bg-white'}`} />
+                      )}
+                    </button>
+                  ))}
+                </div>
                 <ColorPicker 
                   value={editingCalendar.themeColor}
                   onChange={val => setEditingCalendar({...editingCalendar, themeColor: val})}
                 />
               </div>
 
+              {/* Button & Time Slot Style */}
               <div>
-                <div className="mb-2">
-                  <Checkbox 
-                    checked={editingCalendar.sendDefaultEmail !== false}
-                    onChange={checked => setEditingCalendar({...editingCalendar, sendDefaultEmail: checked})}
-                    label="Send Default Confirmation Email (Themed)"
-                  />
-                </div>
-                <p className="text-[10px] text-text-tertiary ml-6">If disabled, no confirmation email will be sent unless you build a custom Email Workflow for this calendar.</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">Button Style</label>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Button & Time Slot Shape</label>
                 <Select 
-                  value={editingCalendar.buttonStyle}
+                  value={editingCalendar.buttonStyle || 'rounded'}
                   onChange={val => setEditingCalendar({...editingCalendar, buttonStyle: val})}
                   options={[
-                    { value: 'rounded', label: 'Rounded Corners' },
-                    { value: 'sharp', label: 'Sharp Edges' },
+                    { value: 'rounded', label: 'Rounded Corners (Modern)' },
+                    { value: 'sharp', label: 'Sharp Edges (Minimalist)' },
                     { value: 'pill', label: 'Fully Rounded (Pill)' }
                   ]}
                 />
               </div>
 
+              {/* Company Logo URL */}
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">Company Logo URL (Optional)</label>
                 <input 
@@ -680,9 +903,67 @@ export default function CalendarManager({ initialCalendars }) {
                 />
                 {editingCalendar.logoUrl && (
                   <div className="mt-2 p-2 bg-black/30 border border-white/10 rounded-md flex items-center justify-center">
-                    <img src={editingCalendar.logoUrl} alt="Logo Preview" className="max-h-10 object-contain" onError={(e) => e.target.style.display='none'} />
+                    <img src={editingCalendar.logoUrl} alt="Logo Preview" className="max-h-12 object-contain" onError={(e) => e.target.style.display='none'} />
                   </div>
                 )}
+              </div>
+
+              {/* Live Mini Preview Box */}
+              <div className="pt-3 border-t border-white/10">
+                <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wider">Live Visual Preview</label>
+                <div className="p-4 bg-black/50 border border-white/10 rounded-xl space-y-3 relative overflow-hidden">
+                  <div 
+                    className="absolute top-0 left-0 right-0 h-1" 
+                    style={{ backgroundColor: editingCalendar.themeColor || '#3B82F6' }}
+                  />
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="text-white font-semibold truncate max-w-[140px]">{editingCalendar.name || 'Sample Meeting'}</span>
+                    <span 
+                      className="px-2 py-0.5 text-[10px] font-bold text-white shadow-sm"
+                      style={{ 
+                        backgroundColor: editingCalendar.themeColor || '#3B82F6',
+                        borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
+                      }}
+                    >
+                      Aug 28
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                    <div 
+                      className="py-1.5 px-2 border font-medium transition-all"
+                      style={{ 
+                        borderColor: `${editingCalendar.themeColor || '#3B82F6'}55`,
+                        color: editingCalendar.themeColor || '#3B82F6',
+                        backgroundColor: `${editingCalendar.themeColor || '#3B82F6'}15`,
+                        borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
+                      }}
+                    >
+                      9:00 AM
+                    </div>
+                    <div 
+                      className="py-1.5 px-2 border font-medium text-white shadow-sm"
+                      style={{ 
+                        borderColor: editingCalendar.themeColor || '#3B82F6',
+                        backgroundColor: editingCalendar.themeColor || '#3B82F6',
+                        borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
+                      }}
+                    >
+                      10:00 AM
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1">
+                  <Checkbox 
+                    checked={editingCalendar.sendDefaultEmail !== false}
+                    onChange={checked => setEditingCalendar({...editingCalendar, sendDefaultEmail: checked})}
+                    label="Send Default Confirmation Email (Themed)"
+                  />
+                </div>
+                <p className="text-[10px] text-text-tertiary ml-6">If disabled, no confirmation email will be sent unless you build a custom Email Workflow for this calendar.</p>
               </div>
             </div>
 

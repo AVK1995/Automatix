@@ -229,9 +229,25 @@ export async function getBookings(calendarId) {
 
   if (!calendar) throw new Error('Calendar not found');
 
+  // Auto-remove past events from previous days as soon as the next day starts
+  const startOfToday = dayjs().startOf('day').toDate();
+  try {
+    await prisma.automatixBooking.deleteMany({
+      where: {
+        calendarId,
+        startTime: { lt: startOfToday }
+      }
+    });
+  } catch (cleanErr) {
+    console.error('Failed to cleanup past days bookings:', cleanErr);
+  }
+
   const bookings = await prisma.automatixBooking.findMany({
-    where: { calendarId },
-    orderBy: { startTime: 'desc' }
+    where: { 
+      calendarId,
+      startTime: { gte: startOfToday }
+    },
+    orderBy: { startTime: 'asc' }
   });
 
   return bookings;

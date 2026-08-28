@@ -67,7 +67,21 @@ export default function BookingsPage() {
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = booking.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           booking.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || booking.status === statusFilter;
+    
+    const isToday = dayjs(booking.startTime).isSame(dayjs(), 'day');
+    const isPast = dayjs(booking.endTime || booking.startTime).isBefore(dayjs());
+    const isPastToday = isToday && isPast;
+    const isUpcoming = !isPast;
+
+    let matchesStatus = true;
+    if (statusFilter === 'UPCOMING') {
+      matchesStatus = isUpcoming;
+    } else if (statusFilter === 'PAST_TODAY') {
+      matchesStatus = isPastToday;
+    } else if (statusFilter !== 'ALL') {
+      matchesStatus = booking.status === statusFilter;
+    }
+
     return matchesSearch && matchesStatus;
   });
 
@@ -100,18 +114,25 @@ export default function BookingsPage() {
                 className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue/50 transition-colors"
               />
             </div>
-            <div className="flex gap-2">
-              {['ALL', 'CONFIRMED', 'CANCELLED', 'RESCHEDULED'].map(status => (
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'ALL', label: 'ALL' },
+                { id: 'UPCOMING', label: 'UPCOMING' },
+                { id: 'PAST_TODAY', label: 'PAST (TODAY)' },
+                { id: 'CONFIRMED', label: 'CONFIRMED' },
+                { id: 'CANCELLED', label: 'CANCELLED' },
+                { id: 'RESCHEDULED', label: 'RESCHEDULED' }
+              ].map(tab => (
                 <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
+                  key={tab.id}
+                  onClick={() => setStatusFilter(tab.id)}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    statusFilter === status 
-                      ? 'bg-white text-black' 
+                    statusFilter === tab.id 
+                      ? 'bg-white text-black font-semibold shadow-sm' 
                       : 'bg-white/5 text-text-secondary hover:bg-white/10 hover:text-white'
                   }`}
                 >
-                  {status}
+                  {tab.label}
                 </button>
               ))}
             </div>
@@ -121,50 +142,72 @@ export default function BookingsPage() {
             {filteredBookings.length === 0 ? (
               <div className="text-center py-12 text-text-secondary">
                 <CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                No bookings yet
+                <p className="text-sm">No bookings in this category.</p>
+                <p className="text-xs text-text-tertiary mt-1">Past days' events are automatically cleaned up at midnight.</p>
               </div>
             ) : (
-              filteredBookings.map((booking) => (
-                <div 
-                  key={booking.id}
-                  onClick={() => setSelectedBooking(booking)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer ${
-                    selectedBooking?.id === booking.id 
-                      ? 'bg-accent-blue/10 border-accent-blue/30' 
-                      : 'bg-black/30 border-white/5 hover:border-white/10 hover:bg-white/5'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-blue/20 to-purple-500/20 flex items-center justify-center border border-white/10">
-                        <span className="text-sm font-semibold text-white">{booking.name.charAt(0).toUpperCase()}</span>
+              filteredBookings.map((booking) => {
+                const isToday = dayjs(booking.startTime).isSame(dayjs(), 'day');
+                const isPast = dayjs(booking.endTime || booking.startTime).isBefore(dayjs());
+                const isPastToday = isToday && isPast;
+
+                return (
+                  <div 
+                    key={booking.id}
+                    onClick={() => setSelectedBooking(booking)}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                      selectedBooking?.id === booking.id 
+                        ? 'bg-accent-blue/10 border-accent-blue/30' 
+                        : isPastToday 
+                          ? 'bg-black/40 border-white/5 opacity-60 hover:opacity-100 hover:border-white/10'
+                          : 'bg-black/30 border-white/5 hover:border-white/10 hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-blue/20 to-purple-500/20 flex items-center justify-center border border-white/10 shrink-0">
+                          <span className="text-sm font-semibold text-white">{booking.name.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-white truncate">{booking.name}</h3>
+                          <p className="text-xs text-text-secondary truncate">{booking.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-white">{booking.name}</h3>
-                        <p className="text-xs text-text-secondary">{booking.email}</p>
+                      
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isPastToday && (
+                          <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                            Passed Today
+                          </span>
+                        )}
+                        {!isPastToday && isToday && (
+                          <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-accent-blue/15 text-accent-blue border border-accent-blue/30">
+                            Today
+                          </span>
+                        )}
+                        <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md ${
+                          booking.status === 'CONFIRMED' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                          booking.status === 'CANCELLED' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                          'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                        }`}>
+                          {booking.status}
+                        </span>
                       </div>
                     </div>
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md ${
-                      booking.status === 'CONFIRMED' ? 'bg-green-500/10 text-green-500' :
-                      booking.status === 'CANCELLED' ? 'bg-red-500/10 text-red-500' :
-                      'bg-orange-500/10 text-orange-500'
-                    }`}>
-                      {booking.status}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-xs text-text-secondary">
-                    <div className="flex items-center gap-1.5">
-                      <CalendarIcon className="w-3.5 h-3.5" />
-                      {dayjs(booking.startTime).format('MMM D, YYYY')}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5" />
-                      {dayjs(booking.startTime).format('h:mm A')}
+                    
+                    <div className="flex items-center gap-4 text-xs text-text-secondary">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarIcon className="w-3.5 h-3.5 text-accent-blue" />
+                        <span>{dayjs(booking.startTime).format('MMM D, YYYY')}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-text-tertiary" />
+                        <span>{dayjs(booking.startTime).format('h:mm A')}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
