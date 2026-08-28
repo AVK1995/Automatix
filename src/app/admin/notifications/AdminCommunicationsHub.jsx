@@ -24,7 +24,8 @@ import {
   Loader2,
   Save,
   FileCode,
-  Lock
+  Lock,
+  X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -205,6 +206,9 @@ export default function AdminCommunicationsHub() {
   // Search users by Name or Email
   useEffect(() => {
     if (targetType !== 'SINGLE') return;
+    if (selectedUser && searchQuery === `${selectedUser.name || 'User'} (${selectedUser.email})`) {
+      return;
+    }
     const timer = setTimeout(async () => {
       if (!searchQuery.trim()) {
         setSearchResults([]);
@@ -226,7 +230,7 @@ export default function AdminCommunicationsHub() {
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, targetType]);
+  }, [searchQuery, targetType, selectedUser]);
 
   const fetchLogs = async () => {
     setLoadingLogs(true);

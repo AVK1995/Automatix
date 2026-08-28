@@ -96,6 +96,48 @@ export default function NotificationDropdown() {
       .trim();
   };
 
+  const extractNotificationHtml = (notification) => {
+    if (!notification) return '';
+    let meta = notification.metadata;
+    if (typeof meta === 'string') {
+      try { meta = JSON.parse(meta); } catch {}
+    }
+    
+    let rawHtml = meta?.htmlContent || meta?.content || meta?.note || '';
+    
+    if (!rawHtml && notification.message) {
+      const msg = notification.message;
+      if (msg.includes('<p>') || msg.includes('<div') || msg.includes('<h') || msg.includes('<ul') || msg.includes('<!DOCTYPE') || msg.includes('<html')) {
+        rawHtml = msg.includes(':') ? msg.substring(msg.indexOf(':') + 1).trim() : msg;
+      }
+    }
+
+    if (!rawHtml) return '';
+
+    // Check if rawHtml actually contains HTML tags
+    if (!/<[a-z][\s\S]*>/i.test(rawHtml) && !rawHtml.includes('<!DOCTYPE')) {
+      return '';
+    }
+
+    // Extract body content if wrapped in full html doc
+    if (rawHtml.includes('<body')) {
+      const bodyMatch = rawHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      if (bodyMatch && bodyMatch[1]) {
+        rawHtml = bodyMatch[1];
+      }
+    }
+
+    // Clean out doctype, html, head, style, script
+    rawHtml = rawHtml
+      .replace(/<!DOCTYPE[^>]*>/gi, '')
+      .replace(/<\/?html[^>]*>/gi, '')
+      .replace(/<head[\s\S]*?<\/head>/gi, '')
+      .replace(/<\/?body[^>]*>/gi, '')
+      .trim();
+
+    return rawHtml;
+  };
+
   const handleAction = async (notification) => {
     try {
       const hasHtml = !!notification.metadata?.htmlContent || 
@@ -448,32 +490,39 @@ export default function NotificationDropdown() {
 
             {/* Modal Body: Rich Rendered HTML (Styled like Patch Notes) */}
             <div className="p-6 overflow-y-auto flex-1 space-y-4 text-xs sm:text-sm text-text-secondary leading-relaxed custom-scrollbar">
-              {activeModalNotification.metadata?.htmlContent ? (
-                <div 
-                  className="prose prose-invert max-w-none text-xs sm:text-sm leading-relaxed space-y-3 
-                    [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-white [&_h1]:mt-4 [&_h1]:mb-2 
-                    [&_h2]:text-base [&_h2]:font-bold [&_h2]:text-white [&_h2]:mt-4 [&_h2]:mb-2 
-                    [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-white [&_h3]:mt-3 [&_h3]:mb-1.5 
-                    [&_p]:text-text-secondary [&_p]:leading-relaxed [&_p]:mb-2.5
-                    [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:text-text-secondary 
-                    [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:text-text-secondary 
-                    [&_li]:text-text-secondary 
-                    [&_strong]:text-white [&_strong]:font-semibold 
-                    [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:bg-white/10 [&_code]:rounded [&_code]:text-accent-blue [&_code]:font-mono [&_code]:text-xs
-                    [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-white/10 [&_table]:rounded-lg
-                    [&_td]:p-3 [&_td]:border [&_td]:border-white/5
-                    [&_a]:text-accent-blue [&_a]:underline"
-                  dangerouslySetInnerHTML={{ __html: activeModalNotification.metadata.htmlContent }}
-                />
-              ) : (
-                <div className="text-white text-sm whitespace-pre-wrap leading-relaxed">
-                  {activeModalNotification.metadata?.content || activeModalNotification.metadata?.note || (
-                    activeModalNotification.message?.includes(':') 
-                      ? activeModalNotification.message.substring(activeModalNotification.message.indexOf(':') + 1).trim()
-                      : cleanHtmlPreview(activeModalNotification.message)
-                  )}
-                </div>
-              )}
+              {(() => {
+                const htmlToRender = extractNotificationHtml(activeModalNotification);
+                if (htmlToRender) {
+                  return (
+                    <div 
+                      className="prose prose-invert max-w-none text-xs sm:text-sm leading-relaxed space-y-3 
+                        [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-white [&_h1]:mt-4 [&_h1]:mb-2 
+                        [&_h2]:text-base [&_h2]:font-bold [&_h2]:text-white [&_h2]:mt-4 [&_h2]:mb-2 
+                        [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-white [&_h3]:mt-3 [&_h3]:mb-1.5 
+                        [&_p]:text-text-secondary [&_p]:leading-relaxed [&_p]:mb-2.5
+                        [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:text-text-secondary 
+                        [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:text-text-secondary 
+                        [&_li]:text-text-secondary 
+                        [&_strong]:text-white [&_strong]:font-semibold 
+                        [&_em]:text-accent-blue [&_em]:not-italic [&_em]:font-medium
+                        [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:bg-white/10 [&_code]:rounded [&_code]:text-accent-blue [&_code]:font-mono [&_code]:text-xs
+                        [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-white/10 [&_table]:rounded-lg
+                        [&_td]:p-3 [&_td]:border [&_td]:border-white/5
+                        [&_a]:text-accent-blue [&_a]:underline"
+                      dangerouslySetInnerHTML={{ __html: htmlToRender }}
+                    />
+                  );
+                }
+                return (
+                  <div className="text-white text-sm whitespace-pre-wrap leading-relaxed">
+                    {activeModalNotification.metadata?.content || activeModalNotification.metadata?.note || (
+                      activeModalNotification.message?.includes(':') 
+                        ? activeModalNotification.message.substring(activeModalNotification.message.indexOf(':') + 1).trim()
+                        : cleanHtmlPreview(activeModalNotification.message)
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}

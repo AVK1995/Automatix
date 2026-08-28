@@ -115,14 +115,14 @@ function AvailabilityModal({ calendar, onChange, onClose }) {
                   <div className="flex flex-wrap items-center gap-2 bg-black/30 p-2 rounded-md border border-white/5 ml-6">
                     <input 
                       type="date"
-                      value={localCalendar.dateRangeStart ? localCalendar.dateRangeStart.split('T')[0] : ''}
+                      value={localCalendar.dateRangeStart ? (typeof localCalendar.dateRangeStart === 'string' ? localCalendar.dateRangeStart.split('T')[0] : new Date(localCalendar.dateRangeStart).toISOString().split('T')[0]) : ''}
                       onChange={e => setLocalCalendar({...localCalendar, dateRangeStart: e.target.value ? new Date(e.target.value).toISOString() : null})}
                       className="bg-black/50 border border-white/10 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-accent-blue [color-scheme:dark]"
                     />
                     <span className="px-1 text-xs uppercase tracking-wider text-text-tertiary">to</span>
                     <input 
                       type="date"
-                      value={localCalendar.dateRangeEnd ? localCalendar.dateRangeEnd.split('T')[0] : ''}
+                      value={localCalendar.dateRangeEnd ? (typeof localCalendar.dateRangeEnd === 'string' ? localCalendar.dateRangeEnd.split('T')[0] : new Date(localCalendar.dateRangeEnd).toISOString().split('T')[0]) : ''}
                       onChange={e => setLocalCalendar({...localCalendar, dateRangeEnd: e.target.value ? new Date(e.target.value).toISOString() : null})}
                       className="bg-black/50 border border-white/10 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-accent-blue [color-scheme:dark]"
                     />
@@ -277,12 +277,14 @@ function AvailabilityModal({ calendar, onChange, onClose }) {
 }
 
 function ShareEmbedModal({ calendarId, onClose }) {
-  const url = `${window.location.origin}/book/${calendarId}`;
+  const url = typeof window !== 'undefined' ? `${window.location.origin}/book/${calendarId}` : `/book/${calendarId}`;
   const embedCode = `<iframe \n  src="${url}?embed=true" \n  width="100%" \n  height="700px" \n  frameborder="0" \n  style="border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);"\n></iframe>`;
 
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard!');
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      toast.success('Copied to clipboard!');
+    }
   };
 
   return (
@@ -353,6 +355,8 @@ export default function CalendarManager({ initialCalendars }) {
   const [saveStatus, setSaveStatus] = useState('');
   const [shareModalCalendarId, setShareModalCalendarId] = useState(null);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [calendarToDelete, setCalendarToDelete] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   React.useEffect(() => {
     const editId = searchParams.get('edit');
@@ -376,12 +380,16 @@ export default function CalendarManager({ initialCalendars }) {
         if (editingCalendar.id) {
           const updated = await updateCalendar(editingCalendar.id, editingCalendar);
           setCalendars(prev => prev.map(c => c.id === updated.id ? updated : c));
-          new BroadcastChannel('automatix_calendars').postMessage('updated');
+          if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+            try { new BroadcastChannel('automatix_calendars').postMessage('updated'); } catch {}
+          }
         } else {
           const created = await createCalendar(editingCalendar);
           setEditingCalendar(prev => ({ ...prev, id: created.id }));
           setCalendars(prev => [created, ...prev]);
-          new BroadcastChannel('automatix_calendars').postMessage('updated');
+          if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+            try { new BroadcastChannel('automatix_calendars').postMessage('updated'); } catch {}
+          }
           router.push(`${pathname}?edit=${created.id}`, { scroll: false });
         }
         setSaveStatus('Saved');
@@ -445,7 +453,9 @@ export default function CalendarManager({ initialCalendars }) {
     try {
       await deleteCalendar(targetId);
       setCalendars(calendars.filter(c => c.id !== targetId));
-      new BroadcastChannel('automatix_calendars').postMessage('updated');
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try { new BroadcastChannel('automatix_calendars').postMessage('updated'); } catch {}
+      }
       toast.success('Calendar deleted successfully');
     } catch (err) {
       toast.error('Failed to delete calendar');
