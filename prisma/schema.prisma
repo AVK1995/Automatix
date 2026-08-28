@@ -226,6 +226,12 @@ model AutomatixCalendar {
   maxBookingsPerDay Int?
   availability Json?
   emailTemplate Json?
+  fontFamily    String?  @default("Plus Jakarta Sans")
+  bgTheme       String?  @default("obsidian")
+  customBgColor String?
+  customCardColor String?
+  customTextColor String?
+  themeGradient String?
   client       User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
   bookings     AutomatixBooking[]
 }

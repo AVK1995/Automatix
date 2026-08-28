@@ -8,11 +8,12 @@ import { Loader2, ArrowLeft, Clock } from 'lucide-react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { getResolvedTheme } from '@/utils/calendarThemes';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-export default function BookingWizard({ calendar, questions }) {
+export default function BookingWizard({ calendar, questions, resolvedTheme }) {
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState(null);
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -20,6 +21,7 @@ export default function BookingWizard({ calendar, questions }) {
   const [selectedSlot, setSelectedSlot] = useState(null);
   
   const [localTimezone, setLocalTimezone] = useState('UTC');
+  const themeObj = resolvedTheme || getResolvedTheme(calendar);
   
   useEffect(() => {
     try {
@@ -53,7 +55,8 @@ export default function BookingWizard({ calendar, questions }) {
       <div className="animate-in slide-in-from-right-4 duration-300">
         <button 
           onClick={() => setStep(2)}
-          className="mb-6 flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-white transition-colors"
+          className="mb-6 flex items-center gap-1.5 text-xs font-medium transition-colors"
+          style={{ color: themeObj.textSecondary || '#a1a1aa' }}
         >
           <ArrowLeft className="w-4 h-4" /> Back to Time Selection
         </button>
@@ -62,6 +65,7 @@ export default function BookingWizard({ calendar, questions }) {
           questions={questions} 
           selectedSlot={selectedSlot}
           localTimezone={localTimezone}
+          resolvedTheme={themeObj}
         />
       </div>
     );
@@ -71,14 +75,21 @@ export default function BookingWizard({ calendar, questions }) {
     <div className="space-y-6">
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white mb-1">
+          <h2 className="text-xl font-bold mb-1" style={{ color: themeObj.text || '#ffffff' }}>
             {step === 1 ? 'Select a Date' : 'Select a Time'}
           </h2>
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>
             {step === 1 ? 'Choose an available day for your meeting.' : dayjs(selectedDate).format('dddd, MMMM D')}
           </p>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-medium text-text-secondary shrink-0">
+        <div 
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium shrink-0"
+          style={{ 
+            color: themeObj.textSecondary || '#a1a1aa',
+            backgroundColor: themeObj.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+            borderColor: themeObj.border || 'rgba(255,255,255,0.1)'
+          }}
+        >
           <Clock className="w-3 h-3" />
           <span className="max-w-[120px] truncate">{localTimezone}</span>
         </div>
@@ -96,19 +107,20 @@ export default function BookingWizard({ calendar, questions }) {
         <div className="animate-in slide-in-from-right-4 duration-300">
           <button 
             onClick={() => setStep(1)}
-            className="mb-4 flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-white transition-colors"
+            className="mb-4 flex items-center gap-1.5 text-xs font-medium transition-colors"
+            style={{ color: themeObj.textSecondary || '#a1a1aa' }}
           >
             <ArrowLeft className="w-4 h-4" /> Back to Calendar
           </button>
           
           <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
             {isLoadingSlots ? (
-              <div className="col-span-2 py-12 flex flex-col items-center justify-center text-text-tertiary">
+              <div className="col-span-2 py-12 flex flex-col items-center justify-center" style={{ color: themeObj.textMuted || '#71717a' }}>
                 <Loader2 className="w-6 h-6 animate-spin mb-2" />
                 <span className="text-sm">Finding availability...</span>
               </div>
             ) : availableSlots.length === 0 ? (
-              <div className="col-span-2 py-12 text-center text-sm text-text-secondary">
+              <div className="col-span-2 py-12 text-center text-sm" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>
                 No available times on this date.
               </div>
             ) : (
@@ -127,6 +139,7 @@ export default function BookingWizard({ calendar, questions }) {
                       borderRadius,
                       borderColor: `${theme}40`,
                       color: theme,
+                      backgroundColor: themeObj.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = theme;
@@ -134,15 +147,15 @@ export default function BookingWizard({ calendar, questions }) {
                       e.currentTarget.style.borderColor = theme;
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.backgroundColor = themeObj.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
                       e.currentTarget.style.color = theme;
                       e.currentTarget.style.borderColor = `${theme}40`;
                     }}
-                    className="cal-slot-btn py-3 px-4 border font-semibold text-sm transition-all text-center bg-white/[0.02] shadow-sm hover:shadow-md"
+                    className="cal-slot-btn py-3 px-4 border font-semibold text-sm transition-all text-center shadow-sm hover:shadow-md cursor-pointer"
                   >
                     {formattedTime}
                   </button>
-                )
+                );
               })
             )}
           </div>

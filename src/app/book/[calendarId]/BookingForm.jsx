@@ -10,6 +10,7 @@ import Checkbox from '@/components/ui/Checkbox';
 import Radio from '@/components/ui/Radio';
 import dayjs from 'dayjs';
 import { COUNTRIES } from '@/utils/countries';
+import { getResolvedTheme } from '@/utils/calendarThemes';
 
 const countryOptions = COUNTRIES.map(c => ({
   value: `${c.code} ${c.dial}`,
@@ -18,13 +19,12 @@ const countryOptions = COUNTRIES.map(c => ({
   icon: <img src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`} width="16" alt={c.code} className="rounded-sm shadow-[0_0_2px_rgba(0,0,0,0.5)] object-cover" />
 }));
 
-export default function BookingForm({ calendar, questions, selectedSlot, localTimezone }) {
+export default function BookingForm({ calendar, questions, selectedSlot, localTimezone, resolvedTheme }) {
+  const themeObj = resolvedTheme || getResolvedTheme(calendar);
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
-  // Handled by BookingWizard now
-
   // Basic Fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -54,26 +54,24 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
     try {
       // Validate required questions
       for (const q of questions) {
-        if (!q.isHidden && evaluateVisibility(q) && q.required && !answers[q.label]) {
-          throw new Error(`Please answer: ${q.label}`);
+        if (q.required && !q.isHidden && evaluateVisibility(q)) {
+          const val = answers[q.label];
+          if (!val || (Array.isArray(val) && val.length === 0)) {
+            throw new Error(`Please answer "${q.label}"`);
+          }
         }
       }
 
-      const payload = {
+      await createBooking({
         calendarId: calendar.id,
-        name: name,
-        email: email,
-        startTime: selectedSlot,
-        timezone: localTimezone,
-        answers: {
-          ...answers,
-          ...hiddenParams
-        },
-      };
+        name,
+        email,
+        startTime: new Date(selectedSlot).toISOString(),
+        answers: { ...answers, ...hiddenParams },
+      });
 
-      await createBooking(payload);
-      
       setIsSuccess(true);
+      
       if (calendar.redirectUrl) {
         setTimeout(() => {
           window.location.href = calendar.redirectUrl;
@@ -120,18 +118,40 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
     }
   };
 
+  const inputBg = themeObj.isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.03)';
+  const inputBorder = themeObj.border || 'rgba(255,255,255,0.1)';
+  const inputColor = themeObj.text || '#ffffff';
+
   const renderQuestionInput = (q) => {
     if (q.isHidden) return null;
 
     const value = answers[q.label] || '';
     const onChange = (e) => setAnswers(prev => ({ ...prev, [q.label]: e.target.value }));
-    const baseInputClass = "w-full bg-black/30 border border-white/10 rounded-md px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20 transition-all";
+    const baseInputClass = "w-full border rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent-blue transition-all";
 
     switch (q.type) {
       case 'text':
-        return <input type="text" value={value} onChange={onChange} required={q.required} className={baseInputClass} />;
+        return (
+          <input 
+            type="text" 
+            value={value} 
+            onChange={onChange} 
+            required={q.required} 
+            className={baseInputClass} 
+            style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
+          />
+        );
       case 'textarea':
-        return <textarea rows={3} value={value} onChange={onChange} required={q.required} className={`${baseInputClass} resize-none`} />;
+        return (
+          <textarea 
+            rows={3} 
+            value={value} 
+            onChange={onChange} 
+            required={q.required} 
+            className={`${baseInputClass} resize-none`} 
+            style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
+          />
+        );
       case 'phone':
         let currentCode = 'IN +91';
         let currentNum = '';
@@ -166,6 +186,7 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
               placeholder="98765 43210"
               required={q.required} 
               className={`${baseInputClass} flex-1`} 
+              style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
             />
           </div>
         );
@@ -229,34 +250,45 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
     const formattedTime = dayjs(selectedSlot).format('h:mm A');
 
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-6">
-          <CheckCircle2 className="w-8 h-8 text-green-500" />
+      <div className="py-12 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300">
+        <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-6 text-emerald-500 shadow-inner">
+          <CheckCircle2 className="w-10 h-10" />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">Booking Confirmed!</h2>
-        <p className="text-text-secondary max-w-md mb-8">
-          Your meeting has been scheduled successfully.
-          {calendar.sendDefaultEmail !== false && " We've sent a calendar invitation with all the details to your email."}
+        <h2 className="text-2xl font-bold mb-2" style={{ color: themeObj.text || '#ffffff' }}>You're Scheduled!</h2>
+        <p className="text-sm max-w-sm mb-8" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>
+          A calendar invitation and confirmation email has been sent to <span className="font-semibold" style={{ color: themeObj.text || '#ffffff' }}>{email}</span>.
         </p>
         
-        <div className="bg-black/30 border border-white/10 rounded-xl p-6 mb-8 w-full max-w-md text-left">
-          <h3 className="text-lg font-semibold text-white mb-4">{calendar.name}</h3>
+        <div 
+          className="border rounded-xl p-6 mb-8 w-full max-w-md text-left"
+          style={{
+            backgroundColor: themeObj.isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.02)',
+            borderColor: themeObj.border || 'rgba(255,255,255,0.1)'
+          }}
+        >
+          <h3 className="text-lg font-semibold mb-4" style={{ color: themeObj.text || '#ffffff' }}>{calendar.name}</h3>
           
-          <div className="space-y-3 mb-6">
-            <div className="flex items-center gap-3 text-text-secondary">
-              <CalendarIcon className="w-4 h-4" />
+          <div className="space-y-3 mb-6" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>
+            <div className="flex items-center gap-3">
+              <CalendarIcon className="w-4 h-4 text-accent-blue" />
               <span>{formattedDate}</span>
             </div>
-            <div className="flex items-center gap-3 text-text-secondary">
-              <Clock className="w-4 h-4" />
+            <div className="flex items-center gap-3">
+              <Clock className="w-4 h-4 text-accent-blue" />
               <span>{formattedTime} ({localTimezone})</span>
             </div>
           </div>
           
           {calendar.meetUrl && (
-            <div className="pt-4 border-t border-white/10">
-              <h4 className="text-sm font-semibold text-white mb-2">Meeting Link</h4>
-              <div className="flex items-center gap-3 bg-black/50 p-3 rounded-lg border border-white/5">
+            <div className="pt-4 border-t" style={{ borderColor: themeObj.border || 'rgba(255,255,255,0.1)' }}>
+              <h4 className="text-sm font-semibold mb-2" style={{ color: themeObj.text || '#ffffff' }}>Meeting Link</h4>
+              <div 
+                className="flex items-center gap-3 p-3 rounded-lg border"
+                style={{
+                  backgroundColor: themeObj.isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.04)',
+                  borderColor: themeObj.border || 'rgba(255,255,255,0.05)'
+                }}
+              >
                 <div className="p-2 bg-accent-blue/20 rounded-md">
                   <CalendarIcon className="w-5 h-5 text-accent-blue" />
                 </div>
@@ -264,7 +296,7 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
                   {calendar.meetUrl}
                 </a>
               </div>
-              <p className="text-[10px] text-text-tertiary mt-3 text-left">
+              <p className="text-[10px] mt-3 text-left" style={{ color: themeObj.textMuted || '#71717a' }}>
                 Note: The host uses a waiting room for security. Please join a few minutes early and wait to be admitted.
               </p>
             </div>
@@ -283,21 +315,27 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
       <div>
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h2 className="text-xl font-bold text-white mb-1">Enter Details</h2>
-            <p className="text-sm text-text-secondary">Please provide your information below.</p>
+            <h2 className="text-xl font-bold mb-1" style={{ color: themeObj.text || '#ffffff' }}>Enter Details</h2>
+            <p className="text-sm" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>Please provide your information below.</p>
           </div>
         </div>
 
         {/* Selected Slot Summary */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4 mb-8">
+        <div 
+          className="border rounded-xl p-4 flex items-center gap-4 mb-8"
+          style={{
+            backgroundColor: themeObj.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+            borderColor: themeObj.border || 'rgba(255,255,255,0.1)'
+          }}
+        >
           <div className="w-10 h-10 rounded-full bg-accent-blue/20 flex items-center justify-center text-accent-blue shrink-0">
             <CalendarIcon className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-sm font-medium text-white">
+            <p className="text-sm font-medium" style={{ color: themeObj.text || '#ffffff' }}>
               {dayjs(selectedSlot).format('dddd, MMMM D, YYYY')}
             </p>
-            <p className="text-xs text-text-secondary flex items-center gap-1 mt-0.5">
+            <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>
               <Clock className="w-3 h-3" /> 
               {dayjs(selectedSlot).format('h:mm A')} - {dayjs(selectedSlot).add(calendar.duration || 30, 'minute').format('h:mm A')} ({localTimezone})
             </p>
@@ -307,29 +345,35 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1.5">Full Name *</label>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>
+            Full Name *
+          </label>
           <input 
             type="text" 
             required 
             value={name}
             onChange={e => setName(e.target.value)}
-            className="w-full bg-black/30 border border-white/10 rounded-md px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20 transition-all" 
+            className="w-full border rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent-blue transition-all"
+            style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1.5">Email Address *</label>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>
+            Email Address *
+          </label>
           <input 
             type="email" 
             required 
             value={email}
             onChange={e => setEmail(e.target.value)}
-            className="w-full bg-black/30 border border-white/10 rounded-md px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20 transition-all" 
+            className="w-full border rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent-blue transition-all"
+            style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
           />
         </div>
 
-        {questions.filter(q => !q.isHidden && evaluateVisibility(q)).map((q, i) => (
+        {questions.filter(q => !q.isHidden && evaluateVisibility(q)).map((q) => (
           <div key={q.id} className="pt-2 animate-in fade-in slide-in-from-top-4 duration-300">
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">
+            <label className="block text-sm font-medium mb-1.5" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>
               {q.label} {q.required && '*'}
             </label>
             {renderQuestionInput(q)}
@@ -337,11 +381,11 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
         ))}
       </div>
 
-      <div className="pt-6 mt-6 border-t border-white/10">
+      <div className="pt-6 mt-6 border-t" style={{ borderColor: themeObj.border || 'rgba(255,255,255,0.1)' }}>
         <button
           type="submit"
           disabled={isSubmitting}
-          style={{ backgroundColor: calendar.themeColor || '#3B82F6' }}
+          style={{ background: calendar.themeColor || '#3B82F6' }}
           className={`w-full py-3.5 px-4 text-white font-medium hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/20 ${btnStyleClass}`}
         >
           {isSubmitting ? (

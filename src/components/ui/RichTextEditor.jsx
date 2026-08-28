@@ -6,6 +6,7 @@ import { Underline } from '@tiptap/extension-underline';
 import { TextStyle, Color } from '@tiptap/extension-text-style';
 import { Link } from '@tiptap/extension-link';
 import { Bold, Italic, Underline as UnderlineIcon, Link as LinkIcon, List, ListOrdered, Undo, Redo, Heading1, Heading2 } from 'lucide-react';
+import ColorPicker from '@/components/ui/ColorPicker';
 
 const MenuBar = ({ editor }) => {
   if (!editor) {
@@ -98,13 +99,25 @@ const MenuBar = ({ editor }) => {
         <LinkIcon size={16} />
       </button>
 
-      {/* Basic Colors */}
-      <div className="flex items-center gap-1 ml-2">
-        <input
-          type="color"
-          onInput={event => editor.chain().focus().setColor(event.target.value).run()}
+      {/* Modern Text Color Selector with Brush/Underline indicator */}
+      <div className="w-auto">
+        <ColorPicker
           value={editor.getAttributes('textStyle').color || '#ffffff'}
-          className="w-6 h-6 p-0 border-0 rounded cursor-pointer bg-transparent"
+          onChange={(col) => editor.chain().focus().setColor(col).run()}
+          allowGradients={false}
+          customTrigger={(currentColor) => (
+            <button
+              type="button"
+              className="flex flex-col items-center justify-center p-1.5 rounded-md hover:bg-white/10 transition-colors relative group"
+              title="Text Color"
+            >
+              <span className="text-xs font-black leading-none text-white font-serif">A</span>
+              <span 
+                className="w-3.5 h-[3px] rounded-full mt-0.5 shadow-sm"
+                style={{ backgroundColor: currentColor || '#ffffff' }}
+              />
+            </button>
+          )}
         />
       </div>
 

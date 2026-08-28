@@ -23,7 +23,11 @@ import {
   Palette,
   Layers,
   Check,
-  Edit3
+  Edit3,
+  Wand2,
+  Type,
+  Sun,
+  Moon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -36,6 +40,8 @@ import WeeklyScheduleBuilder from '@/components/builder/WeeklyScheduleBuilder';
 import Checkbox from '@/components/ui/Checkbox';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import EmailTemplateModal from '@/components/builder/EmailTemplateModal';
+import SmartBrandOptimizerModal from '@/components/builder/SmartBrandOptimizerModal';
+import { GOOGLE_FONTS_CATALOG, CALENDAR_THEMES, getResolvedTheme } from '@/utils/calendarThemes';
 
 function AvailabilityModal({ calendar, onChange, onClose }) {
   const [localCalendar, setLocalCalendar] = useState(calendar);
@@ -558,6 +564,7 @@ export default function CalendarManager({ initialCalendars }) {
   const [shareModalCalendarId, setShareModalCalendarId] = useState(null);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showSmartOptimizerModal, setShowSmartOptimizerModal] = useState(false);
   const [calendarToDelete, setCalendarToDelete] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -612,6 +619,11 @@ export default function CalendarManager({ initialCalendars }) {
       slug: '',
       themeColor: '#3B82F6',
       buttonStyle: 'rounded',
+      fontFamily: 'Plus Jakarta Sans',
+      bgTheme: 'obsidian',
+      customBgColor: '#0a0a0a',
+      customCardColor: '#111111',
+      customTextColor: '#ffffff',
       duration: 30,
       bufferBefore: 0,
       bufferAfter: 0,
@@ -836,12 +848,82 @@ export default function CalendarManager({ initialCalendars }) {
 
           <div className="space-y-6">
             <div className="bg-gradient-to-b from-accent-blue/10 to-transparent p-5 rounded-lg border border-accent-blue/20 space-y-5">
-              <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-                <Sparkles className="w-4 h-4 text-accent-blue" />
-                <h3 className="text-sm font-semibold text-white">Premium UI Customization</h3>
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-accent-blue" />
+                  <h3 className="text-sm font-semibold text-white">Premium UI Customization</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSmartOptimizerModal(true)}
+                  className="text-[11px] font-bold text-accent-blue hover:text-white flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent-blue/15 hover:bg-accent-blue/25 border border-accent-blue/30 transition-all shadow-sm"
+                >
+                  <Wand2 className="w-3.5 h-3.5" />
+                  ✨ Smart Brand Optimizer
+                </button>
+              </div>
+
+              {/* 1. Google Typography Font Selector */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5 flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5 text-purple-400" /> Google Typography / Font
+                </label>
+                <Select 
+                  value={editingCalendar.fontFamily || 'Plus Jakarta Sans'}
+                  onChange={val => setEditingCalendar({...editingCalendar, fontFamily: val})}
+                  options={GOOGLE_FONTS_CATALOG.map(f => ({
+                    value: f.name,
+                    label: `${f.name} — ${f.category}`
+                  }))}
+                />
+              </div>
+
+              {/* 2. Calendar Background Tone & Palette */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5 flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-emerald-400" /> Calendar Background & Theme Tone
+                </label>
+                <Select 
+                  value={editingCalendar.bgTheme || 'obsidian'}
+                  onChange={val => setEditingCalendar({...editingCalendar, bgTheme: val})}
+                  options={CALENDAR_THEMES.map(t => ({
+                    value: t.id,
+                    label: t.name
+                  }))}
+                />
+
+                {/* Custom Palette Color Pickers if 'custom' is selected */}
+                {editingCalendar.bgTheme === 'custom' && (
+                  <div className="mt-3 p-3 bg-black/40 border border-white/10 rounded-xl space-y-3">
+                    <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider block">Custom Palette Overrides</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[10px] text-text-tertiary block mb-1">Page Background</label>
+                        <ColorPicker 
+                          value={editingCalendar.customBgColor || '#0a0a0a'}
+                          onChange={val => setEditingCalendar({...editingCalendar, customBgColor: val})}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-text-tertiary block mb-1">Card Container</label>
+                        <ColorPicker 
+                          value={editingCalendar.customCardColor || '#111111'}
+                          onChange={val => setEditingCalendar({...editingCalendar, customCardColor: val})}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-text-tertiary block mb-1">Text Color</label>
+                        <ColorPicker 
+                          value={editingCalendar.customTextColor || '#ffffff'}
+                          onChange={val => setEditingCalendar({...editingCalendar, customTextColor: val})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               
-              {/* Theme Color with Quick Presets */}
+              {/* 3. Theme Accent Color with Quick Presets */}
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-2">Theme Accent Color</label>
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -879,7 +961,7 @@ export default function CalendarManager({ initialCalendars }) {
                 />
               </div>
 
-              {/* Button & Time Slot Style */}
+              {/* 4. Button & Time Slot Style */}
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">Button & Time Slot Shape</label>
                 <Select 
@@ -893,7 +975,7 @@ export default function CalendarManager({ initialCalendars }) {
                 />
               </div>
 
-              {/* Company Logo URL */}
+              {/* 5. Company Logo URL */}
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">Company Logo URL (Optional)</label>
                 <input 
@@ -910,52 +992,71 @@ export default function CalendarManager({ initialCalendars }) {
                 )}
               </div>
 
-              {/* Live Mini Preview Box */}
-              <div className="pt-3 border-t border-white/10">
-                <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wider">Live Visual Preview</label>
-                <div className="p-4 bg-black/50 border border-white/10 rounded-xl space-y-3 relative overflow-hidden">
-                  <div 
-                    className="absolute top-0 left-0 right-0 h-1" 
-                    style={{ backgroundColor: editingCalendar.themeColor || '#3B82F6' }}
-                  />
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <span className="text-white font-semibold truncate max-w-[140px]">{editingCalendar.name || 'Sample Meeting'}</span>
-                    <span 
-                      className="px-2 py-0.5 text-[10px] font-bold text-white shadow-sm"
-                      style={{ 
-                        backgroundColor: editingCalendar.themeColor || '#3B82F6',
-                        borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
-                      }}
-                    >
-                      Aug 28
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                    <div 
-                      className="py-1.5 px-2 border font-medium transition-all"
-                      style={{ 
-                        borderColor: `${editingCalendar.themeColor || '#3B82F6'}55`,
-                        color: editingCalendar.themeColor || '#3B82F6',
-                        backgroundColor: `${editingCalendar.themeColor || '#3B82F6'}15`,
-                        borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
-                      }}
-                    >
-                      9:00 AM
+              {/* 6. Live Visual Preview Box with Theme & Font reflection */}
+              {(() => {
+                const resolved = getResolvedTheme(editingCalendar);
+                const activeFont = editingCalendar.fontFamily || 'Plus Jakarta Sans';
+                return (
+                  <div className="pt-3 border-t border-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Live Visual Preview</label>
+                      <span className="text-[10px] text-text-tertiary font-mono">{activeFont}</span>
                     </div>
                     <div 
-                      className="py-1.5 px-2 border font-medium text-white shadow-sm"
+                      className="p-4 border rounded-xl space-y-3 relative overflow-hidden transition-all shadow-md"
                       style={{ 
-                        borderColor: editingCalendar.themeColor || '#3B82F6',
-                        backgroundColor: editingCalendar.themeColor || '#3B82F6',
-                        borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
+                        backgroundColor: resolved.card || '#111111',
+                        borderColor: resolved.border || 'rgba(255,255,255,0.1)',
+                        color: resolved.text || '#ffffff',
+                        fontFamily: `${activeFont}, sans-serif`
                       }}
                     >
-                      10:00 AM
+                      <div 
+                        className="absolute top-0 left-0 right-0 h-1.5" 
+                        style={{ background: editingCalendar.themeColor || '#3B82F6' }}
+                      />
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="font-bold truncate max-w-[140px]" style={{ color: resolved.text || '#ffffff' }}>
+                          {editingCalendar.name || 'Sample Meeting'}
+                        </span>
+                        <span 
+                          className="px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
+                          style={{ 
+                            background: editingCalendar.themeColor || '#3B82F6',
+                            borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
+                          }}
+                        >
+                          Aug 28
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                        <div 
+                          className="py-1.5 px-2 border font-medium transition-all"
+                          style={{ 
+                            borderColor: `${editingCalendar.themeColor || '#3B82F6'}55`,
+                            color: editingCalendar.themeColor || '#3B82F6',
+                            backgroundColor: `${editingCalendar.themeColor || '#3B82F6'}15`,
+                            borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
+                          }}
+                        >
+                          9:00 AM
+                        </div>
+                        <div 
+                          className="py-1.5 px-2 border font-medium text-white shadow-sm"
+                          style={{ 
+                            borderColor: editingCalendar.themeColor || '#3B82F6',
+                            background: editingCalendar.themeColor || '#3B82F6',
+                            borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
+                          }}
+                        >
+                          10:00 AM
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
 
               <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1174,6 +1275,20 @@ export default function CalendarManager({ initialCalendars }) {
           emailTemplate={editingCalendar.emailTemplate}
           onChange={(tpl) => setEditingCalendar(prev => ({ ...prev, emailTemplate: tpl }))}
           onClose={() => setShowEmailModal(false)}
+        />
+      )}
+
+      {showSmartOptimizerModal && editingCalendar && (
+        <SmartBrandOptimizerModal
+          calendar={editingCalendar}
+          onApply={(opt) => setEditingCalendar(prev => ({
+            ...prev,
+            themeColor: opt.themeColor || prev.themeColor,
+            bgTheme: opt.bgTheme || prev.bgTheme,
+            fontFamily: opt.fontFamily || prev.fontFamily,
+            buttonStyle: opt.buttonStyle || prev.buttonStyle,
+          }))}
+          onClose={() => setShowSmartOptimizerModal(false)}
         />
       )}
     </div>

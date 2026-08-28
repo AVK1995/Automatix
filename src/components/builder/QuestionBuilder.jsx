@@ -5,7 +5,7 @@ import { Plus, Trash2, GripVertical, Settings2, Link as LinkIcon, Eye, Lock, Che
 import Select from '@/components/ui/Select';
 import Checkbox from '@/components/ui/Checkbox';
 import { v4 as uuidv4 } from 'uuid';
-import { Reorder } from 'framer-motion';
+import { Reorder, AnimatePresence, motion } from 'framer-motion';
 
 const QUESTION_TYPES = [
   { value: 'text', label: 'Short Text' },
@@ -102,7 +102,7 @@ export default function QuestionBuilder({ questions, onChange }) {
 
       <Reorder.Group axis="y" values={questions} onReorder={onChange} className="space-y-3">
         {questions.map((q, index) => (
-          <Reorder.Item key={q.id} value={q} className="bg-[#1a1a1a] border border-white/10 rounded-lg flex flex-col transition-all relative" style={{ zIndex: questions.length - index }}>
+          <Reorder.Item key={q.id} value={q} className="bg-[#1a1a1a] border border-white/10 rounded-lg flex flex-col relative overflow-hidden" style={{ zIndex: questions.length - index }}>
             {/* Main Row */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3">
               <div className="flex items-center gap-2 flex-1">
@@ -162,16 +162,23 @@ export default function QuestionBuilder({ questions, onChange }) {
               </div>
             </div>
 
-            {/* Expanded Settings Panel */}
-            {expandedSettingsId === q.id && (
-              <div className="px-4 sm:px-10 pb-5 pt-5 bg-black/20 border-t border-white/5 space-y-5 rounded-b-lg">
-                
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-                  <Checkbox 
-                    checked={q.required}
-                    onChange={(checked) => updateQuestion(q.id, { required: checked })}
-                    label={<span className="text-xs text-text-secondary">Required Field</span>}
-                  />
+            {/* Expanded Settings Panel with buttery smooth zero-stretch transition */}
+            <AnimatePresence initial={false}>
+              {expandedSettingsId === q.id && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div className="px-4 sm:px-10 pb-5 pt-4 bg-black/20 border-t border-white/5 space-y-5">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+                      <Checkbox 
+                        checked={q.required}
+                        onChange={(checked) => updateQuestion(q.id, { required: checked })}
+                        label={<span className="text-xs text-text-secondary">Required Field</span>}
+                      />
 
                   <Checkbox 
                     checked={q.isHidden}
@@ -320,9 +327,11 @@ export default function QuestionBuilder({ questions, onChange }) {
                   </div>
                 )}
               </div>
-            )}
-          </Reorder.Item>
-        ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Reorder.Item>
+    ))}
       </Reorder.Group>
 
       <div className="pt-2">
