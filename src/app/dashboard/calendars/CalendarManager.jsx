@@ -856,10 +856,10 @@ export default function CalendarManager({ initialCalendars }) {
                 <button
                   type="button"
                   onClick={() => setShowSmartOptimizerModal(true)}
-                  className="text-[11px] font-bold text-accent-blue hover:text-white flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent-blue/15 hover:bg-accent-blue/25 border border-accent-blue/30 transition-all shadow-sm"
+                  className="text-[11px] font-bold text-purple-300 hover:text-white flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 transition-all shadow-sm cursor-pointer"
                 >
-                  <Wand2 className="w-3.5 h-3.5" />
-                  ✨ Smart Brand Optimizer
+                  <Wand2 className="w-3.5 h-3.5 text-purple-400" />
+                  AI Radahn Brand Optimizer
                 </button>
               </div>
 
@@ -1058,8 +1058,8 @@ export default function CalendarManager({ initialCalendars }) {
                 );
               })()}
 
-              <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <Checkbox 
                     checked={editingCalendar.sendDefaultEmail !== false}
                     onChange={checked => setEditingCalendar({...editingCalendar, sendDefaultEmail: checked})}
@@ -1069,15 +1069,15 @@ export default function CalendarManager({ initialCalendars }) {
                     <button
                       type="button"
                       onClick={() => setShowEmailModal(true)}
-                      className="text-xs font-semibold text-accent-blue hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 border border-accent-blue/30 transition-all shrink-0 cursor-pointer shadow-sm"
+                      className="text-xs font-semibold text-accent-blue hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
-                      Edit / Preview Email
+                      <span>Edit / Preview Template</span>
                     </button>
                   )}
                 </div>
-                <p className="text-[10px] text-text-tertiary ml-6">
-                  {editingCalendar.emailTemplate?.type === 'text' ? 'Format: Plain Text Email' : 'Format: Rich Responsive HTML Email'} • Fully customized for mobile, tablet, desktop, light & dark mode inboxes.
+                <p className="text-[11px] text-text-tertiary ml-6">
+                  Rich responsive HTML email • Mobile & dark mode ready.
                 </p>
               </div>
             </div>

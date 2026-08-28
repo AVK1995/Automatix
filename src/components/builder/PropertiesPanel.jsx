@@ -1,5 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal, HardDrive, ShieldCheck, FileVideo, Image, Eye, Film, Music, FileText, Download, Zap, Lightbulb, Crown, Coins, Gauge, Clock, ChevronRight } from 'lucide-react';
+import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal, HardDrive, ShieldCheck, FileVideo, Image, Eye, Film, Music, FileText, Download, Zap, Lightbulb, Crown, Coins, Gauge, Clock, ChevronRight, Wand2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import ConnectIntegration from './ConnectIntegration';
@@ -15,6 +14,7 @@ import MediaPreviewModal from './MediaPreviewModal';
 import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 import WebhookGuideModal from '@/components/builder/WebhookGuideModal';
 import AiLatencyBenchmarkModal from './AiLatencyBenchmarkModal';
+import AiRadahnPromptModal from './AiRadahnPromptModal';
 import { testNodeAction, verifyAiKeyAction } from '@/actions/testNode';
 import { getWebhookPayloadHistory, simulateInstagramDM, simulateStorageUpload } from '@/actions/workflows';
 import { getRecentBookings } from '@/actions/bookings';
@@ -46,6 +46,9 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [automatixCalendars, setAutomatixCalendars] = useState([]);
   const [selectedAutomatixCalendar, setSelectedAutomatixCalendar] = useState(null);
+  const [aiRadahnModalOpen, setAiRadahnModalOpen] = useState(false);
+  const [aiRadahnModalType, setAiRadahnModalType] = useState('smtp_email');
+  const [aiRadahnContext, setAiRadahnContext] = useState({});
   
   const prevIdRef = import('react').then(() => {}).catch(() => {}); // Hack to avoid importing if already there
   const [initialState, setInitialState] = useState(null);
@@ -3004,7 +3007,18 @@ function watchFolderForNewFiles() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-medium text-text-secondary">Custom Instructions & Prompt Additions</label>
-                <span className="text-[10px] text-text-tertiary">Optional</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAiRadahnModalType('ai_prompt');
+                    setAiRadahnContext({ task: config.task || '', tone: config.tone || '' });
+                    setAiRadahnModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                  <span>AI Radahn Prompt Architect</span>
+                </button>
               </div>
               <VariableInput 
                 multiline 
@@ -3726,7 +3740,21 @@ function watchFolderForNewFiles() {
               <textarea rows={3} placeholder='{"email": "{{trigger.email}}"}' value={config.inputData || ''} onChange={(e) => handleChange('inputData', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue resize-none" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">Custom JavaScript code</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-text-secondary">Custom JavaScript code</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAiRadahnModalType('code_js');
+                    setAiRadahnContext({ inputData: config.inputData || '' });
+                    setAiRadahnModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                  <span>AI Radahn JS Generator</span>
+                </button>
+              </div>
               <div className="bg-[#1e1e1e] rounded-md border border-white/10 overflow-hidden">
                 <div className="bg-black/40 px-3 py-1 border-b border-white/5 text-[10px] text-text-secondary flex justify-between">
                   <span>index.js</span>
@@ -3883,7 +3911,21 @@ function watchFolderForNewFiles() {
             </div>
             {config.method !== 'GET' && (
               <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">Body (JSON)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-text-secondary">Body (JSON)</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiRadahnModalType('http_payload');
+                      setAiRadahnContext({ url: config.url || '', method: config.method || 'POST' });
+                      setAiRadahnModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                    <span>AI Radahn JSON Architect</span>
+                  </button>
+                </div>
                 <VariableInput multiline rows={5} placeholder='{"key": "value"}' value={config.body || ''} onChange={(val) => handleChange('body', val)} variables={variableGroups} />
               </div>
             )}
@@ -3977,7 +4019,21 @@ function watchFolderForNewFiles() {
               <VariableInput placeholder="#general or C123456" value={config.channel || ''} onChange={(val) => handleChange('channel', val)} variables={variableGroups} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">Message</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-text-secondary">Message</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAiRadahnModalType('slack_message');
+                    setAiRadahnContext({ channel: config.channel || '' });
+                    setAiRadahnModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                  <span>AI Radahn Message Drafter</span>
+                </button>
+              </div>
               <VariableInput multiline rows={4} placeholder="Hello from Automatix! {{trigger.data}}" value={config.message || ''} onChange={(val) => handleChange('message', val)} variables={variableGroups} />
             </div>
           </div>
@@ -4573,7 +4629,21 @@ function watchFolderForNewFiles() {
               </div>
               
               <div className="mt-4">
-                <label className="block text-xs font-medium text-text-secondary mb-1">Message Content</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-text-secondary">Message Content</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiRadahnModalType('smtp_email');
+                      setAiRadahnContext({ subject: config.subject || '', to: config.to || '' });
+                      setAiRadahnModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                    <span>AI Radahn Writer</span>
+                  </button>
+                </div>
                 {!config.bodyType || config.bodyType === 'text' ? (
                   <div className="space-y-2">
                     <VariableInput multiline rows={8} value={config.body || ''} onChange={(val) => handleChange('body', val)} placeholder="Hello {{trigger.name}}..." variables={variableGroups} />
@@ -5395,6 +5465,51 @@ function watchFolderForNewFiles() {
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
         file={previewFile}
+      />
+      <AiRadahnPromptModal
+        isOpen={aiRadahnModalOpen}
+        onClose={() => setAiRadahnModalOpen(false)}
+        type={aiRadahnModalType}
+        context={aiRadahnContext}
+        availableVariables={variableGroups}
+        onApply={(result) => {
+          onUpdateNode(selectedNode.id, (prevNode) => {
+            if (!prevNode) return prevNode;
+            const currentConfig = prevNode.config || {};
+            const updates = {};
+            if (result.subject && (!currentConfig.subject || currentConfig.subject.trim() === '')) {
+              updates.subject = result.subject;
+            }
+            if (aiRadahnModalType === 'smtp_email') {
+              if (result.subject) updates.subject = result.subject;
+              updates.body = result.body || result.htmlBody || '';
+              if (result.htmlBody || (result.body && (result.body.includes('<div') || result.body.includes('<p>')))) {
+                updates.bodyType = 'html';
+              }
+            } else if (aiRadahnModalType === 'ai_prompt') {
+              updates.customPrompt = result.customPrompt || result.prompt || result.body || '';
+            } else if (aiRadahnModalType === 'code_js') {
+              updates.code = result.code || result.body || '';
+              if (result.inputData && !currentConfig.inputData) updates.inputData = result.inputData;
+            } else if (aiRadahnModalType === 'slack_message' || aiRadahnModalType === 'whatsapp_message') {
+              updates.message = result.message || result.body || '';
+            } else if (aiRadahnModalType === 'http_payload') {
+              updates.body = result.payload || result.body || '';
+            } else {
+              if (result.body) updates.body = result.body;
+              if (result.message) updates.message = result.message;
+            }
+
+            return {
+              ...prevNode,
+              config: {
+                ...currentConfig,
+                ...updates
+              }
+            };
+          });
+          toast.success('✨ AI Radahn generation applied to step config!');
+        }}
       />
       <QuotaUpgradeModal />
     </div>

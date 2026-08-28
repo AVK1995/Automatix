@@ -157,7 +157,7 @@ export default function ColorPicker({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.96 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute z-50 mt-2 p-3.5 bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-72 ${
+            className={`absolute z-[100] mt-2 p-3.5 bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-72 ${
               align === 'right' ? 'right-0' : 'left-0'
             }`}
           >

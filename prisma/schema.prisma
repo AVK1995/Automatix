@@ -51,6 +51,7 @@ model User {
   supportTicketsRemaining Int               @default(5)
   ticketCooldownHours   Int                 @default(24)
   ticketQuotaResetAt    DateTime?
+  aiCredits             Int                 @default(50)
 }
 
 model Invoice {
