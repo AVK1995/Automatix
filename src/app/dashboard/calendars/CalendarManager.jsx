@@ -22,11 +22,10 @@ import {
   Code2,
   Palette,
   Layers,
-  Check
+  Check,
+  Edit3
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-
 
 import QuestionBuilder from '@/components/builder/QuestionBuilder';
 import ColorPicker from '@/components/ui/ColorPicker';
@@ -36,6 +35,7 @@ import RichTextEditor from '@/components/ui/RichTextEditor';
 import WeeklyScheduleBuilder from '@/components/builder/WeeklyScheduleBuilder';
 import Checkbox from '@/components/ui/Checkbox';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import EmailTemplateModal from '@/components/builder/EmailTemplateModal';
 
 function AvailabilityModal({ calendar, onChange, onClose }) {
   const [localCalendar, setLocalCalendar] = useState(calendar);
@@ -557,6 +557,7 @@ export default function CalendarManager({ initialCalendars }) {
   const [saveStatus, setSaveStatus] = useState('');
   const [shareModalCalendarId, setShareModalCalendarId] = useState(null);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [calendarToDelete, setCalendarToDelete] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -626,6 +627,7 @@ export default function CalendarManager({ initialCalendars }) {
       timezone: 'UTC',
       meetUrl: '',
       sendDefaultEmail: true,
+      emailTemplate: null,
       availability: {
         monday: [{ start: '09:00', end: '17:00' }],
         tuesday: [{ start: '09:00', end: '17:00' }],
@@ -955,15 +957,27 @@ export default function CalendarManager({ initialCalendars }) {
                 </div>
               </div>
 
-              <div>
-                <div className="mb-1">
+              <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <Checkbox 
                     checked={editingCalendar.sendDefaultEmail !== false}
                     onChange={checked => setEditingCalendar({...editingCalendar, sendDefaultEmail: checked})}
                     label="Send Default Confirmation Email (Themed)"
                   />
+                  {editingCalendar.sendDefaultEmail !== false && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailModal(true)}
+                      className="text-xs font-semibold text-accent-blue hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 border border-accent-blue/30 transition-all shrink-0 cursor-pointer shadow-sm"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      Edit / Preview Email
+                    </button>
+                  )}
                 </div>
-                <p className="text-[10px] text-text-tertiary ml-6">If disabled, no confirmation email will be sent unless you build a custom Email Workflow for this calendar.</p>
+                <p className="text-[10px] text-text-tertiary ml-6">
+                  {editingCalendar.emailTemplate?.type === 'text' ? 'Format: Plain Text Email' : 'Format: Rich Responsive HTML Email'} • Fully customized for mobile, tablet, desktop, light & dark mode inboxes.
+                </p>
               </div>
             </div>
 
@@ -1153,6 +1167,15 @@ export default function CalendarManager({ initialCalendars }) {
         confirmText="Delete Calendar"
         isDestructive={true}
       />
+
+      {showEmailModal && editingCalendar && (
+        <EmailTemplateModal
+          calendar={editingCalendar}
+          emailTemplate={editingCalendar.emailTemplate}
+          onChange={(tpl) => setEditingCalendar(prev => ({ ...prev, emailTemplate: tpl }))}
+          onClose={() => setShowEmailModal(false)}
+        />
+      )}
     </div>
   );
 }

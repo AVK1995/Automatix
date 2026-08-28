@@ -225,6 +225,7 @@ model AutomatixCalendar {
   slotIncrement    Int      @default(30)
   maxBookingsPerDay Int?
   availability Json?
+  emailTemplate Json?
   client       User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
   bookings     AutomatixBooking[]
 }

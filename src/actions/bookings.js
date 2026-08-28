@@ -8,6 +8,12 @@ import timezone from 'dayjs/plugin/timezone';
 import { auth } from '@/auth';
 import nodemailer from 'nodemailer';
 import { decrypt } from '@/lib/encryption';
+import { 
+  DEFAULT_EMAIL_TEMPLATE, 
+  substitutePlaceholders, 
+  renderTextEmailTemplate, 
+  renderHtmlEmailTemplate 
+} from '@/utils/emailTemplate';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -171,16 +177,11 @@ export async function createBooking(data) {
 
       if (smtpConnection) {
         const creds = {
-          host: smtpConnection.name.split(':')[0] || 'smtp.gmail.com', // fallback/heuristic
+          host: smtpConnection.name.split(':')[0] || 'smtp.gmail.com',
           port: parseInt(smtpConnection.name.split(':')[1]) || 587,
           username: smtpConnection.accountEmail,
           password: smtpConnection.privateKey ? decrypt(smtpConnection.privateKey) : ''
         };
-
-        // Note: The UI connection modal currently doesn't store host/port cleanly if just given an API key,
-        // but SMTP usually needs host. Let's assume the user put host in `name` or we default. 
-        // Actually, we should check how smtp connections are saved.
-        // For now, if we have creds, let's try to send.
 
         const transporter = nodemailer.createTransport({
           host: creds.host,
@@ -194,12 +195,47 @@ export async function createBooking(data) {
 
         const icsContent = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Automatix//Calendar//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:${booking.id}@automatix.local\r\nDTSTAMP:${dayjs().utc().format('YYYYMMDDTHHmmss[Z]')}\r\nDTSTART:${start.utc().format('YYYYMMDDTHHmmss[Z]')}\r\nDTEND:${end.utc().format('YYYYMMDDTHHmmss[Z]')}\r\nSUMMARY:${calendar.name} with ${name}\r\nDESCRIPTION:Booking ID: ${booking.id}\\n\\nCustom Questions:\\n${Object.entries(answers || {}).map(([k,v]) => `${k}: ${v}`).join('\\n')}\r\nORGANIZER;CN="${calendar.client?.name || 'Automatix'}":mailto:${calendar.client?.email || creds.username}\r\nATTENDEE;RSVP=TRUE;CN="${name}":mailto:${email}\r\n${calendar.meetUrl ? `LOCATION:${calendar.meetUrl}\r\n` : ''}STATUS:CONFIRMED\r\nEND:VEVENT\r\nEND:VCALENDAR`;
 
+        const template = calendar.emailTemplate || {};
+        const isTextOnly = template.type === 'text';
+
+        const templateData = {
+          invitee_name: name,
+          invitee_email: email,
+          calendar_name: calendar.name,
+          host_name: calendar.client?.name || 'Automatix Host',
+          date: start.format('dddd, MMMM D, YYYY'),
+          time: start.format('h:mm A'),
+          timezone,
+          location: calendar.platform === 'gmeet' ? 'Google Meet' : (calendar.platform === 'zoom' ? 'Zoom' : 'Phone Call'),
+          meet_url: calendar.meetUrl || '',
+          answers: answers || {}
+        };
+
+        const emailSubject = substitutePlaceholders(
+          template.subject || DEFAULT_EMAIL_TEMPLATE.subject,
+          templateData
+        );
+
+        const emailText = renderTextEmailTemplate({
+          template,
+          calendar,
+          data: templateData
+        });
+
+        const emailHtml = !isTextOnly ? renderHtmlEmailTemplate({
+          template,
+          calendar,
+          data: templateData,
+          isDarkMode: false
+        }) : undefined;
+
         const mailOptions = {
           from: `"${calendar.client?.name || 'Automatix'}" <${creds.username}>`,
           to: email,
           cc: creds.username, // Send copy to host
-          subject: `Confirmed: ${calendar.name} with ${name} on ${start.format('MMM D, YYYY')}`,
-          text: `Hi ${name},\n\nYour meeting "${calendar.name}" is confirmed for ${start.format('dddd, MMMM D, YYYY')} at ${start.format('h:mm A')} (${timezone}).\n\n${calendar.meetUrl ? `Meeting Link: ${calendar.meetUrl}` : ''}\n\nPlease find the calendar invitation attached.`,
+          subject: emailSubject,
+          text: emailText,
+          ...(emailHtml ? { html: emailHtml } : {}),
           icalEvent: {
             filename: 'invite.ics',
             method: 'request',

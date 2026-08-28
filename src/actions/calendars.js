@@ -66,6 +66,7 @@ export async function createCalendar(data) {
       themeColor: data.themeColor,
       buttonStyle: data.buttonStyle,
       questions: data.questions || [],
+      emailTemplate: data.emailTemplate || null,
       isActive: data.isActive !== undefined ? data.isActive : true,
     },
   });
@@ -105,6 +106,7 @@ export async function updateCalendar(id, data) {
       themeColor: data.themeColor,
       buttonStyle: data.buttonStyle,
       questions: data.questions,
+      emailTemplate: data.emailTemplate !== undefined ? data.emailTemplate : undefined,
       isActive: data.isActive,
     },
   });
