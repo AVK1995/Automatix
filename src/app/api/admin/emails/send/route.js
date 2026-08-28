@@ -10,7 +10,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
     }
 
-    const { targetType, recipientEmail, category, subject, body, channels = ['email'] } = await req.json();
+    const { targetType, recipientEmail, recipientEmails, category, subject, body, channels = ['email'] } = await req.json();
 
     if (!subject?.trim() || !body?.trim()) {
       return NextResponse.json({ error: 'Subject and body are required.' }, { status: 400 });
@@ -21,17 +21,22 @@ export async function POST(req) {
     const now = new Date();
 
     if (targetType === 'SINGLE') {
-      if (!recipientEmail) {
-        return NextResponse.json({ error: 'Recipient email is required for direct emails.' }, { status: 400 });
+      const emailList = Array.isArray(recipientEmails) && recipientEmails.length > 0
+        ? recipientEmails.map(e => e.trim()).filter(Boolean)
+        : recipientEmail ? [recipientEmail.trim()] : [];
+
+      if (emailList.length === 0) {
+        return NextResponse.json({ error: 'At least one recipient email is required for direct emails.' }, { status: 400 });
       }
-      const singleUser = await prisma.user.findUnique({
-        where: { email: recipientEmail.trim() },
+
+      users = await prisma.user.findMany({
+        where: { email: { in: emailList } },
         select: { id: true, email: true, name: true, subscriptionTier: true, quotaTier: true, subscriptionExpiresAt: true }
       });
-      if (!singleUser) {
-        return NextResponse.json({ error: `No user found with email: ${recipientEmail}` }, { status: 404 });
+
+      if (users.length === 0) {
+        return NextResponse.json({ error: `No registered users found matching the selected recipient(s).` }, { status: 404 });
       }
-      users = [singleUser];
     } else if (targetType === 'PAID') {
       users = await prisma.user.findMany({
         where: {

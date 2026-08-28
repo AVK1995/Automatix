@@ -127,6 +127,49 @@ export async function getNotifications() {
     orderBy: { createdAt: 'desc' }
   });
 
+  // Enrich announcements/system notifications with AdminEmailLog full HTML body if missing
+  const needsEnrichment = directNotifications.filter(n => {
+    let meta = n.metadata;
+    if (typeof meta === 'string') {
+      try { meta = JSON.parse(meta); } catch {}
+    }
+    return !meta?.htmlContent && ['ANNOUNCEMENT', 'SYSTEM', 'BILLING', 'LEGAL', 'DIRECT', 'SYSTEM_UPDATE'].includes(n.type);
+  });
+
+  if (needsEnrichment.length > 0) {
+    try {
+      const emailLogs = await prisma.adminEmailLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+        select: { id: true, subject: true, body: true, category: true, createdAt: true }
+      });
+
+      if (emailLogs.length > 0) {
+        directNotifications.forEach(n => {
+          let meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata || '{}') : (n.metadata || {});
+          if (!meta.htmlContent) {
+            const notifSubject = meta.subject || (n.message?.includes(':') ? n.message.split(':')[0] : n.message);
+            const matchedLog = emailLogs.find(l => 
+              (notifSubject && l.subject && (l.subject.toLowerCase().includes(notifSubject.toLowerCase()) || notifSubject.toLowerCase().includes(l.subject.toLowerCase()))) ||
+              l.category === n.type
+            ) || emailLogs[0];
+
+            if (matchedLog) {
+              n.metadata = {
+                ...meta,
+                subject: meta.subject || matchedLog.subject,
+                htmlContent: matchedLog.body,
+                category: meta.category || matchedLog.category
+              };
+            }
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to enrich notifications:', err);
+    }
+  }
+
   // Filter out any notifications for tickets that have already been closed or resolved
   const ticketIds = directNotifications
     .map(n => n.metadata?.ticketId)

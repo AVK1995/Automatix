@@ -103,21 +103,14 @@ export default function NotificationDropdown() {
       try { meta = JSON.parse(meta); } catch {}
     }
     
-    let rawHtml = meta?.htmlContent || meta?.content || meta?.note || '';
+    let rawHtml = meta?.htmlContent || meta?.body || meta?.content || meta?.note || '';
     
     if (!rawHtml && notification.message) {
       const msg = notification.message;
-      if (msg.includes('<p>') || msg.includes('<div') || msg.includes('<h') || msg.includes('<ul') || msg.includes('<!DOCTYPE') || msg.includes('<html')) {
-        rawHtml = msg.includes(':') ? msg.substring(msg.indexOf(':') + 1).trim() : msg;
-      }
+      rawHtml = msg.includes(':') ? msg.substring(msg.indexOf(':') + 1).trim() : msg;
     }
 
     if (!rawHtml) return '';
-
-    // Check if rawHtml actually contains HTML tags
-    if (!/<[a-z][\s\S]*>/i.test(rawHtml) && !rawHtml.includes('<!DOCTYPE')) {
-      return '';
-    }
 
     // Extract body content if wrapped in full html doc
     if (rawHtml.includes('<body')) {
@@ -134,6 +127,14 @@ export default function NotificationDropdown() {
       .replace(/<head[\s\S]*?<\/head>/gi, '')
       .replace(/<\/?body[^>]*>/gi, '')
       .trim();
+
+    // If it doesn't contain HTML tags (e.g. plain text with newlines), format into semantic paragraphs
+    if (!/<[a-z][\s\S]*>/i.test(rawHtml)) {
+      rawHtml = rawHtml
+        .split('\n\n')
+        .map(paragraph => `<p>${paragraph.replace(/\n/g, '<br/>')}</p>`)
+        .join('');
+    }
 
     return rawHtml;
   };
