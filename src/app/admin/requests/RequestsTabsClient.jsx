@@ -24,6 +24,11 @@ export default function RequestsTabsClient({ quotaRequests = [], conciergeReques
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingId, setProcessingId] = useState(null);
 
+  // Reject Modal State
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState('ALL'); // 'ALL' | 'TODAY' | '7' | '30'
@@ -49,15 +54,26 @@ export default function RequestsTabsClient({ quotaRequests = [], conciergeReques
     }
   };
 
-  const handleRejectQuota = async (requestId) => {
+  const initiateRejectQuota = (requestId) => {
+    setRejectingId(requestId);
+    setRejectReason('');
+    setRejectModalOpen(true);
+  };
+
+  const handleRejectQuota = async () => {
+    if (!rejectingId) return;
     setIsProcessing(true);
-    setProcessingId(requestId);
+    setProcessingId(rejectingId);
     try {
-      const res = await fetch(`/api/admin/quota-requests/${requestId}/reject`, {
-        method: 'POST'
+      const res = await fetch(`/api/admin/quota-requests/${rejectingId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectReason || 'Your request was reviewed and rejected by the administration team.' })
       });
       if (!res.ok) throw new Error('Failed to reject request');
       toast.success('Quota request rejected');
+      setRejectModalOpen(false);
+      setRejectingId(null);
       router.refresh();
     } catch (error) {
       toast.error(error.message);
@@ -340,7 +356,7 @@ export default function RequestsTabsClient({ quotaRequests = [], conciergeReques
                   {req.status === 'PENDING' && (
                     <div className="flex items-center gap-2 shrink-0">
                       <button 
-                        onClick={() => handleRejectQuota(req.id)}
+                        onClick={() => initiateRejectQuota(req.id)}
                         disabled={isProcessing && processingId === req.id}
                         className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-lg border border-white/10 transition-colors disabled:opacity-50"
                       >
@@ -437,6 +453,53 @@ export default function RequestsTabsClient({ quotaRequests = [], conciergeReques
         )}
 
       </div>
+
+      {/* Reject Modal */}
+      {rejectModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-[#111] border border-white/10 rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-white/10 flex justify-between items-center bg-white/[0.02]">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <XCircle className="text-red-400 w-4 h-4" /> Reject Quota Request
+              </h3>
+              <button onClick={() => setRejectModalOpen(false)} className="text-text-tertiary hover:text-white transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Reason for Rejection</label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="e.g. Please optimize your current storage first, or upgrade to a higher tier plan."
+                  rows={4}
+                  className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-sm text-white placeholder-text-tertiary focus:outline-none focus:border-red-500/50 resize-none transition-colors"
+                />
+                <p className="text-[10px] text-text-tertiary mt-2">
+                  This reason will be synthesized and sent to the user via the in-app notification system.
+                </p>
+              </div>
+            </div>
+            <div className="p-4 border-t border-white/10 bg-white/[0.02] flex justify-end gap-3">
+              <button 
+                onClick={() => setRejectModalOpen(false)}
+                className="px-4 py-2 text-xs font-medium text-text-secondary hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleRejectQuota}
+                disabled={isProcessing}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

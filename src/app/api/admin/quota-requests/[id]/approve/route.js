@@ -72,6 +72,22 @@ export async function POST(req, { params }) {
       data: updateData
     });
 
+    // Notify the user about the approval
+    await prisma.notification.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: request.userId,
+        type: 'STORAGE_QUOTA',
+        message: `Your storage quota upgrade request has been approved! Your new tier is ${updateData.quotaTier}.`,
+        status: 'UNREAD',
+        metadata: {
+          icon: 'CheckCircle2',
+          color: 'green'
+        },
+        updatedAt: new Date()
+      }
+    });
+
     return NextResponse.json({ success: true, updatedLimits: updateData });
   } catch (error) {
     console.error('Approve Quota Error:', error);

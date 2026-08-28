@@ -10,10 +10,27 @@ export async function POST(req, { params }) {
     }
 
     const { id } = await params;
+    const { reason } = await req.json().catch(() => ({ reason: 'Your request was reviewed and rejected.' }));
 
     const request = await prisma.quotaRequest.update({
       where: { id },
       data: { status: 'REJECTED' }
+    });
+
+    // Notify the user about the rejection
+    await prisma.notification.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: request.userId,
+        type: 'STORAGE_QUOTA',
+        message: `Your storage quota upgrade request has been rejected. Reason: ${reason}`,
+        status: 'UNREAD',
+        metadata: {
+          icon: 'AlertTriangle',
+          color: 'red'
+        },
+        updatedAt: new Date()
+      }
     });
 
     return NextResponse.json({ success: true, request });
