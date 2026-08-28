@@ -121,3 +121,26 @@ export function getResolvedTheme(calendar = {}) {
 
   return base;
 }
+
+export function getContrastColor(hexColor) {
+  if (!hexColor) return '#ffffff';
+  
+  // Remove hash
+  let color = hexColor.charAt(0) === '#' ? hexColor.substring(1, 7) : hexColor;
+  
+  // Handle 3-digit hex
+  if (color.length === 3) {
+    color = color[0] + color[0] + color[1] + color[1] + color[2] + color[2];
+  }
+
+  // Convert to RGB
+  const r = parseInt(color.substring(0, 2), 16);
+  const g = parseInt(color.substring(2, 4), 16);
+  const b = parseInt(color.substring(4, 6), 16);
+
+  // Calculate luminance (standard perceptive formula)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // If luminance is high (light background), return dark color (almost black), else light color (white)
+  return luminance > 0.55 ? '#09090b' : '#ffffff';
+}

@@ -8,7 +8,7 @@ import { Loader2, ArrowLeft, Clock } from 'lucide-react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { getResolvedTheme } from '@/utils/calendarThemes';
+import { getResolvedTheme, getContrastColor } from '@/utils/calendarThemes';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -143,7 +143,7 @@ export default function BookingWizard({ calendar, questions, resolvedTheme }) {
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = theme;
-                      e.currentTarget.style.color = '#ffffff';
+                      e.currentTarget.style.color = getContrastColor(theme);
                       e.currentTarget.style.borderColor = theme;
                     }}
                     onMouseLeave={(e) => {

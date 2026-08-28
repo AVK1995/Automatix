@@ -41,7 +41,7 @@ import Checkbox from '@/components/ui/Checkbox';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import EmailTemplateModal from '@/components/builder/EmailTemplateModal';
 import SmartBrandOptimizerModal from '@/components/builder/SmartBrandOptimizerModal';
-import { GOOGLE_FONTS_CATALOG, CALENDAR_THEMES, getResolvedTheme } from '@/utils/calendarThemes';
+import { GOOGLE_FONTS_CATALOG, CALENDAR_THEMES, getResolvedTheme, getContrastColor } from '@/utils/calendarThemes';
 
 function AvailabilityModal({ calendar, onChange, onClose }) {
   const [localCalendar, setLocalCalendar] = useState(calendar);
@@ -1020,9 +1020,10 @@ export default function CalendarManager({ initialCalendars }) {
                           {editingCalendar.name || 'Sample Meeting'}
                         </span>
                         <span 
-                          className="px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
+                          className="px-2.5 py-0.5 text-[10px] font-bold shadow-sm"
                           style={{ 
                             background: editingCalendar.themeColor || '#3B82F6',
+                            color: getContrastColor(editingCalendar.themeColor || '#3B82F6'),
                             borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
                           }}
                         >
@@ -1043,10 +1044,11 @@ export default function CalendarManager({ initialCalendars }) {
                           9:00 AM
                         </div>
                         <div 
-                          className="py-1.5 px-2 border font-medium text-white shadow-sm"
+                          className="py-1.5 px-2 border font-medium shadow-sm"
                           style={{ 
                             borderColor: editingCalendar.themeColor || '#3B82F6',
                             background: editingCalendar.themeColor || '#3B82F6',
+                            color: getContrastColor(editingCalendar.themeColor || '#3B82F6'),
                             borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
                           }}
                         >

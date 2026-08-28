@@ -10,7 +10,7 @@ import Checkbox from '@/components/ui/Checkbox';
 import Radio from '@/components/ui/Radio';
 import dayjs from 'dayjs';
 import { COUNTRIES } from '@/utils/countries';
-import { getResolvedTheme } from '@/utils/calendarThemes';
+import { getResolvedTheme, getContrastColor } from '@/utils/calendarThemes';
 
 const countryOptions = COUNTRIES.map(c => ({
   value: `${c.code} ${c.dial}`,
@@ -385,8 +385,11 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
         <button
           type="submit"
           disabled={isSubmitting}
-          style={{ background: calendar.themeColor || '#3B82F6' }}
-          className={`w-full py-3.5 px-4 text-white font-medium hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/20 ${btnStyleClass}`}
+          style={{ 
+            background: calendar.themeColor || '#3B82F6',
+            color: getContrastColor(calendar.themeColor || '#3B82F6')
+          }}
+          className={`w-full py-3.5 px-4 font-medium hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/20 ${btnStyleClass}`}
         >
           {isSubmitting ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Scheduling...</>

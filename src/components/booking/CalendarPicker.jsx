@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { getResolvedTheme } from '@/utils/calendarThemes';
+import { getResolvedTheme, getContrastColor } from '@/utils/calendarThemes';
 
 export default function CalendarPicker({ selectedDate, onSelectDate, calendar }) {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
@@ -112,7 +112,7 @@ export default function CalendarPicker({ selectedDate, onSelectDate, calendar })
               disabled={disabled}
               style={{
                 borderRadius: isSharp ? '3px' : '9999px',
-                color: isSelected ? '#ffffff' : (!disabled ? (resolvedTheme.text || '#ffffff') : (resolvedTheme.textMuted || '#71717a')),
+                color: isSelected ? getContrastColor(theme) : (!disabled ? (resolvedTheme.text || '#ffffff') : (resolvedTheme.textMuted || '#71717a')),
                 borderColor: isSelected ? theme : (isToday ? theme : (resolvedTheme.border || 'rgba(255,255,255,0.1)')),
                 ...(isSelected ? { backgroundColor: theme } : {}),
                 ...(!isSelected && !disabled ? { backgroundColor: resolvedTheme.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' } : {})
