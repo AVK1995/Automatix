@@ -848,7 +848,7 @@ export default function CalendarManager({ initialCalendars }) {
 
           <div className="space-y-6">
             <div className="bg-gradient-to-b from-accent-blue/10 to-transparent p-5 rounded-lg border border-accent-blue/20 space-y-5">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-white/10 pb-2.5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-accent-blue" />
                   <h3 className="text-sm font-semibold text-white">Premium UI Customization</h3>
@@ -856,7 +856,7 @@ export default function CalendarManager({ initialCalendars }) {
                 <button
                   type="button"
                   onClick={() => setShowSmartOptimizerModal(true)}
-                  className="text-[11px] font-bold text-purple-300 hover:text-white flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 transition-all shadow-sm cursor-pointer"
+                  className="text-[11px] font-bold text-purple-300 hover:text-white flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 transition-all shadow-sm cursor-pointer"
                 >
                   <Wand2 className="w-3.5 h-3.5 text-purple-400" />
                   AI Radahn Brand Optimizer

@@ -46,7 +46,7 @@ export default function ColorPicker({
   onChange, 
   allowGradients = true,
   customTrigger = null,
-  align = 'left' 
+  align = 'auto' 
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('hex'); // 'hex' | 'rgb' | 'grad'
@@ -61,6 +61,14 @@ export default function ColorPicker({
 
   const popoverRef = useRef(null);
 
+  // Dynamic viewport collision and positioning
+  const [placement, setPlacement] = useState({
+    horizontal: align === 'right' ? 'right' : 'left',
+    vertical: 'bottom',
+    leftOffset: null,
+    maxAllowedWidth: 288
+  });
+
   useEffect(() => {
     setCurrentColor(value || '#3B82F6');
     if (value && value.startsWith('#')) {
@@ -70,17 +78,95 @@ export default function ColorPicker({
     }
   }, [value]);
 
+  // Click outside & Escape key listeners
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (popoverRef.current && !popoverRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside, { passive: true });
+      document.addEventListener('keydown', handleKeyDown);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen]);
+
+  // Calculate smart collision-free positioning
+  useEffect(() => {
+    if (!isOpen || !popoverRef.current) return;
+
+    const updatePosition = () => {
+      if (!popoverRef.current) return;
+      const rect = popoverRef.current.getBoundingClientRect();
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+      const popoverWidth = Math.min(288, vw - 24);
+
+      let h = 'left';
+      let v = 'bottom';
+      let offset = null;
+
+      if (align === 'right') {
+        h = 'right';
+      } else if (align === 'left') {
+        // If left-align extends off the right edge of viewport
+        if (rect.left + popoverWidth > vw - 12) {
+          h = 'right';
+        } else {
+          h = 'left';
+        }
+      } else {
+        // 'auto' alignment
+        if (rect.left + popoverWidth > vw - 12) {
+          h = 'right';
+        } else {
+          h = 'left';
+        }
+      }
+
+      // Safeguard for narrow viewports (mobile/tab) so it never overflows screen edge
+      if (h === 'right' && rect.right - popoverWidth < 12) {
+        offset = Math.max(12, Math.min(rect.left, vw - popoverWidth - 12)) - rect.left;
+      } else if (h === 'left' && rect.left + popoverWidth > vw - 12) {
+        offset = Math.max(12, vw - popoverWidth - 12) - rect.left;
+      }
+
+      // Vertical flip if near bottom edge
+      const estimatedHeight = 330;
+      if (rect.bottom + estimatedHeight > vh - 12 && rect.top > estimatedHeight + 12) {
+        v = 'top';
+      } else {
+        v = 'bottom';
+      }
+
+      setPlacement({
+        horizontal: h,
+        vertical: v,
+        leftOffset: offset,
+        maxAllowedWidth: popoverWidth
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen, align]);
 
   const handleHexInput = (e) => {
     let val = e.target.value.trim();
@@ -125,6 +211,24 @@ export default function ColorPicker({
 
   const isGradient = currentColor.startsWith('linear-gradient') || currentColor.startsWith('radial-gradient');
 
+  const positionClasses = useMemo(() => {
+    const classes = [];
+    if (placement.vertical === 'top') {
+      classes.push('bottom-full mb-2');
+    } else {
+      classes.push('top-full mt-2');
+    }
+
+    if (placement.leftOffset === null) {
+      if (placement.horizontal === 'right') {
+        classes.push('right-0 left-auto');
+      } else {
+        classes.push('left-0 right-auto');
+      }
+    }
+    return classes.join(' ');
+  }, [placement]);
+
   return (
     <div className="relative inline-block w-full" ref={popoverRef}>
       {customTrigger ? (
@@ -135,7 +239,7 @@ export default function ColorPicker({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue hover:bg-black/70 transition-colors w-full justify-between h-9"
+          className="flex items-center gap-2 bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue hover:bg-black/70 transition-colors w-full justify-between h-9 touch-manipulation"
         >
           <div className="flex items-center gap-2 min-w-0">
             <div 
@@ -153,13 +257,16 @@ export default function ColorPicker({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 4, scale: 0.96 }}
+            initial={{ opacity: 0, y: placement.vertical === 'top' ? -4 : 4, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.96 }}
+            exit={{ opacity: 0, y: placement.vertical === 'top' ? -4 : 4, scale: 0.96 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute z-[100] mt-2 p-3.5 bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-72 ${
-              align === 'right' ? 'right-0' : 'left-0'
-            }`}
+            style={{
+              width: placement.maxAllowedWidth || 288,
+              maxWidth: 'calc(100vw - 1.5rem)',
+              ...(placement.leftOffset !== null ? { left: `${placement.leftOffset}px`, right: 'auto' } : {})
+            }}
+            className={`absolute z-[100] p-3 sm:p-3.5 bg-[#141414] border border-white/10 rounded-xl shadow-2xl select-none ${positionClasses}`}
           >
             {/* Header Tabs: HEX | RGB | GRADIENT */}
             <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
@@ -167,7 +274,7 @@ export default function ColorPicker({
                 <button
                   type="button"
                   onClick={() => setActiveTab('hex')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${
+                  className={`px-2.5 py-1 rounded-md transition-all touch-manipulation ${
                     activeTab === 'hex' ? 'bg-white/15 text-white font-semibold shadow-sm' : 'text-text-tertiary hover:text-white'
                   }`}
                 >
@@ -176,7 +283,7 @@ export default function ColorPicker({
                 <button
                   type="button"
                   onClick={() => setActiveTab('rgb')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${
+                  className={`px-2.5 py-1 rounded-md transition-all touch-manipulation ${
                     activeTab === 'rgb' ? 'bg-white/15 text-white font-semibold shadow-sm' : 'text-text-tertiary hover:text-white'
                   }`}
                 >
@@ -186,7 +293,7 @@ export default function ColorPicker({
                   <button
                     type="button"
                     onClick={() => setActiveTab('grad')}
-                    className={`px-2.5 py-1 rounded-md transition-all ${
+                    className={`px-2.5 py-1 rounded-md transition-all touch-manipulation ${
                       activeTab === 'grad' ? 'bg-white/15 text-white font-semibold shadow-sm' : 'text-text-tertiary hover:text-white'
                     }`}
                   >
@@ -200,7 +307,7 @@ export default function ColorPicker({
                 <button
                   type="button"
                   onClick={handleEyeDropper}
-                  className="p-1.5 rounded-md hover:bg-white/10 text-text-tertiary hover:text-white transition-colors"
+                  className="p-1.5 rounded-md hover:bg-white/10 text-text-tertiary hover:text-white transition-colors touch-manipulation"
                   title="Pick color from screen"
                 >
                   <Pipette className="w-3.5 h-3.5" />
@@ -226,7 +333,7 @@ export default function ColorPicker({
                     />
                   </div>
                   {/* Native Color HTML Input helper */}
-                  <label className="cursor-pointer p-1.5 rounded-lg bg-black/50 border border-white/10 hover:bg-white/10 transition-colors shrink-0" title="Open Color Spectrum">
+                  <label className="cursor-pointer p-1.5 rounded-lg bg-black/50 border border-white/10 hover:bg-white/10 transition-colors shrink-0 touch-manipulation" title="Open Color Spectrum">
                     <input 
                       type="color" 
                       value={currentColor.startsWith('#') && (currentColor.length === 7 || currentColor.length === 4) ? currentColor : '#3B82F6'}
@@ -301,7 +408,7 @@ export default function ColorPicker({
                       key={i}
                       type="button"
                       onClick={() => handleSelectColor(grad)}
-                      className={`h-9 rounded-lg border transition-all flex items-center justify-center ${
+                      className={`h-9 rounded-lg border transition-all flex items-center justify-center touch-manipulation ${
                         currentColor === grad ? 'scale-105 border-white ring-2 ring-white/30' : 'border-white/10 hover:scale-105'
                       }`}
                       style={{ background: grad }}
@@ -318,16 +425,16 @@ export default function ColorPicker({
               <label className="text-[10px] uppercase font-bold tracking-wider text-text-tertiary mb-2 block">
                 Preset Palette
               </label>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                 {PRESET_COLORS.map(color => (
                   <button
                     key={color}
                     type="button"
                     onClick={() => handleSelectColor(color)}
-                    className={`h-7 rounded-md shadow-sm border transition-all flex items-center justify-center ${
+                    className={`h-7 rounded-md shadow-sm border transition-all flex items-center justify-center shrink-0 touch-manipulation ${
                       currentColor.toLowerCase() === color.toLowerCase()
                         ? 'scale-110 border-white ring-2 ring-white/30 shadow-md' 
-                        : 'border-white/10 hover:scale-110'
+                        : 'border-white/10 hover:scale-105'
                     }`}
                     style={{ backgroundColor: color }}
                     title={color}
