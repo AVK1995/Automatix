@@ -1032,17 +1032,24 @@ export default function CalendarManager({ initialCalendars }) {
                       </div>
                       
                       <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                        <div 
-                          className="py-1.5 px-2 border font-medium transition-all"
-                          style={{ 
-                            borderColor: `${editingCalendar.themeColor || '#3B82F6'}55`,
-                            color: editingCalendar.themeColor || '#3B82F6',
-                            backgroundColor: `${editingCalendar.themeColor || '#3B82F6'}15`,
-                            borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
-                          }}
-                        >
-                          9:00 AM
-                        </div>
+                        {(() => {
+                          const themeContrast = getContrastColor(editingCalendar.themeColor || '#3B82F6');
+                          const bgContrast = getContrastColor(resolved.card || resolved.bg || '#ffffff');
+                          const safeTextColor = themeContrast === bgContrast ? bgContrast : (editingCalendar.themeColor || '#3B82F6');
+                          return (
+                            <div 
+                              className="py-1.5 px-2 border font-medium transition-all"
+                              style={{ 
+                                borderColor: `${safeTextColor}55`,
+                                color: safeTextColor,
+                                backgroundColor: `${safeTextColor}15`,
+                                borderRadius: editingCalendar.buttonStyle === 'sharp' ? '2px' : editingCalendar.buttonStyle === 'pill' ? '9999px' : '6px'
+                              }}
+                            >
+                              9:00 AM
+                            </div>
+                          );
+                        })()}
                         <div 
                           className="py-1.5 px-2 border font-medium shadow-sm"
                           style={{ 
@@ -1140,6 +1147,27 @@ export default function CalendarManager({ initialCalendars }) {
           </div>
         </div>
       </div>
+      {showEmailModal && editingCalendar && (
+        <EmailTemplateModal
+          calendar={editingCalendar}
+          emailTemplate={editingCalendar.emailTemplate}
+          onChange={(tpl) => setEditingCalendar(prev => ({ ...prev, emailTemplate: tpl }))}
+          onClose={() => setShowEmailModal(false)}
+        />
+      )}
+      {showSmartOptimizerModal && editingCalendar && (
+        <SmartBrandOptimizerModal
+          calendar={editingCalendar}
+          onApply={(opt) => setEditingCalendar(prev => ({
+            ...prev,
+            themeColor: opt.themeColor || prev.themeColor,
+            bgTheme: opt.bgTheme || prev.bgTheme,
+            fontFamily: opt.fontFamily || prev.fontFamily,
+            buttonStyle: opt.buttonStyle || prev.buttonStyle,
+          }))}
+          onClose={() => setShowSmartOptimizerModal(false)}
+        />
+      )}
       </>
     );
   }
@@ -1271,28 +1299,6 @@ export default function CalendarManager({ initialCalendars }) {
         isDestructive={true}
       />
 
-      {showEmailModal && editingCalendar && (
-        <EmailTemplateModal
-          calendar={editingCalendar}
-          emailTemplate={editingCalendar.emailTemplate}
-          onChange={(tpl) => setEditingCalendar(prev => ({ ...prev, emailTemplate: tpl }))}
-          onClose={() => setShowEmailModal(false)}
-        />
-      )}
-
-      {showSmartOptimizerModal && editingCalendar && (
-        <SmartBrandOptimizerModal
-          calendar={editingCalendar}
-          onApply={(opt) => setEditingCalendar(prev => ({
-            ...prev,
-            themeColor: opt.themeColor || prev.themeColor,
-            bgTheme: opt.bgTheme || prev.bgTheme,
-            fontFamily: opt.fontFamily || prev.fontFamily,
-            buttonStyle: opt.buttonStyle || prev.buttonStyle,
-          }))}
-          onClose={() => setShowSmartOptimizerModal(false)}
-        />
-      )}
     </div>
   );
 }

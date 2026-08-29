@@ -130,6 +130,10 @@ export default function BookingWizard({ calendar, questions, resolvedTheme }) {
                 const isSharp = calendar?.buttonStyle === 'sharp';
                 const isPill = calendar?.buttonStyle === 'pill';
                 const borderRadius = isSharp ? '2px' : isPill ? '9999px' : '10px';
+                
+                const themeContrast = getContrastColor(theme);
+                const bgContrast = getContrastColor(themeObj.card || themeObj.bg || '#ffffff');
+                const safeTextColor = themeContrast === bgContrast ? bgContrast : theme;
 
                 return (
                   <button
@@ -137,8 +141,8 @@ export default function BookingWizard({ calendar, questions, resolvedTheme }) {
                     onClick={() => handleSlotSelect(slot)}
                     style={{
                       borderRadius,
-                      borderColor: `${theme}40`,
-                      color: theme,
+                      borderColor: `${safeTextColor}40`,
+                      color: safeTextColor,
                       backgroundColor: themeObj.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
                     }}
                     onMouseEnter={(e) => {
@@ -148,8 +152,8 @@ export default function BookingWizard({ calendar, questions, resolvedTheme }) {
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = themeObj.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)';
-                      e.currentTarget.style.color = theme;
-                      e.currentTarget.style.borderColor = `${theme}40`;
+                      e.currentTarget.style.color = safeTextColor;
+                      e.currentTarget.style.borderColor = `${safeTextColor}40`;
                     }}
                     className="cal-slot-btn py-3 px-4 border font-semibold text-sm transition-all text-center shadow-sm hover:shadow-md cursor-pointer"
                   >

@@ -104,6 +104,10 @@ export default function CalendarPicker({ selectedDate, onSelectDate, calendar })
           const available = !isPast && !isTooFar && hasHours(d);
           const disabled = !isCurrentMonth || !available;
 
+          const themeContrast = getContrastColor(theme);
+          const bgContrast = getContrastColor(resolvedTheme.card || resolvedTheme.bg || '#ffffff');
+          const safeThemeColor = themeContrast === bgContrast ? bgContrast : theme;
+
           return (
             <button
               type="button"
@@ -113,7 +117,7 @@ export default function CalendarPicker({ selectedDate, onSelectDate, calendar })
               style={{
                 borderRadius: isSharp ? '3px' : '9999px',
                 color: isSelected ? getContrastColor(theme) : (!disabled ? (resolvedTheme.text || '#ffffff') : (resolvedTheme.textMuted || '#71717a')),
-                borderColor: isSelected ? theme : (isToday ? theme : (resolvedTheme.border || 'rgba(255,255,255,0.1)')),
+                borderColor: isSelected ? theme : (isToday ? safeThemeColor : (resolvedTheme.border || 'rgba(255,255,255,0.1)')),
                 ...(isSelected ? { backgroundColor: theme } : {}),
                 ...(!isSelected && !disabled ? { backgroundColor: resolvedTheme.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' } : {})
               }}
@@ -121,7 +125,7 @@ export default function CalendarPicker({ selectedDate, onSelectDate, calendar })
                 cal-date-btn aspect-square flex flex-col items-center justify-center text-sm font-medium transition-all relative border
                 ${radiusClass}
                 ${disabled ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
-                ${isSelected ? 'cal-date-selected text-white shadow-lg scale-110 z-10 font-bold' : ''}
+                ${isSelected ? 'cal-date-selected shadow-lg scale-110 z-10 font-bold' : ''}
                 ${!isSelected && isToday ? 'border-2 font-bold' : ''}
               `}
             >
@@ -129,7 +133,7 @@ export default function CalendarPicker({ selectedDate, onSelectDate, calendar })
               {!disabled && !isSelected && (
                 <div 
                   className="cal-date-active w-1.5 h-1.5 rounded-full absolute bottom-1.5"
-                  style={{ backgroundColor: isToday ? (resolvedTheme.text || '#ffffff') : theme }}
+                  style={{ backgroundColor: isToday ? (resolvedTheme.text || '#ffffff') : safeThemeColor }}
                 />
               )}
             </button>
