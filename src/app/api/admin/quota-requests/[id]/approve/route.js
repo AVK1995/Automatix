@@ -48,15 +48,81 @@ export async function POST(req, { params }) {
           maxStorageMB: plan.maxStorageMB
         };
       } else {
-        // Fallback custom default
-        updateData = {
-          quotaTier: request.requestedPlan,
-          maxStorageMB: 250,
-          maxVideos: 5,
-          maxVideoMB: 35,
-          maxImages: 40,
-          maxImageMB: 5
-        };
+        // Handle Subscription Plans, Storage Plans, or AI Boosters
+        const lowerPlan = (request.requestedPlan || '').toLowerCase();
+
+        if (lowerPlan.includes('professional') || lowerPlan.includes('pro plan')) {
+          updateData = {
+            subscriptionTier: 'Professional',
+            quotaTier: 'Professional (200 MB)',
+            maxStorageMB: 200,
+            maxVideos: 4,
+            maxVideoMB: 25,
+            maxImages: 30,
+            maxImageMB: 5,
+            aiCredits: { increment: 100 }
+          };
+        } else if (lowerPlan.includes('enterprise')) {
+          updateData = {
+            subscriptionTier: 'Enterprise',
+            quotaTier: 'Enterprise Custom',
+            maxStorageMB: 500,
+            maxVideos: 8,
+            maxVideoMB: 50,
+            maxImages: 80,
+            maxImageMB: 8,
+            aiCredits: { increment: 500 }
+          };
+        } else if (lowerPlan.includes('starter pack') || lowerPlan.includes('+100 mb')) {
+          updateData = {
+            quotaTier: 'Starter Pack (+100 MB)',
+            maxStorageMB: 150,
+            maxVideos: 2,
+            maxVideoMB: 25,
+            maxImages: 15,
+            maxImageMB: 2
+          };
+        } else if (lowerPlan.includes('growth pack') || lowerPlan.includes('+250 mb')) {
+          updateData = {
+            quotaTier: 'Growth Pack (+250 MB)',
+            maxStorageMB: 300,
+            maxVideos: 5,
+            maxVideoMB: 35,
+            maxImages: 40,
+            maxImageMB: 5
+          };
+        } else if (lowerPlan.includes('power pack') || lowerPlan.includes('+500 mb')) {
+          updateData = {
+            quotaTier: 'Power Pack (+500 MB)',
+            maxStorageMB: 550,
+            maxVideos: 8,
+            maxVideoMB: 50,
+            maxImages: 80,
+            maxImageMB: 8
+          };
+        } else if (lowerPlan.includes('starter ai') || lowerPlan.includes('+50 credits')) {
+          updateData = {
+            aiCredits: { increment: 50 }
+          };
+        } else if (lowerPlan.includes('pro ai') || lowerPlan.includes('+200 credits')) {
+          updateData = {
+            aiCredits: { increment: 200 }
+          };
+        } else if (lowerPlan.includes('ultra ai') || lowerPlan.includes('+500 credits')) {
+          updateData = {
+            aiCredits: { increment: 500 }
+          };
+        } else {
+          // Fallback custom default
+          updateData = {
+            quotaTier: request.requestedPlan,
+            maxStorageMB: 250,
+            maxVideos: 5,
+            maxVideoMB: 35,
+            maxImages: 40,
+            maxImageMB: 5
+          };
+        }
       }
     }
 

@@ -1,8 +1,9 @@
 'use client';
 
 import { signOut } from 'next-auth/react';
-import { LogOut, Download, Edit2, Check, Sparkles, Upload } from 'lucide-react';
+import { LogOut, Download, Edit2, Check, Sparkles, Upload, Crown, Zap, Coins, HardDrive, ShieldCheck, ArrowUpRight } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { PremiumIcon } from './Icons';
 import Image from 'next/image';
 import LightningOverlay from './ui/LightningOverlay';
@@ -196,29 +197,110 @@ export default function ProfileDropdown({ user }) {
           </div>
         ) : (
           /* Regular Client Profile Dropdown */
-          <div className="bg-[#0f0f0f] border border-white/10 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-xl">
-            <div className="p-4 border-b border-white/5 bg-gradient-to-br from-white/[0.05] to-transparent">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-sm font-semibold text-white truncate">
-                  {user?.name || 'User'}
-                </p>
-                <div className="flex-shrink-0 flex items-center gap-1.5 px-2 py-0.5 bg-gradient-to-r from-accent-violet/10 to-accent-blue/10 rounded-md border border-white/5">
-                  <PremiumIcon className="w-3 h-3 text-accent-violet" />
-                  <span className="text-[9px] uppercase font-bold tracking-wider bg-gradient-to-r from-accent-violet to-accent-blue bg-clip-text text-transparent">
-                    {user?.subscriptionTier || 'Free'} Plan
+          <div className="bg-[#0e0e11] border border-white/10 rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.7)] overflow-hidden">
+            {/* User Header */}
+            <div className="p-4 border-b border-white/5 bg-gradient-to-b from-white/[0.04] to-transparent space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-bold text-white truncate">
+                    {user?.name || 'Automatix User'}
+                  </h3>
+                  <p className="text-xs text-text-tertiary truncate font-mono">
+                    {user?.email}
+                  </p>
+                </div>
+                {/* Plan Badge */}
+                {(() => {
+                  const rawTier = (user?.subscriptionTier || 'starter').toLowerCase();
+                  if (rawTier === 'enterprise') {
+                    return (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider shadow-sm shrink-0">
+                        <Crown className="w-3 h-3 text-amber-400" />
+                        <span>Enterprise</span>
+                      </div>
+                    );
+                  }
+                  if (rawTier === 'professional' || rawTier === 'pro') {
+                    return (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-sky-500/20 border border-purple-500/40 text-purple-300 text-[10px] font-bold uppercase tracking-wider shadow-sm shrink-0">
+                        <Zap className="w-3 h-3 text-purple-400" />
+                        <span>Professional</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/70 text-[10px] font-bold uppercase tracking-wider shrink-0">
+                      <Sparkles className="w-3 h-3 text-white/50" />
+                      <span>Starter Plan</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Active Quotas & Add-ons Section */}
+            <div className="p-3.5 space-y-2.5 bg-black/40 border-b border-white/5 text-xs">
+              <div className="flex items-center justify-between text-[11px] text-text-tertiary font-medium">
+                <span className="uppercase tracking-wider">Active Quotas & Addons</span>
+                <Link href="/dashboard/billing" onClick={() => setIsOpen(false)} className="text-sky-400 hover:text-sky-300 flex items-center gap-0.5">
+                  Manage <ArrowUpRight className="w-3 h-3" />
+                </Link>
+              </div>
+
+              {/* Storage Quota Card */}
+              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-text-secondary font-medium">
+                    <HardDrive className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Cloud Storage</span>
+                  </div>
+                  <span className="font-semibold text-white font-mono text-[11px]">
+                    {user?.totalStorageUsedMB ?? 0} MB <span className="text-text-tertiary">/ {user?.maxStorageMB || 50} MB</span>
                   </span>
                 </div>
+                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-sky-500 to-accent-blue rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, Math.max(2, (((user?.totalStorageUsedMB ?? 0) / (user?.maxStorageMB || 50)) * 100)))}%` }}
+                  />
+                </div>
               </div>
-              <p className="text-xs text-white/50 truncate">
-                {user?.email}
-              </p>
+
+              {/* AI Credits & Tier Pills */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center gap-2">
+                  <div className="p-1 rounded bg-purple-500/20 text-purple-400">
+                    <Coins className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-purple-300/70 uppercase font-semibold">AI Credits</p>
+                    <p className="text-xs font-bold text-purple-200 truncate">
+                      {user?.aiCredits ?? 10} <span className="text-[10px] font-normal text-purple-300/60">Credits</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 flex items-center gap-2">
+                  <div className="p-1 rounded bg-white/10 text-white/70">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-text-tertiary uppercase font-semibold">Storage Pack</p>
+                    <p className="text-xs font-bold text-white truncate">
+                      {user?.quotaTier ? user.quotaTier.replace(/\s*\(.*?\)/, '') : 'Base Plan'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="p-2 bg-black/20">
+
+            {/* Log Out Action */}
+            <div className="p-2 bg-black/60">
               <button
                 onClick={() => signOut({ callbackUrl: '/login' })}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors font-medium"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors font-semibold cursor-pointer"
               >
-                <LogOut size={16} />
+                <LogOut size={14} />
                 <span>Log out</span>
               </button>
             </div>

@@ -135,6 +135,7 @@ model QuotaRequest {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   requestedPlan String
   message       String?
+  receiptUrl    String?
   status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
   createdAt     DateTime @default(now())
 

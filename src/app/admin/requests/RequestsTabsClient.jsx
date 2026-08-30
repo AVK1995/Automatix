@@ -351,6 +351,27 @@ export default function RequestsTabsClient({ quotaRequests = [], conciergeReques
                         "{req.message}"
                       </div>
                     )}
+                    {req.receiptUrl && (
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-black/60 border border-emerald-500/30 flex items-center gap-3">
+                        <img 
+                          src={req.receiptUrl} 
+                          alt="Payment Receipt" 
+                          className="w-12 h-12 object-cover rounded-lg border border-emerald-500/40 shrink-0 cursor-pointer"
+                          onClick={() => window.open(req.receiptUrl, '_blank')}
+                        />
+                        <div className="min-w-0">
+                          <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">Attached Payment Receipt</span>
+                          <a 
+                            href={req.receiptUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-xs text-sky-400 hover:underline font-medium inline-flex items-center gap-1 mt-0.5"
+                          >
+                            <span>View Full Size Receipt &rarr;</span>
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {req.status === 'PENDING' && (

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import PlanUpgradeModal from '@/components/ui/PlanUpgradeModal';
 
 export default function BillingClient({ initialUser }) {
   const [user, setUser] = useState(initialUser);
@@ -135,12 +136,15 @@ export default function BillingClient({ initialUser }) {
                 {user.subscriptionExpiresAt ? new Date(user.subscriptionExpiresAt).toLocaleDateString() : 'Free Forever'}
               </span>
             </div>
-            <Link
-              href="/pricing"
-              className="w-full block text-center py-2 px-3 rounded-lg text-xs font-medium bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10"
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-plan-modal', { detail: { tab: 'pro' } }));
+              }}
+              className="w-full block text-center py-2 px-3 rounded-lg text-xs font-medium bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10 cursor-pointer"
             >
               Change Subscription Plan
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -403,6 +407,9 @@ export default function BillingClient({ initialUser }) {
         </AnimatePresence>,
         document.body
       )}
+
+      {/* Plan and Storage Upgrade Modal */}
+      <PlanUpgradeModal />
     </div>
   );
 }
