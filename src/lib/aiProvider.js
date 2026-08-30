@@ -286,10 +286,10 @@ function generateNativeAiContent({ task = 'generate_caption', tone = 'engaging',
   } else if (category === 'data') {
     if (task === 'data_insights') {
       generatedText = `Key Data Insights & Anomaly Detection for "${fileName}":\n\n` +
-        `📊 Overview: Analyzed data rows across active pipeline attributes.\n` +
-        `📈 Growth Trend: +28.4% efficiency improvement across automated cycles.\n` +
-        `🔍 Anomaly Check: Zero schema mismatches detected; all records validated.\n` +
-        `💡 Recommendation: Continue scaling automated triggers to optimize throughput.`;
+        `• Overview: Analyzed data rows across active pipeline attributes.\n` +
+        `• Growth Trend: +28.4% efficiency improvement across automated cycles.\n` +
+        `• Anomaly Check: Zero schema mismatches detected; all records validated.\n` +
+        `• Recommendation: Continue scaling automated triggers to optimize throughput.`;
       insights = generatedText;
     } else if (task === 'data_action_recommendations') {
       generatedText = `Strategic Business Recommendations based on "${fileName}":\n\n` +

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Wand2, 
   Sparkles, 
@@ -14,7 +14,10 @@ import {
   FileText,
   Mail,
   Send,
-  MessageSquare
+  MessageSquare,
+  RotateCcw,
+  Eraser,
+  SendHorizontal
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AiCreditUpgradeModal from '@/components/ui/AiCreditUpgradeModal';
@@ -33,13 +36,16 @@ export default function AiRadahnPromptModal({
   onApply
 }) {
   const [userPrompt, setUserPrompt] = useState('');
+  const [refinePrompt, setRefinePrompt] = useState('');
   const [tone, setTone] = useState(initialContext.tone || 'professional');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [generatedOutput, setGeneratedOutput] = useState(null);
   const [activeTab, setActiveTab] = useState('preview'); // 'preview' | 'code'
   const [userCredits, setUserCredits] = useState(null);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const previewRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -60,14 +66,15 @@ export default function AiRadahnPromptModal({
     }
   };
 
-  const runBrainGeneration = () => {
+  const runBrainGeneration = (customPromptOverride) => {
+    const promptToUse = typeof customPromptOverride === 'string' ? customPromptOverride : (userPrompt || initialContext.userPrompt || '');
     setIsGenerating(true);
     try {
       if (type === 'smtp_email') {
         const res = executeSmtpEmailDrafter({
           triggerData: initialContext.triggerData || {},
           previousSteps: initialContext.previousSteps || [],
-          userPrompt: userPrompt || initialContext.userPrompt || '',
+          userPrompt: promptToUse,
           brandTone: tone
         });
         setGeneratedOutput(res);
@@ -82,15 +89,66 @@ export default function AiRadahnPromptModal({
         const res = executeSocialDrafter({
           platform: initialContext.platform || 'INSTAGRAM_DM',
           context: initialContext.context || {},
-          userPrompt: userPrompt || ''
+          userPrompt: promptToUse
         });
         setGeneratedOutput(res);
       }
+      toast.success('AI Radahn synthesized output successfully!');
     } catch (err) {
       toast.error('AI Radahn generation failed');
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleRefine = () => {
+    if (!refinePrompt.trim()) {
+      return toast.error('Please enter refinement instructions.');
+    }
+
+    setIsRefining(true);
+    try {
+      const combinedPrompt = `${userPrompt ? userPrompt + '. ' : ''}Refinement: ${refinePrompt}`;
+      
+      if (type === 'smtp_email') {
+        const res = executeSmtpEmailDrafter({
+          triggerData: initialContext.triggerData || {},
+          previousSteps: initialContext.previousSteps || [],
+          userPrompt: combinedPrompt,
+          brandTone: tone
+        });
+        setGeneratedOutput(res);
+      } else if (type === 'social_message') {
+        const res = executeSocialDrafter({
+          platform: initialContext.platform || 'INSTAGRAM_DM',
+          context: initialContext.context || {},
+          userPrompt: combinedPrompt
+        });
+        setGeneratedOutput(res);
+      } else if (type === 'vision_prompt') {
+        const res = executeVisionPromptDrafter({
+          brandTone: tone,
+          mediaType: initialContext.mediaType || 'media',
+          taskOperation: initialContext.task || 'generate_caption'
+        });
+        setGeneratedOutput(res);
+      }
+
+      setUserPrompt(combinedPrompt);
+      setRefinePrompt('');
+      toast.success('Applied refinement changes!');
+    } catch (e) {
+      toast.error('Refinement failed');
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
+  const handleClear = () => {
+    setGeneratedOutput(null);
+    setUserPrompt('');
+    setRefinePrompt('');
+    toast.success('Cleared draft. You can generate completely anew.');
   };
 
   const handleApply = async () => {
@@ -141,23 +199,23 @@ export default function AiRadahnPromptModal({
           onClick={e => e.stopPropagation()}
         >
           
-          {/* Header */}
-          <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-accent-blue flex items-center justify-center text-white shadow-lg shadow-purple-500/20 shrink-0">
+          {/* Header - Responsive Mobile Optimized */}
+          <div className="p-4 sm:p-5 border-b border-white/10 relative flex items-start justify-between bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black shrink-0 gap-3">
+            <div className="flex items-start sm:items-center gap-3 pr-8 sm:pr-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-500 to-accent-blue flex items-center justify-center text-white shadow-lg shadow-purple-500/20 shrink-0 mt-0.5 sm:mt-0">
                 <Wand2 className="w-5 h-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-white tracking-tight">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-bold text-white tracking-tight leading-snug">
                     {type === 'smtp_email' ? 'AI Radahn Email Drafter' : type === 'vision_prompt' ? 'AI Radahn Vision Prompt Drafter' : 'AI Radahn Message Drafter'}
                   </h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                    1 AI Task Credit
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0 whitespace-nowrap">
+                    AI Radahn Brain
                   </span>
                 </div>
-                <p className="text-xs text-text-secondary mt-0.5">
-                  Context-aware generation utilizing workflow variables and trigger payloads.
+                <p className="text-xs text-text-secondary mt-1 line-clamp-2 sm:line-clamp-none">
+                  Context-aware generation utilizing workflow variables, previous node outputs, and custom styling.
                 </p>
               </div>
             </div>
@@ -171,7 +229,7 @@ export default function AiRadahnPromptModal({
               )}
               <button 
                 onClick={onClose} 
-                className="p-1.5 text-text-tertiary hover:text-white rounded-lg hover:bg-white/5 transition-colors shrink-0"
+                className="absolute top-4 right-4 sm:static p-1.5 text-text-tertiary hover:text-white rounded-lg hover:bg-white/5 transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -185,21 +243,32 @@ export default function AiRadahnPromptModal({
             <div className="space-y-2 bg-black/40 border border-white/5 rounded-xl p-3.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-white">Custom Goal / Prompt Focus (Optional)</label>
-                <button
-                  type="button"
-                  onClick={runBrainGeneration}
-                  disabled={isGenerating}
-                  className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <RefreshCw size={12} className={isGenerating ? 'animate-spin' : ''} />
-                  Re-draft
-                </button>
+                <div className="flex items-center gap-2">
+                  {generatedOutput && (
+                    <button
+                      type="button"
+                      onClick={handleClear}
+                      className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-text-tertiary hover:text-rose-400 rounded text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
+                    >
+                      <RotateCcw size={11} /> Clear
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => runBrainGeneration()}
+                    disabled={isGenerating}
+                    className="px-3 py-1 bg-gradient-to-r from-purple-600 to-accent-blue hover:from-purple-500 hover:to-accent-blue/90 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={isGenerating ? 'animate-spin' : ''} />
+                    {generatedOutput ? 'Re-draft' : 'Draft with AI Radahn'}
+                  </button>
+                </div>
               </div>
               <input
                 type="text"
                 value={userPrompt}
                 onChange={e => setUserPrompt(e.target.value)}
-                placeholder="e.g. Include a 15% discount coupon or focus on urgent order confirmation..."
+                placeholder="e.g. Tactical camo green CTA, remove eyebrow, include discount..."
                 className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue"
               />
             </div>
@@ -207,6 +276,43 @@ export default function AiRadahnPromptModal({
             {/* Generated Output Review Pane */}
             {generatedOutput && (
               <div className="space-y-3">
+                
+                {/* Iterative Refinement Bar */}
+                <div className="bg-purple-950/20 border border-purple-500/25 p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1.5">
+                      <Wand2 size={12} /> Refine & Modify Draft
+                    </span>
+                    <span className="text-[10px] text-text-tertiary">
+                      Type tweaks to modify existing output
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={refinePrompt}
+                      onChange={e => setRefinePrompt(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleRefine();
+                        }
+                      }}
+                      placeholder="e.g. Change button color, remove eyebrow badge, make subject punchier..."
+                      className="flex-1 bg-black/60 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-purple-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRefine}
+                      disabled={isRefining || !refinePrompt.trim()}
+                      className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1 shadow-md shadow-purple-600/20 cursor-pointer shrink-0"
+                    >
+                      {isRefining ? <RefreshCw size={11} className="animate-spin" /> : <SendHorizontal size={11} />}
+                      Refine
+                    </button>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
                     Generated Output Preview
@@ -215,7 +321,7 @@ export default function AiRadahnPromptModal({
                     <button
                       type="button"
                       onClick={() => setActiveTab('preview')}
-                      className={`px-2.5 py-1 rounded transition-all ${
+                      className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
                         activeTab === 'preview' ? 'bg-white/15 text-white font-semibold' : 'text-text-tertiary hover:text-white'
                       }`}
                     >
@@ -224,7 +330,7 @@ export default function AiRadahnPromptModal({
                     <button
                       type="button"
                       onClick={() => setActiveTab('code')}
-                      className={`px-2.5 py-1 rounded transition-all ${
+                      className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
                         activeTab === 'code' ? 'bg-white/15 text-white font-semibold' : 'text-text-tertiary hover:text-white'
                       }`}
                     >
@@ -240,12 +346,16 @@ export default function AiRadahnPromptModal({
                       <span className="text-white text-xs font-bold">{generatedOutput.subject}</span>
                     </div>
                     {activeTab === 'preview' ? (
-                      <div 
-                        className="p-4 prose prose-sm prose-invert max-w-none text-xs leading-relaxed max-h-60 overflow-y-auto custom-scrollbar"
-                        dangerouslySetInnerHTML={{ __html: generatedOutput.htmlBody }}
-                      />
+                      <div ref={previewRef} className="h-64 bg-[#050505] flex overflow-hidden rounded-lg">
+                        <iframe
+                          srcDoc={`<style>html,body{overflow-x:hidden!important;margin:0!important;padding:0!important;background:#050505!important;}::-webkit-scrollbar{width:6px;height:6px;}::-webkit-scrollbar-track{background:#09090b;}::-webkit-scrollbar-thumb{background:#27272a;border-radius:9999px;}::-webkit-scrollbar-thumb:hover{background:#3f3f46;}</style>${generatedOutput.htmlBody}`}
+                          title="Workflow Email Preview"
+                          className="w-full h-full border-0 bg-[#050505]"
+                          sandbox="allow-same-origin"
+                        />
+                      </div>
                     ) : (
-                      <pre className="p-4 text-[11px] font-mono text-purple-300 max-h-60 overflow-y-auto custom-scrollbar whitespace-pre-wrap">
+                      <pre className="p-4 text-[11px] font-mono text-purple-300 max-h-64 overflow-y-auto custom-scrollbar whitespace-pre-wrap">
                         {generatedOutput.htmlBody}
                       </pre>
                     )}

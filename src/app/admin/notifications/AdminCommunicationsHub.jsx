@@ -36,6 +36,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import Checkbox from '@/components/ui/Checkbox';
 import { getPlatformSettings, updatePlatformSettings } from '@/actions/settings';
 import AiRadahnModal from '@/components/admin/AiRadahnModal';
+import AiRadahnTemplateModal from '@/components/admin/AiRadahnTemplateModal';
 
 const TEMPLATE_PRESETS = [
   {
@@ -158,6 +159,7 @@ export default function AdminCommunicationsHub() {
   const [resetEmailTemplate, setResetEmailTemplate] = useState('');
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [isAiRadahnTemplateOpen, setIsAiRadahnTemplateOpen] = useState(false);
 
   // Textarea Refs for Cursor-Aware Token Insertion
   const bodyTextareaRef = useRef(null);
@@ -399,7 +401,7 @@ export default function AdminCommunicationsHub() {
             className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-accent-blue hover:from-purple-500 hover:to-accent-blue/90 text-white flex items-center gap-2 shadow-lg shadow-purple-600/25 transition-all cursor-pointer"
           >
             <Sparkles size={16} />
-            ✨ AI Radahn (Deployments Announcement)
+            AI Radahn (Deployments Announcement)
           </button>
         </div>
       </div>
@@ -445,23 +447,23 @@ export default function AdminCommunicationsHub() {
       {activeTab === 'compose' && (
         <div className="space-y-6">
           
-          {/* Quick Preset Cards Bar */}
-          <div className="bg-[#111] border border-border-subtle rounded-xl p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3">
+          {/* Quick Preset Cards Bar - Responsive Mobile Optimized */}
+          <div className="bg-[#111] border border-border-subtle rounded-xl p-3.5 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
               <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
-                <Sparkles size={14} className="text-accent-blue" />
+                <Sparkles size={14} className="text-accent-blue shrink-0" />
                 1-Click Preset Templates
               </h3>
               <button
                 type="button"
                 onClick={() => handleOpenAiRadahn('ANNOUNCEMENTS')}
-                className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors"
+                className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors self-start sm:self-auto"
               >
-                <GitBranch size={13} />
-                Generate from Recent Git Commits &rarr;
+                <GitBranch size={13} className="shrink-0" />
+                <span>Generate from Recent Git Commits &rarr;</span>
               </button>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
               {TEMPLATE_PRESETS.map((preset) => {
                 const IconComponent = preset.icon;
                 return (
@@ -472,7 +474,7 @@ export default function AdminCommunicationsHub() {
                   >
                     <div>
                       <div className="flex items-center gap-1.5 text-accent-blue mb-1.5">
-                        <IconComponent size={14} />
+                        <IconComponent size={14} className="shrink-0" />
                       </div>
                       <span className="text-xs font-medium text-white group-hover:text-accent-blue block line-clamp-2">
                         {preset.name}
@@ -702,10 +704,10 @@ export default function AdminCommunicationsHub() {
                   <button
                     type="button"
                     onClick={() => handleOpenAiRadahn('REFINE')}
-                    className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition-all cursor-pointer"
+                    className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition-all cursor-pointer shadow-sm shadow-purple-500/10"
                   >
-                    <Wand2 size={12} />
-                    ✨ AI Radahn Refine
+                    <Wand2 size={12} className="text-purple-400" />
+                    AI Radahn Refine
                   </button>
                 </div>
                 <input
@@ -742,28 +744,28 @@ export default function AdminCommunicationsHub() {
                 </div>
               </div>
 
-              {/* Body Content Editor with In-Line AI Radahn Refine Button (Image 3) */}
+              {/* Body Content Editor with In-Line AI Radahn Refine Button */}
               <div>
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <label className="text-xs font-medium text-text-secondary">HTML Message Body</label>
                     <span className="text-[10px] px-2 py-0.5 rounded bg-accent-blue/10 text-accent-blue border border-accent-blue/20 font-mono">
                       Semantic HTML Supported
                     </span>
+                  </div>
+                  <div className="flex items-center gap-2.5 self-start sm:self-auto">
                     <button
                       type="button"
                       onClick={() => handleOpenAiRadahn('REFINE')}
-                      className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition-all cursor-pointer"
+                      className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition-all cursor-pointer shadow-sm shadow-purple-500/10 shrink-0"
                     >
-                      <Wand2 size={12} />
-                      ✨ AI Radahn Refine
+                      <Wand2 size={12} className="text-purple-400" />
+                      AI Radahn Refine
                     </button>
-                  </div>
-                  <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setShowPreview(!showPreview)}
-                      className="text-xs text-accent-blue hover:underline flex items-center gap-1.5 cursor-pointer"
+                      className="text-xs text-accent-blue hover:underline flex items-center gap-1.5 cursor-pointer shrink-0"
                     >
                       <Eye size={13} />
                       {showPreview ? 'Switch to HTML Editor' : 'Live Inbox Preview'}
@@ -903,15 +905,26 @@ export default function AdminCommunicationsHub() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleSaveTemplate}
-                disabled={savingTemplate}
-                className="px-5 py-2.5 bg-accent-blue hover:bg-accent-blue/90 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-accent-blue/20 disabled:opacity-50 shrink-0 cursor-pointer"
-              >
-                {savingTemplate ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                Save Template
-              </button>
+              <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsAiRadahnTemplateOpen(true)}
+                  className="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-accent-blue hover:from-purple-500 hover:to-accent-blue/90 text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition-all cursor-pointer"
+                >
+                  <Sparkles size={14} className="text-white shrink-0" />
+                  <span>AI Radahn Template Drafter</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveTemplate}
+                  disabled={savingTemplate}
+                  className="flex-1 sm:flex-none px-5 py-2.5 bg-accent-blue hover:bg-accent-blue/90 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-accent-blue/20 disabled:opacity-50 cursor-pointer"
+                >
+                  {savingTemplate ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  <span>Save Template</span>
+                </button>
+              </div>
             </div>
 
             {loadingTemplate ? (
@@ -943,7 +956,17 @@ export default function AdminCommunicationsHub() {
                   {/* Raw HTML Code Editor */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs text-text-secondary">
-                      <span className="font-semibold text-white">Custom HTML Template</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white">Custom HTML Template</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsAiRadahnTemplateOpen(true)}
+                          className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition-all cursor-pointer shadow-sm shadow-purple-500/10"
+                        >
+                          <Wand2 size={11} className="text-purple-400" />
+                          AI Radahn Drafter
+                        </button>
+                      </div>
                       <span className="text-[11px] text-text-tertiary">Semantic Email HTML</span>
                     </div>
                     <textarea
@@ -962,17 +985,18 @@ export default function AdminCommunicationsHub() {
                       <span className="font-semibold text-white">Live Email Preview</span>
                       <span className="text-[11px] text-emerald-400 font-medium">Rendered HTML View</span>
                     </div>
-                    <div className="w-full h-[340px] bg-[#050505] border border-border-subtle rounded-xl p-4 overflow-y-auto custom-scrollbar">
+                    <div className="w-full h-[360px] bg-[#050505] border border-border-subtle rounded-xl overflow-hidden flex">
                       {resetEmailTemplate ? (
-                        <div
-                          dangerouslySetInnerHTML={{
-                            __html: resetEmailTemplate
-                              .replace(/\{\{SETUP_LINK\}\}/g, 'https://automatix.ai/setup-password?token=example_secure_token')
-                              .replace(/\{\{USER_EMAIL\}\}/g, 'user@example.com')
-                          }}
+                        <iframe
+                          srcDoc={`<style>html,body{overflow-x:hidden!important;margin:0!important;padding:0!important;background:#050505!important;}::-webkit-scrollbar{width:6px;height:6px;}::-webkit-scrollbar-track{background:#09090b;}::-webkit-scrollbar-thumb{background:#27272a;border-radius:9999px;}::-webkit-scrollbar-thumb:hover{background:#3f3f46;}</style>${resetEmailTemplate
+                            .replace(/\{\{SETUP_LINK\}\}/g, 'https://automatix.ai/setup-password?token=example_secure_token')
+                            .replace(/\{\{USER_EMAIL\}\}/g, 'user@example.com')}`}
+                          title="System Email Preview"
+                          className="w-full h-full border-0 bg-[#050505]"
+                          sandbox="allow-same-origin"
                         />
                       ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-center text-text-tertiary text-xs">
+                        <div className="h-full w-full flex flex-col items-center justify-center text-center text-text-tertiary text-xs p-4">
                           <Code size={24} className="mb-2 opacity-50" />
                           <p>No custom template set. The system default dark transactional template will be used.</p>
                         </div>
@@ -1070,6 +1094,16 @@ export default function AdminCommunicationsHub() {
           if (output.subject) setSubject(output.subject);
           if (output.body) setBody(output.body);
           setShowPreview(true);
+        }}
+      />
+
+      {/* AI Radahn Transactional Email Template Architect Modal */}
+      <AiRadahnTemplateModal
+        isOpen={isAiRadahnTemplateOpen}
+        onClose={() => setIsAiRadahnTemplateOpen(false)}
+        currentTemplate={resetEmailTemplate}
+        onApply={(generatedTpl) => {
+          setResetEmailTemplate(generatedTpl);
         }}
       />
 

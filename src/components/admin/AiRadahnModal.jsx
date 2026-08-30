@@ -16,9 +16,34 @@ import {
   Zap,
   Layers,
   FileText,
-  Check
+  Check,
+  Rocket
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Select from '@/components/ui/Select';
+
+const TONE_OPTIONS = [
+  {
+    value: 'feature_release',
+    label: 'Feature Launch & Excitement',
+    icon: <Rocket size={14} className="text-purple-400 shrink-0" />
+  },
+  {
+    value: 'performance_update',
+    label: 'Speed & Performance Engine',
+    icon: <Zap size={14} className="text-amber-400 shrink-0" />
+  },
+  {
+    value: 'security_compliance',
+    label: 'Security & Reliability Notice',
+    icon: <Shield size={14} className="text-emerald-400 shrink-0" />
+  },
+  {
+    value: 'executive_summary',
+    label: 'Executive Product Changelog',
+    icon: <FileText size={14} className="text-blue-400 shrink-0" />
+  }
+];
 
 export default function AiRadahnModal({
   isOpen,
@@ -169,20 +194,22 @@ export default function AiRadahnModal({
         className="bg-[#111111] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative animate-in fade-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-white/10 bg-gradient-to-r from-purple-950/40 via-blue-950/30 to-black flex items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-accent-blue flex items-center justify-center text-white shadow-lg shadow-purple-500/20 shrink-0">
-              <Sparkles size={20} />
+        {/* Header - Responsive Mobile Optimized */}
+        <div className="p-4 sm:p-5 border-b border-white/10 bg-gradient-to-r from-purple-950/40 via-blue-950/30 to-black relative flex items-start justify-between gap-3 shrink-0">
+          <div className="flex items-start sm:items-center gap-3 pr-8 sm:pr-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-500 to-accent-blue flex items-center justify-center text-white shadow-lg shadow-purple-500/20 shrink-0 mt-0.5 sm:mt-0">
+              <Sparkles size={18} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">AI Radahn Studio</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  Gemini Pro Engine
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm sm:text-base md:text-lg font-bold text-white tracking-tight leading-snug">
+                  AI Radahn Studio
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0 whitespace-nowrap">
+                  AI Radahn Brain
                 </span>
               </div>
-              <p className="text-xs text-text-secondary mt-0.5">
+              <p className="text-xs text-text-secondary mt-1 line-clamp-2 sm:line-clamp-none">
                 Generate executive feature announcements from repo deployments or refine existing email drafts with approval safeguards.
               </p>
             </div>
@@ -190,7 +217,7 @@ export default function AiRadahnModal({
 
           <button 
             onClick={onClose}
-            className="text-text-tertiary hover:text-white p-2 rounded-lg hover:bg-white/5 transition-colors shrink-0"
+            className="absolute top-4 right-4 sm:static text-text-tertiary hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-colors shrink-0"
           >
             <X size={18} />
           </button>
@@ -311,16 +338,12 @@ export default function AiRadahnModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-1">
                   <label className="block text-xs font-semibold text-text-secondary mb-1.5">Broadcast Tone</label>
-                  <select
+                  <Select
                     value={tone}
-                    onChange={(e) => setTone(e.target.value)}
-                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500"
-                  >
-                    <option value="feature_release">🚀 Feature Launch & Excitement</option>
-                    <option value="performance_update">⚡ Speed & Performance Engine</option>
-                    <option value="security_compliance">🛡️ Security & Reliability Notice</option>
-                    <option value="executive_summary">📋 Executive Product Changelog</option>
-                  </select>
+                    onChange={(val) => setTone(val)}
+                    options={TONE_OPTIONS}
+                    buttonClassName="py-2.5 bg-black/50 border border-white/10 rounded-lg text-xs"
+                  />
                 </div>
 
                 <div className="sm:col-span-2">

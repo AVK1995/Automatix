@@ -1,13 +1,309 @@
 /**
- * AI Radahn Core Context & Operations Engine
- * Lightweight, deterministic, and context-aware platform brain for Automatix.
+ * AI Radahn Core Context, UI/UX Design & Copywriting Engine
+ * High-performance, deterministic, and context-aware intelligence brain for Automatix.
+ * Formats top-tier UI/UX email HTML layouts, responsive dark design systems,
+ * and high-converting B2B copywriting across workflows and transactional templates.
  */
 
-// 1. BRAND THEME OPTIMIZER
+// ==========================================
+// 1. DESIGN THEME & PALETTE ONTOLOGY MATRIX
+// ==========================================
+export function resolveDesignTheme(prompt = '', tone = 'modern_dark') {
+  const p = (prompt || '').toLowerCase();
+  const t = (tone || '').toLowerCase();
+
+  // A. TACTICAL MILITARY STEALTH
+  if (p.includes('call of duty') || p.includes('cod') || p.includes('mw4') || p.includes('mw3') || p.includes('modern warfare') || p.includes('warzone') || p.includes('tactical') || p.includes('military') || p.includes('camo')) {
+    return {
+      themeName: 'Tactical Military Stealth',
+      primaryColor: '#84CC16',
+      secondaryColor: '#15803D',
+      accentColor: '#F97316',
+      gradientBg: 'linear-gradient(135deg, #84CC16 0%, #15803D 100%)',
+      buttonShadow: '0 10px 28px rgba(132, 204, 22, 0.45)',
+      accentBorder: 'rgba(132, 204, 22, 0.35)',
+      tagColor: '#84CC16',
+      badgeBg: 'rgba(132, 204, 22, 0.1)',
+      textColorOnBtn: '#050505',
+      cardBg: '#090c0a',
+      cardBorder: 'rgba(132, 204, 22, 0.25)',
+      badgeText: 'TACTICAL OPERATIONAL CLEARANCE',
+      fontFamily: "'Space Grotesk', 'Plus Jakarta Sans', -apple-system, sans-serif",
+      eyebrowGlow: '0 0 12px rgba(132, 204, 22, 0.35)'
+    };
+  }
+
+  // B. RETRO SUNSET SYNTHWAVE
+  if (p.includes('gta 6') || p.includes('gta6') || p.includes('vice city') || p.includes('sunset neon') || p.includes('miami') || p.includes('synthwave')) {
+    return {
+      themeName: 'Retro Sunset Synthwave',
+      primaryColor: '#FF007F',
+      secondaryColor: '#7928CA',
+      accentColor: '#FF7A00',
+      gradientBg: 'linear-gradient(135deg, #FF007F 0%, #7928CA 50%, #FF7A00 100%)',
+      buttonShadow: '0 10px 28px rgba(255, 0, 127, 0.45)',
+      accentBorder: 'rgba(255, 0, 127, 0.3)',
+      tagColor: '#FF007F',
+      badgeBg: 'rgba(255, 0, 127, 0.1)',
+      textColorOnBtn: '#ffffff',
+      cardBg: '#0d0514',
+      cardBorder: 'rgba(255, 0, 127, 0.25)',
+      badgeText: 'RETRO SYNTHWAVE SYSTEM ACCESS',
+      fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      eyebrowGlow: '0 0 12px rgba(255, 0, 127, 0.35)'
+    };
+  }
+
+  // C. CYBERPUNK 2077 / NEO-TOKYO
+  if (p.includes('cyberpunk') || p.includes('neo tokyo') || p.includes('high tech yellow')) {
+    return {
+      themeName: 'Cyberpunk 2077 / Neo-Tokyo',
+      primaryColor: '#FCEE0A',
+      secondaryColor: '#00F0FF',
+      accentColor: '#00F0FF',
+      gradientBg: 'linear-gradient(135deg, #FCEE0A 0%, #00F0FF 100%)',
+      buttonShadow: '0 8px 24px rgba(252, 238, 10, 0.4)',
+      accentBorder: 'rgba(0, 240, 255, 0.35)',
+      tagColor: '#FCEE0A',
+      badgeBg: 'rgba(252, 238, 10, 0.1)',
+      textColorOnBtn: '#000000',
+      cardBg: '#090a0f',
+      cardBorder: 'rgba(0, 240, 255, 0.25)',
+      badgeText: 'NEO-TOKYO CLOUD PROTOCOL',
+      fontFamily: "'Space Grotesk', 'Plus Jakarta Sans', -apple-system, sans-serif",
+      eyebrowGlow: '0 0 12px rgba(0, 240, 255, 0.35)'
+    };
+  }
+
+  // D. VALORANT / APEX / SHARP CRIMSON FPS
+  if (p.includes('valorant') || p.includes('apex') || p.includes('crimson') || p.includes('blood red') || p.includes('red accent') || p.includes('red')) {
+    return {
+      themeName: 'Valorant / Hyper FPS',
+      primaryColor: '#FF4655',
+      secondaryColor: '#0F1923',
+      accentColor: '#FF4655',
+      gradientBg: 'linear-gradient(135deg, #FF4655 0%, #D93B48 100%)',
+      buttonShadow: '0 10px 28px rgba(255, 70, 85, 0.45)',
+      accentBorder: 'rgba(255, 70, 85, 0.35)',
+      tagColor: '#FF4655',
+      badgeBg: 'rgba(255, 70, 85, 0.1)',
+      textColorOnBtn: '#ffffff',
+      cardBg: '#0f141c',
+      cardBorder: 'rgba(255, 70, 85, 0.25)',
+      badgeText: 'SECURITY ACCESS PROTOCOL // ACTIVE',
+      fontFamily: "'Space Grotesk', 'Plus Jakarta Sans', -apple-system, sans-serif",
+      eyebrowGlow: '0 0 12px rgba(255, 70, 85, 0.35)'
+    };
+  }
+
+  // E. NEON BLUE / CYBER GLOW / CYAN
+  if (p.includes('neon blue') || p.includes('cyan') || p.includes('electric blue') || p.includes('neon') || p.includes('blue') || t === 'cyber_glow') {
+    return {
+      themeName: 'Cyber Glow & Neon Blue',
+      primaryColor: '#00E5FF',
+      secondaryColor: '#0072FF',
+      accentColor: '#00E5FF',
+      gradientBg: 'linear-gradient(135deg, #00E5FF 0%, #0072FF 100%)',
+      buttonShadow: '0 8px 24px rgba(0, 229, 255, 0.45)',
+      accentBorder: 'rgba(0, 229, 255, 0.35)',
+      tagColor: '#00E5FF',
+      badgeBg: 'rgba(0, 229, 255, 0.1)',
+      textColorOnBtn: '#050505',
+      cardBg: '#060b13',
+      cardBorder: 'rgba(0, 229, 255, 0.25)',
+      badgeText: 'HIGH-SPEED CLOUD ENGINE',
+      fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      eyebrowGlow: '0 0 12px rgba(0, 229, 255, 0.35)'
+    };
+  }
+
+  // F. ENTERPRISE SECURITY / HARDENED SHIELD
+  if (p.includes('security') || p.includes('compliance') || p.includes('emerald') || p.includes('green') || t === 'enterprise_security') {
+    return {
+      themeName: 'Enterprise Security Protocol',
+      primaryColor: '#10B981',
+      secondaryColor: '#059669',
+      accentColor: '#34D399',
+      gradientBg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+      buttonShadow: '0 8px 24px rgba(16, 185, 129, 0.35)',
+      accentBorder: 'rgba(16, 185, 129, 0.3)',
+      tagColor: '#34D399',
+      badgeBg: 'rgba(16, 185, 129, 0.1)',
+      textColorOnBtn: '#ffffff',
+      cardBg: '#060e0a',
+      cardBorder: 'rgba(16, 185, 129, 0.25)',
+      badgeText: 'ENTERPRISE SECURITY VERIFICATION',
+      fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      eyebrowGlow: '0 0 12px rgba(16, 185, 129, 0.3)'
+    };
+  }
+
+  // G. VIP LUXURY / GOLD OBSIDIAN / ORANGE
+  if (p.includes('gold') || p.includes('amber') || p.includes('orange') || p.includes('luxury') || p.includes('vip') || p.includes('exclusive') || t === 'luxury_executive') {
+    return {
+      themeName: 'VIP Luxury Obsidian',
+      primaryColor: '#F59E0B',
+      secondaryColor: '#D97706',
+      accentColor: '#FBBF24',
+      gradientBg: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+      buttonShadow: '0 8px 24px rgba(245, 158, 11, 0.35)',
+      accentBorder: 'rgba(245, 158, 11, 0.3)',
+      tagColor: '#FBBF24',
+      badgeBg: 'rgba(245, 158, 11, 0.1)',
+      textColorOnBtn: '#050505',
+      cardBg: '#0f0c05',
+      cardBorder: 'rgba(245, 158, 11, 0.25)',
+      badgeText: 'VIP EXECUTIVE CONCIERGE',
+      fontFamily: "'Playfair Display', 'Plus Jakarta Sans', Georgia, serif",
+      eyebrowGlow: '0 0 12px rgba(245, 158, 11, 0.3)'
+    };
+  }
+
+  // H. MINIMALIST / CLEAN MONOCHROME
+  if (p.includes('minimal') || p.includes('white') || p.includes('monochrome') || p.includes('apple') || t === 'minimalist') {
+    return {
+      themeName: 'Minimalist Monochrome',
+      primaryColor: '#FFFFFF',
+      secondaryColor: '#E2E8F0',
+      accentColor: '#E2E8F0',
+      gradientBg: '#FFFFFF',
+      buttonShadow: '0 4px 14px rgba(255, 255, 255, 0.2)',
+      accentBorder: 'rgba(255, 255, 255, 0.2)',
+      tagColor: '#E2E8F0',
+      badgeBg: 'rgba(255, 255, 255, 0.05)',
+      textColorOnBtn: '#000000',
+      cardBg: '#0d0d0d',
+      cardBorder: 'rgba(255, 255, 255, 0.15)',
+      badgeText: 'TRANSACTIONAL NOTIFICATION',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      eyebrowGlow: 'none'
+    };
+  }
+
+  // I. MODERN DARK (DEFAULT OBSIDIAN & ROYAL VIOLET)
+  return {
+    themeName: 'Modern Dark Obsidian',
+    primaryColor: '#8B5CF6',
+    secondaryColor: '#6366F1',
+    accentColor: '#A78BFA',
+    gradientBg: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
+    buttonShadow: '0 8px 24px rgba(139, 92, 246, 0.35)',
+    accentBorder: 'rgba(139, 92, 246, 0.3)',
+    tagColor: '#A78BFA',
+    badgeBg: 'rgba(139, 92, 246, 0.1)',
+    textColorOnBtn: '#ffffff',
+    cardBg: '#0e0e0e',
+    cardBorder: 'rgba(255, 255, 255, 0.1)',
+    badgeText: 'AUTOMATED SYSTEM IDENTITY GUARD',
+    fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    eyebrowGlow: '0 0 12px rgba(139, 92, 246, 0.3)'
+  };
+}
+
+// Logo SVG Component Helper
+function renderBrandLogoSvg() {
+  return `
+  <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto 20px auto;">
+    <tr>
+      <td style="vertical-align: middle; padding-right: 10px;">
+        <svg viewBox="0 0 100 100" width="30" height="30" style="display: block;">
+          <defs>
+            <linearGradient id="brandLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f8fafc" />
+              <stop offset="50%" stop-color="#cbd5e1" />
+              <stop offset="100%" stop-color="#64748b" />
+            </linearGradient>
+          </defs>
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M41.5 15L15 90h18l7.5-22.5h20L67.5 90h18L58.5 15h-17zM45 45l5-15 5 15h-10z" fill="url(#brandLogoGrad)" />
+        </svg>
+      </td>
+      <td style="vertical-align: middle; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        Automatix
+      </td>
+    </tr>
+  </table>`;
+}
+
+// ==========================================
+// 2. SURGICAL TEMPLATE REFINEMENT ENGINE
+// ==========================================
+export function refineEmailTemplateHtml(html = '', instruction = '') {
+  if (!html) return html;
+  let out = html;
+  const p = (instruction || '').toLowerCase();
+  const theme = resolveDesignTheme(instruction);
+
+  // 1. Remove Eyebrow / Brand Badge
+  if (p.includes('remove eyebrow') || p.includes('no eyebrow') || p.includes('without eyebrow') || p.includes('hide eyebrow') || p.includes('remove badge') || p.includes('no badge')) {
+    out = out.replace(/<div class=["']brand-badge["']>[\s\S]*?<\/div>/gi, '');
+    out = out.replace(/<div class=["']badge["']>[\s\S]*?<\/div>/gi, '');
+  }
+
+  // 2. Change / Add Eyebrow
+  const eyebrowMatch = instruction.match(/(?:change|set|use)\s+(?:the\s+)?eyebrow\s+(?:to\s+|as\s+)?["']?([^"'\n,]+)["']?/i);
+  if (eyebrowMatch && !p.includes('remove') && !p.includes('no eyebrow')) {
+    const newEyebrow = eyebrowMatch[1].trim();
+    if (out.includes('brand-badge')) {
+      out = out.replace(/<div class=["']brand-badge["']>[\s\S]*?<\/div>/gi, `<div class="brand-badge">${newEyebrow}</div>`);
+    } else if (out.includes('badge')) {
+      out = out.replace(/<div class=["']badge["']>[\s\S]*?<\/div>/gi, `<div class="badge">${newEyebrow}</div>`);
+    } else {
+      out = out.replace(/<div class=["']container["']>/gi, `<div class="container">\n      <div class="brand-badge">${newEyebrow}</div>`);
+    }
+  }
+
+  // 3. Remove Logo
+  if (p.includes('remove logo') || p.includes('no logo') || p.includes('without logo')) {
+    out = out.replace(/<table[^>]*class=["']logo-container["'][\s\S]*?<\/table>/gi, '');
+    out = out.replace(/<table[^>]*class=["']logo-table["'][\s\S]*?<\/table>/gi, '');
+    out = out.replace(/<table[^>]*align=["']center["'][^>]*>[\s\S]*?M41\.5 15L15 90[\s\S]*?<\/table>/gi, '');
+  }
+
+  // 4. Remove Security / Expiry Notice
+  if (p.includes('remove security') || p.includes('remove expiry') || p.includes('no expiry') || p.includes('no security notice') || p.includes('without security notice') || p.includes('no disclaimer')) {
+    out = out.replace(/<div[^>]*style=["'][^"']*rgba\(255,\s*255,\s*255,\s*0\.03\)[\s\S]*?Security Notice[\s\S]*?<\/div>\s*<\/div>/gi, '');
+    out = out.replace(/<div class=["']security-box["']>[\s\S]*?<\/div>/gi, '');
+  }
+
+  // 5. Remove Footer
+  if (p.includes('remove footer') || p.includes('no footer')) {
+    out = out.replace(/<div class=["']footer["']>[\s\S]*?<\/div>/gi, '');
+  }
+
+  // 6. Change CTA Button Text
+  const btnTextMatch = instruction.match(/(?:button|cta)(?:\s+text|\s+say|\s+label)?\s+(?:to\s+|as\s+|should\s+say\s+)?["']([^"'\n]+)["']/i) ||
+                       instruction.match(/(?:change|set|make)\s+(?:the\s+)?(?:button|cta)\s+(?:to\s+|say\s+)?["']?([^"'\n,]+)["']?/i);
+  if (btnTextMatch) {
+    const newBtnText = btnTextMatch[1].trim();
+    if (!newBtnText.includes('color') && !newBtnText.includes('green') && !newBtnText.includes('blue') && !newBtnText.includes('orange') && !newBtnText.includes('camo') && !newBtnText.includes('purple')) {
+      out = out.replace(/(<a[^>]*class=["']btn["'][^>]*>)([\s\S]*?)(<\/a>)/gi, `$1${newBtnText}$3`);
+    }
+  }
+
+  // 7. Change Headline / Title
+  const titleMatch = instruction.match(/(?:headline|title)\s+(?:to\s+|as\s+)?["']([^"'\n]+)["']/i) ||
+                     instruction.match(/(?:change|set|make)\s+(?:the\s+)?(?:headline|title)\s+(?:to\s+)?["']?([^"'\n,]+)["']?/i);
+  if (titleMatch) {
+    const newTitle = titleMatch[1].trim();
+    out = out.replace(/(<h1[^>]*class=["']title["'][^>]*>)([\s\S]*?)(<\/h1>)/gi, `$1${newTitle}$3`);
+  }
+
+  // 8. Change Colors / Theme / CTA Color
+  if (p.includes('camo') || p.includes('call of duty') || p.includes('tactical') || p.includes('lime') || p.includes('mw4') || p.includes('modern warfare') || p.includes('green') || p.includes('orange') || p.includes('gta') || p.includes('pink') || p.includes('purple') || p.includes('blue') || p.includes('cyan') || p.includes('yellow') || p.includes('gold') || p.includes('red')) {
+    out = out.replace(/background:\s*linear-gradient\([^;]+\);/gi, `background: ${theme.gradientBg};`);
+    out = out.replace(/box-shadow:\s*0\s+[0-9]+px\s+[0-9]+px\s+rgba\([^)]+\);/gi, `box-shadow: ${theme.buttonShadow};`);
+    out = out.replace(/border:\s*1px\s+solid\s+rgba\([^)]+\);/gi, `border: 1px solid ${theme.cardBorder};`);
+  }
+
+  return out;
+}
+
+// ==========================================
+// 3. BRAND THEME OPTIMIZER
+// ==========================================
 export function executeBrandOptimizer({ logoUrl, calendarName = '', currentTheme = {} }) {
   const nameKeywords = calendarName.toLowerCase();
   
-  // Deterministic font recommendation based on brand persona
   let recommendedFont = 'Plus Jakarta Sans';
   let fontReason = 'Modern, crisp geometric sans-serif for tech & productivity';
   
@@ -28,7 +324,6 @@ export function executeBrandOptimizer({ logoUrl, calendarName = '', currentTheme
     fontReason = 'Warm, organic serif delivering reassurance and wellness prestige';
   }
 
-  // Recommended palettes
   const defaultPalettes = [
     { color: '#3B82F6', label: 'Electric Blue', style: 'rounded', bg: 'obsidian' },
     { color: '#8B5CF6', label: 'Royal Violet', style: 'pill', bg: 'midnight' },
@@ -38,7 +333,6 @@ export function executeBrandOptimizer({ logoUrl, calendarName = '', currentTheme
     { color: '#F59E0B', label: 'Amber Gold', style: 'rounded', bg: 'sunset' }
   ];
 
-  // Pick suitable theme accent
   let chosenPreset = defaultPalettes[0];
   if (nameKeywords.includes('creative') || nameKeywords.includes('design')) chosenPreset = defaultPalettes[1];
   else if (nameKeywords.includes('finance') || nameKeywords.includes('growth')) chosenPreset = defaultPalettes[2];
@@ -57,62 +351,161 @@ export function executeBrandOptimizer({ logoUrl, calendarName = '', currentTheme
   };
 }
 
-// 2. SMTP WORKFLOW EMAIL DRAFTER
+// ==========================================
+// 4. WORKFLOW CONTEXT-AWARE SMTP DRAFTER
+// ==========================================
 export function executeSmtpEmailDrafter({ triggerData = {}, previousSteps = [], userPrompt = '', brandTone = 'professional' }) {
   const triggerKeys = Object.keys(triggerData || {});
-  const hasAmount = triggerKeys.some(k => k.toLowerCase().includes('amount') || k.toLowerCase().includes('price') || k.toLowerCase().includes('total'));
-  const hasName = triggerKeys.some(k => k.toLowerCase().includes('name') || k.toLowerCase().includes('user') || k.toLowerCase().includes('client'));
-  
-  let subject = 'Confirmation: We have received your request';
-  let body = '';
+  const theme = resolveDesignTheme(userPrompt, brandTone);
+  const promptLower = (userPrompt || '').toLowerCase();
 
-  if (hasAmount) {
-    subject = 'Payment Confirmation & Receipt for your order';
-    body = `<p>Hello {{trigger.name || 'Valued Customer'}},</p>
-<p>Thank you for your payment of <strong>{{trigger.amount || 'your order'}}</strong>. Your transaction has been confirmed successfully.</p>
-<h3>Order Summary:</h3>
-<ul>
-  <li><strong>Transaction Ref:</strong> {{trigger.id || trigger.transactionId || 'TXN-AUTOMATED'}}</li>
-  <li><strong>Amount Paid:</strong> {{trigger.amount}}</li>
-  <li><strong>Timestamp:</strong> {{trigger.createdAt || 'Just now'}}</li>
-</ul>
-<p>If you have any questions or need further assistance, simply reply to this email.</p>
-<p>Best regards,<br/>Automatix Automation Team</p>`;
-  } else if (hasName) {
-    subject = 'Welcome aboard! Next steps for your onboarding';
-    body = `<p>Hello {{trigger.name}},</p>
-<p>Thank you for submitting your details. We have received your intake request and our automated systems are processing your account.</p>
-<h3>Next Actions:</h3>
-<ul>
-  <li>Your designated representative will review your submission shortly.</li>
-  <li>You will receive automated notification updates as your workflow progresses.</li>
-</ul>
-<p>Best regards,<br/>Automatix Customer Success</p>`;
-  } else {
-    subject = userPrompt ? `Update: ${userPrompt.slice(0, 40)}` : 'Automated Workflow Notification';
-    body = `<p>Hello {{trigger.email || 'Customer'}},</p>
-<p>${userPrompt || 'This is an automated workflow notification regarding your recent submission.'}</p>
-<p>All captured details have been logged securely.</p>
-<p>Best regards,<br/>Automatix Operations</p>`;
+  // Negative prompt removals
+  const hasNoEyebrow = promptLower.includes('remove eyebrow') || 
+                       promptLower.includes('no eyebrow') || 
+                       promptLower.includes('without eyebrow') || 
+                       promptLower.includes('hide eyebrow') || 
+                       promptLower.includes('remove the eyebrow') ||
+                       promptLower.includes('remove badge') ||
+                       promptLower.includes('no badge');
+
+  const hasNoLogo = promptLower.includes('remove logo') || promptLower.includes('no logo') || promptLower.includes('without logo');
+  const hasNoFooter = promptLower.includes('remove footer') || promptLower.includes('no footer');
+
+  // Workflow context introspection
+  const hasAiStep = previousSteps.some(s => s.type?.includes('ai') || s.type?.includes('vision') || s.title?.toLowerCase().includes('ai'));
+  const hasStorage = previousSteps.some(s => s.type?.includes('storage') || s.type?.includes('drive') || s.title?.toLowerCase().includes('storage'));
+  const hasSheet = previousSteps.some(s => s.type?.includes('sheet') || s.type?.includes('airtable') || s.title?.toLowerCase().includes('sheet'));
+  const hasBooking = previousSteps.some(s => s.type?.includes('booking') || s.type?.includes('calendar') || s.title?.toLowerCase().includes('calendar'));
+
+  let subject = 'Automatix: Notification & Automated Update';
+  let headline = 'Automated Workflow Update';
+  let buttonText = 'Open Dashboard &rarr;';
+  let buttonHref = '{{trigger.fileUrl || trigger.meetUrl || trigger.link || "https://automatix.ai"}}';
+  let cardContentHtml = '';
+
+  if (hasAiStep) {
+    subject = 'AI Generation Complete: Your Transcripts & Insights are Ready';
+    headline = 'AI Content & Media Synthesis Complete';
+    buttonText = 'View AI Output in Dashboard';
+    cardContentHtml = `
+      <div style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px; margin: 24px 0; text-align: left;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: ${theme.tagColor}; margin-bottom: 8px;">AI Synthesis Highlights</div>
+        <div style="font-size: 13px; color: #d1d5db; line-height: 1.6;">
+          <strong>Summary:</strong> {{steps.ai_1.summary || 'Content processed with multimodal AI.'}}<br/><br/>
+          <strong>Key Takeaways:</strong> {{steps.ai_1.insights || 'Automation rules evaluated successfully.'}}
+        </div>
+      </div>`;
+  } else if (hasStorage) {
+    subject = 'Cloud Asset Synchronized: {{trigger.fileName || "New Asset Available"}}';
+    headline = 'Cloud File Ready for Download';
+    buttonText = 'Download & Inspect Asset';
+    buttonHref = '{{trigger.fileUrl || "https://automatix.ai"}}';
+    cardContentHtml = `
+      <div style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px; margin: 24px 0; text-align: left;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: ${theme.tagColor}; margin-bottom: 8px;">Synchronized Asset Details</div>
+        <div style="font-size: 13px; color: #d1d5db; line-height: 1.6;">
+          <strong>File Name:</strong> {{trigger.fileName || 'asset.mp4'}}<br/>
+          <strong>File Size:</strong> {{trigger.size || 'Automated Buffer'}}<br/>
+          <strong>Source:</strong> Cloud Storage Trigger
+        </div>
+      </div>`;
+  } else if (hasBooking) {
+    subject = 'Booking Confirmed: {{trigger.eventTitle || "Your Scheduled Session"}}';
+    headline = 'Your Appointment is Confirmed';
+    buttonText = 'Join Meeting Room';
+    buttonHref = '{{trigger.meetUrl || "https://automatix.ai"}}';
+    cardContentHtml = `
+      <div style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px; margin: 24px 0; text-align: left;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: ${theme.tagColor}; margin-bottom: 8px;">Session Overview</div>
+        <div style="font-size: 13px; color: #d1d5db; line-height: 1.6;">
+          <strong>Event:</strong> {{trigger.eventTitle || 'Strategic Advisory'}}<br/>
+          <strong>Date & Time:</strong> {{trigger.startTime || 'Confirmed Slot'}}<br/>
+          <strong>Host:</strong> {{trigger.hostName || 'Automatix'}}
+        </div>
+      </div>`;
+  } else if (promptLower.includes('payment') || promptLower.includes('receipt') || promptLower.includes('order')) {
+    subject = 'Receipt & Confirmation for Your Order #{{trigger.id || "TXN-AUTO"}}';
+    headline = 'Payment Confirmation & Receipt';
+    buttonText = 'View Invoice & Receipt';
+    cardContentHtml = `
+      <div style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px; margin: 24px 0; text-align: left;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: ${theme.tagColor}; margin-bottom: 8px;">Order Summary</div>
+        <div style="font-size: 13px; color: #d1d5db; line-height: 1.6;">
+          <strong>Amount Paid:</strong> {{trigger.amount || '$499.00'}}<br/>
+          <strong>Transaction Ref:</strong> {{trigger.id || 'TXN-AUTOMATIX'}}<br/>
+          <strong>Status:</strong> <span style="color:#10B981; font-weight:bold;">CONFIRMED</span>
+        </div>
+      </div>`;
   }
+
+  const customIntro = userPrompt ? userPrompt : 'Your automated workflow has executed successfully and your assets have been generated.';
+  const eyebrowMarkup = hasNoEyebrow ? '' : `<div class="badge">${theme.badgeText}</div>`;
+  const logoMarkup = hasNoLogo ? '' : renderBrandLogoSvg();
+  const footerMarkup = hasNoFooter ? '' : `
+      <div class="footer">
+        &copy; ${new Date().getFullYear()} Automatix Inc. Automated Workflow Engine.<br/>
+        Dispatched securely to <span style="color: #a1a1aa;">{{trigger.email || '{{USER_EMAIL}}'}}</span>.
+      </div>`;
+
+  const fullHtmlBody = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #050505; font-family: ${theme.fontFamily}; color: #ffffff; }
+    .wrapper { width: 100%; background-color: #050505; padding: 40px 16px; }
+    .container { max-width: 540px; margin: 0 auto; background-color: ${theme.cardBg}; border: 1px solid ${theme.cardBorder}; border-radius: 16px; padding: 36px 32px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+    .badge { display: inline-block; padding: 4px 14px; background-color: ${theme.badgeBg}; border: 1px solid ${theme.accentBorder}; border-radius: 9999px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: ${theme.tagColor}; margin-bottom: 20px; box-shadow: ${theme.eyebrowGlow}; }
+    .title { font-size: 22px; font-weight: 800; color: #ffffff; margin: 0 0 16px 0; letter-spacing: -0.02em; }
+    .salutation { font-size: 15px; font-weight: 600; color: #ffffff; margin-bottom: 8px; text-align: left; }
+    .desc { font-size: 14px; color: #a1a1aa; line-height: 1.65; margin: 0 0 20px 0; text-align: left; }
+    .btn { display: inline-block; background: ${theme.gradientBg}; color: ${theme.textColorOnBtn} !important; text-decoration: none; padding: 14px 34px; border-radius: 10px; font-weight: 700; font-size: 14px; letter-spacing: -0.01em; box-shadow: ${theme.buttonShadow}; }
+    .footer { margin-top: 32px; font-size: 11px; color: #52525b; line-height: 1.5; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      ${eyebrowMarkup}
+      ${logoMarkup}
+      <h1 class="title">${headline}</h1>
+      
+      <div class="salutation">Hello {{trigger.name || trigger.userName || 'there'}},</div>
+      <p class="desc">${customIntro}</p>
+
+      ${cardContentHtml}
+
+      <div style="margin: 28px 0;">
+        <a href="${buttonHref}" class="btn" target="_blank">${buttonText}</a>
+      </div>
+
+      ${footerMarkup}
+    </div>
+  </div>
+</body>
+</html>`;
 
   return {
     subject,
-    htmlBody: body,
+    htmlBody: fullHtmlBody,
     variablesDetected: triggerKeys
   };
 }
 
-// 3. SOCIAL & MESSAGING DRAFTER (Instagram DM, Slack, SMS, WhatsApp)
+// ==========================================
+// 5. SOCIAL & MESSAGING DRAFTER
+// ==========================================
 export function executeSocialDrafter({ platform = 'INSTAGRAM_DM', context = {}, userPrompt = '' }) {
   switch (platform) {
     case 'INSTAGRAM_DM':
       return {
-        message: `Hey ${context.username || 'there'}! Thanks for reaching out to us. We saw your comment and wanted to share the direct access link: {{trigger.link || 'https://automatix.ai'}} Let us know if you have any questions!`
+        message: `Hey ${context.username || 'there'}! Thanks for reaching out. We saw your inquiry and wanted to give you direct access: {{trigger.link || 'https://automatix.ai'}} Let us know if you need anything else!`
       };
     case 'SLACK_MESSAGE':
       return {
-        message: `:sparkles: *New Lead Captured via Automatix*\n> *Name:* ${context.name || '{{trigger.name}}'}\n> *Email:* ${context.email || '{{trigger.email}}'}\n> *Status:* Automated routing triggered.`
+        message: `*Automatix Lead Capture Notification*\n> *Name:* ${context.name || '{{trigger.name}}'}\n> *Email:* ${context.email || '{{trigger.email}}'}\n> *Status:* Automated workflow execution complete.`
       };
     case 'SMS':
       return {
@@ -127,7 +520,9 @@ export function executeSocialDrafter({ platform = 'INSTAGRAM_DM', context = {}, 
   }
 }
 
-// 4. VISION & CONTENT ENGINE PROMPT DRAFTER
+// ==========================================
+// 6. VISION & CONTENT ENGINE PROMPT DRAFTER
+// ==========================================
 export function executeVisionPromptDrafter({ brandTone = 'executive', mediaType = 'video', taskOperation = 'caption' }) {
   let prompt = '';
   if (taskOperation === 'caption') {
@@ -147,4 +542,292 @@ export function executeVisionPromptDrafter({ brandTone = 'executive', mediaType 
   };
 }
 
+// ==========================================
+// 7. TRANSACTIONAL EMAIL TEMPLATE ARCHITECT
+// ==========================================
+export function executeTemplateArchitect({ instruction = '', tone = 'modern_dark', currentTemplate = '' }) {
+  const promptLower = (instruction || '').toLowerCase();
+  
+  // If this is an iterative refinement on an existing template, try surgical refinement first
+  if (currentTemplate && (currentTemplate.includes('<html') || currentTemplate.includes('container')) && (promptLower.includes('refinement') || promptLower.includes('change') || promptLower.includes('remove') || promptLower.includes('tweak') || promptLower.includes('make') || promptLower.includes('use'))) {
+    const refined = refineEmailTemplateHtml(currentTemplate, instruction);
+    if (refined && refined !== currentTemplate) {
+      return { template: refined };
+    }
+  }
 
+  const theme = resolveDesignTheme(instruction, tone);
+
+  // Negative element removals
+  const hasNoEyebrow = promptLower.includes('remove eyebrow') || 
+                       promptLower.includes('no eyebrow') || 
+                       promptLower.includes('without eyebrow') || 
+                       promptLower.includes('hide eyebrow') || 
+                       promptLower.includes('remove the eyebrow') ||
+                       promptLower.includes('remove badge') ||
+                       promptLower.includes('no badge') ||
+                       promptLower.includes('without badge');
+
+  const hasNoLogo = promptLower.includes('remove logo') || promptLower.includes('no logo') || promptLower.includes('without logo');
+  const hasNoExpiry = promptLower.includes('remove expiry') || promptLower.includes('no expiry') || promptLower.includes('remove security notice') || promptLower.includes('no security notice') || promptLower.includes('without security notice') || promptLower.includes('no disclaimer');
+  const hasNoFooter = promptLower.includes('remove footer') || promptLower.includes('no footer');
+
+  // Dynamic Eyebrow Override if requested in prompt
+  let badgeText = theme.badgeText;
+  if (!hasNoEyebrow && (promptLower.includes('eyebrow') || promptLower.includes('badge'))) {
+    if (promptLower.includes('system') || promptLower.includes('other relevant text') || promptLower.includes('workflow') || promptLower.includes('cloud')) {
+      badgeText = 'AUTOMATIX SYSTEM IDENTITY GUARD';
+    } else if (promptLower.includes('security') || promptLower.includes('notice')) {
+      badgeText = 'ENTERPRISE SECURITY VERIFICATION';
+    } else if (promptLower.includes('access') || promptLower.includes('auth')) {
+      badgeText = 'TENANT ACCESS AUTHORIZATION';
+    }
+  }
+
+  // Dynamic User Name Detection
+  const hasUserName = promptLower.includes('user name') || promptLower.includes('username') || promptLower.includes('name variable') || promptLower.includes('salutation') || promptLower.includes('greeting');
+  const isPasswordReset = promptLower.includes('reset') || promptLower.includes('password') || !promptLower.includes('setup');
+  const is24h = promptLower.includes('24') || promptLower.includes('hour') || promptLower.includes('expir') || promptLower.includes('urgent') || promptLower.includes('disclaimer');
+
+  const headline = isPasswordReset ? 'Reset Your Password' : 'Set Up Your Automatix Account';
+  const buttonLabel = isPasswordReset ? 'Reset Password' : 'Set Up Password & Access';
+
+  const salutationHtml = hasUserName 
+    ? `<div style="font-size: 15px; font-weight: 600; color: #ffffff; margin-bottom: 8px; text-align: left;">Hello {{USER_NAME}},</div>`
+    : '';
+
+  const textAlignBody = hasUserName ? 'text-align: left;' : 'text-align: center;';
+
+  const introText = isPasswordReset 
+    ? `We received a request to configure or reset the password for your Automatix account associated with <strong>{{USER_EMAIL}}</strong>.<br/><br/>Click the secure action button below to proceed with your authentication update.` 
+    : `Your Automatix tenant account has been successfully provisioned for <strong>{{USER_EMAIL}}</strong>.<br/><br/>Click the button below to initialize your credentials and access your workflow dashboard.`;
+
+  const expiryBox = (hasNoExpiry || (!is24h && !isPasswordReset))
+    ? ''
+    : `
+      <div style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 14px 18px; margin: 28px 0; text-align: left;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: ${theme.tagColor}; margin-bottom: 4px;">Security Notice</div>
+        <div style="font-size: 13px; color: #a1a1aa; line-height: 1.5;">
+          This secure link is time-sensitive and will expire in <strong>24 hours</strong>. If you did not initiate this request, no further action is required and your account remains protected.
+        </div>
+      </div>`;
+
+  const eyebrowMarkup = hasNoEyebrow ? '' : `<div class="brand-badge">${badgeText}</div>`;
+  const logoMarkup = hasNoLogo ? '' : renderBrandLogoSvg();
+  const footerMarkup = hasNoFooter ? '' : `
+      <div class="footer">
+        &copy; ${new Date().getFullYear()} Automatix Inc. High-Performance Workflow Automation.<br/>
+        Dispatched to <span style="color: #a1a1aa;">{{USER_EMAIL}}</span>.
+      </div>`;
+
+  const generatedHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${headline} - Automatix</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #050505;
+      font-family: ${theme.fontFamily};
+      color: #ffffff;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #050505;
+      padding: 40px 16px;
+    }
+    .container {
+      max-width: 540px;
+      margin: 0 auto;
+      background-color: ${theme.cardBg};
+      border: 1px solid ${theme.cardBorder};
+      border-radius: 16px;
+      padding: 36px 32px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    }
+    .brand-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      background-color: ${theme.badgeBg};
+      border: 1px solid ${theme.accentBorder};
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: ${theme.tagColor};
+      margin-bottom: 20px;
+      box-shadow: ${theme.eyebrowGlow};
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+      margin: 0 0 16px 0;
+    }
+    .description {
+      font-size: 14px;
+      color: #a1a1aa;
+      line-height: 1.65;
+      margin: 0 0 24px 0;
+      ${textAlignBody}
+    }
+    .btn-container {
+      margin: 28px 0;
+    }
+    .btn {
+      display: inline-block;
+      background: ${theme.gradientBg};
+      color: ${theme.textColorOnBtn} !important;
+      text-decoration: none;
+      padding: 14px 34px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: -0.01em;
+      box-shadow: ${theme.buttonShadow};
+      transition: all 0.2s ease;
+    }
+    .alt-link {
+      font-size: 12px;
+      color: #71717a;
+      line-height: 1.6;
+      word-break: break-all;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      text-align: left;
+    }
+    .alt-link a {
+      color: ${theme.tagColor};
+      text-decoration: underline;
+    }
+    .footer {
+      margin-top: 32px;
+      font-size: 11px;
+      color: #52525b;
+      line-height: 1.5;
+    }
+    .footer-links {
+      margin-top: 8px;
+    }
+    .footer-links a {
+      color: #71717a;
+      text-decoration: none;
+      margin: 0 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      ${eyebrowMarkup}
+      
+      ${logoMarkup}
+      
+      <h1 class="title">${headline}</h1>
+      
+      ${salutationHtml}
+
+      <p class="description">
+        ${introText}
+      </p>
+
+      <div class="btn-container">
+        <a href="{{SETUP_LINK}}" class="btn" target="_blank">${buttonLabel}</a>
+      </div>
+
+      ${expiryBox}
+
+      <div class="alt-link">
+        Button not working? Paste this link into your browser:<br/>
+        <a href="{{SETUP_LINK}}">{{SETUP_LINK}}</a>
+      </div>
+
+      ${footerMarkup}
+    </div>
+  </div>
+</body>
+</html>`;
+
+  return {
+    template: generatedHtml
+  };
+}
+
+// ==========================================
+// 8. BROADCAST ANNOUNCEMENT ARCHITECT
+// ==========================================
+export function executeAnnouncementArchitect({ selectedDeployments = [], customNotes = '', tone = 'feature_release' }) {
+  const isSecurity = tone === 'security_compliance';
+  const isPerf = tone === 'performance_update';
+  const isExec = tone === 'executive_summary';
+
+  let subject = 'Major Platform Updates: Multimodal AI Mediator, Cloud Storage Triggers & 60fps Engine';
+  if (isSecurity) subject = 'Security & Reliability Notice: Hardened Access Protocols & Upgraded Cloud Engine';
+  else if (isPerf) subject = 'Performance Boost: 60fps Low-Latency Execution & Hardware Acceleration';
+  else if (isExec) subject = 'Executive Product Changelog: Latest Enterprise Features & Workflow Upgrades';
+
+  const bullets = selectedDeployments.length > 0
+    ? selectedDeployments.map(d => {
+        const text = typeof d === 'string' ? d : d.message;
+        const parts = text.split(':');
+        const title = parts.length > 1 ? parts[0].trim() : 'System Enhancement';
+        const desc = parts.length > 1 ? parts.slice(1).join(':').trim() : text;
+        return `  <li><strong>${title}:</strong> ${desc}</li>`;
+      }).join('\n')
+    : `  <li><strong>Multimodal AI Mediator:</strong> Automated visual captioning, speech-to-text, and data extraction across files.</li>
+  <li><strong>High-Speed Cloud Sync:</strong> Direct Google Drive and cloud storage trigger support.</li>
+  <li><strong>60fps Canvas Engine:</strong> Low-latency hardware acceleration for smooth workflow creation.</li>`;
+
+  const htmlBody = `<p>Hello {{USER_NAME}},</p>
+<p>${customNotes ? customNotes : 'We are pleased to introduce the latest system enhancements and feature upgrades on Automatix.'}</p>
+
+<h3>${isSecurity ? 'Security & Reliability Updates:' : isPerf ? 'Speed & Engine Optimizations:' : isExec ? 'Product Changelog Overview:' : 'What is New Today:'}</h3>
+<ul>
+${bullets}
+</ul>
+
+<p>All updates are live on your account now. Explore the latest nodes and triggers directly in your dashboard!</p>`;
+
+  return {
+    subject,
+    body: htmlBody
+  };
+}
+
+// ==========================================
+// 9. BROADCAST REFINE ARCHITECT
+// ==========================================
+export function executeRefineArchitect({ instruction = '', subject = '', body = '' }) {
+  const inst = (instruction || '').toLowerCase();
+
+  let modifiedSubject = subject || 'Automatix System Announcement';
+  let modifiedBody = body || '<p>Hello {{USER_NAME}},</p><p>Here are your latest platform updates.</p>';
+
+  if (inst.includes('concise') || inst.includes('short') || inst.includes('punchy')) {
+    modifiedSubject = modifiedSubject.replace(/^(Major Platform Updates:|Important:)/i, '').trim();
+    modifiedSubject = `Quick Update: ${modifiedSubject}`;
+  } else if (inst.includes('executive') || inst.includes('professional')) {
+    modifiedSubject = `Executive Briefing: ${modifiedSubject}`;
+  } else if (inst.includes('speed') || inst.includes('performance')) {
+    modifiedSubject = `Performance Release: 60fps Acceleration & Engine Upgrades`;
+  }
+
+  if (inst.includes('cta') || inst.includes('call to action') || inst.includes('button')) {
+    if (!modifiedBody.includes('Open Dashboard')) {
+      modifiedBody += `\n<p style="margin-top: 20px;"><a href="{{APP_URL}}" style="display:inline-block; background-color:#8B5CF6; color:#ffffff; padding:10px 24px; border-radius:6px; text-decoration:none; font-weight:bold;">Open Dashboard &rarr;</a></p>`;
+    }
+  }
+
+  return {
+    subject: modifiedSubject,
+    body: modifiedBody
+  };
+}

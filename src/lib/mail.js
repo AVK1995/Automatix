@@ -3,27 +3,58 @@ import { prisma } from '@/lib/prisma';
 
 const defaultHtmlTemplate = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Password Reset - Automatix</title>
 <style>
-  body { font-family: 'Inter', Arial, sans-serif; background-color: #050505; color: #ffffff; padding: 40px 20px; }
-  .container { max-w-xl; margin: 0 auto; background-color: #111; border: 1px solid #333; border-radius: 12px; padding: 32px; text-align: center; }
-  .logo { font-size: 24px; font-weight: bold; margin-bottom: 24px; letter-spacing: -1px; }
-  .logo span { color: #8B5CF6; }
-  .text { font-size: 15px; color: #a1a1aa; line-height: 1.6; margin-bottom: 32px; }
-  .btn { display: inline-block; background-color: #8B5CF6; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px; }
-  .footer { margin-top: 32px; font-size: 12px; color: #52525b; }
+  body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #050505; color: #ffffff; padding: 40px 16px; margin: 0; }
+  .container { max-width: 520px; margin: 0 auto; background-color: #0e0e0e; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 36px 32px; text-align: center; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6); }
+  .logo-table { margin: 0 auto 24px auto; }
+  .logo-text { font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; vertical-align: middle; }
+  .title { font-size: 20px; font-weight: 700; color: #ffffff; margin: 0 0 12px 0; }
+  .text { font-size: 14px; color: #a1a1aa; line-height: 1.6; margin-bottom: 28px; }
+  .btn { display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%); color: #ffffff !important; text-decoration: none; padding: 13px 32px; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3); }
+  .security-box { background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 16px; margin: 28px 0 20px 0; text-align: left; font-size: 12px; color: #a1a1aa; line-height: 1.5; }
+  .footer { margin-top: 28px; font-size: 11px; color: #52525b; line-height: 1.5; }
 </style>
 </head>
 <body>
   <div class="container">
-    <div class="logo">Automa<span>tix</span></div>
+    <table border="0" cellpadding="0" cellspacing="0" align="center" class="logo-table">
+      <tr>
+        <td style="vertical-align: middle; padding-right: 10px;">
+          <svg viewBox="0 0 100 100" width="28" height="28" style="display: block;">
+            <defs>
+              <linearGradient id="mailLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#f8fafc" />
+                <stop offset="50%" stop-color="#cbd5e1" />
+                <stop offset="100%" stop-color="#64748b" />
+              </linearGradient>
+            </defs>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M41.5 15L15 90h18l7.5-22.5h20L67.5 90h18L58.5 15h-17zM45 45l5-15 5 15h-10z" fill="url(#mailLogoGrad)" />
+          </svg>
+        </td>
+        <td class="logo-text">Automatix</td>
+      </tr>
+    </table>
+
+    <h1 class="title">Reset Your Password</h1>
     <div class="text">
       We received a request to reset the password for <strong>{{USER_EMAIL}}</strong>.<br/><br/>
       Click the button below to securely set up a new password for your account.
     </div>
-    <a href="{{SETUP_LINK}}" class="btn">Reset Password</a>
-    <div class="footer">If you did not request this email, you can safely ignore it.</div>
+
+    <a href="{{SETUP_LINK}}" class="btn" target="_blank">Reset Password</a>
+
+    <div class="security-box">
+      <strong>Security Notice:</strong> This link will expire in 24 hours. If you did not request this email, you can safely ignore it.
+    </div>
+
+    <div class="footer">
+      &copy; ${new Date().getFullYear()} Automatix Inc. High-Performance Workflow Automation.
+    </div>
   </div>
 </body>
 </html>

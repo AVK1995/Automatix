@@ -52,6 +52,9 @@ model User {
   ticketCooldownHours   Int                 @default(24)
   ticketQuotaResetAt    DateTime?
   aiCredits             Int                 @default(50)
+  aiRadahnProvider      String              @default("gemini") // "gemini", "openai", "anthropic"
+  aiRadahnApiKey        String?
+  aiRadahnEngineMode    String              @default("native") // "native" (Default Brain), "byok" (True AI Brain)
 }
 
 model Invoice {

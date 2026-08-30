@@ -402,7 +402,10 @@ function CssGuideModal({ onClose }) {
             {/* Glassmorphic Dark */}
             <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-white text-xs">✨ Glassmorphism & Translucent Glow</span>
+                <span className="font-semibold text-white text-xs flex items-center gap-1.5">
+                  <Sparkles size={12} className="text-purple-400" />
+                  Glassmorphism & Translucent Glow
+                </span>
                 <button
                   onClick={() => copyCode(`/* Glassmorphic Embed Iframe Styling */
 .cal-embed-wrapper {
@@ -432,7 +435,10 @@ function CssGuideModal({ onClose }) {
             {/* Custom Typography */}
             <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-white text-xs">🔤 Brand Typography Matching</span>
+                <span className="font-semibold text-white text-xs flex items-center gap-1.5">
+                  <FileText size={12} className="text-accent-blue" />
+                  Brand Typography Matching
+                </span>
                 <button
                   onClick={() => copyCode(`/* Custom Brand Font Integration */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');

@@ -1,6 +1,7 @@
 import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal, HardDrive, ShieldCheck, FileVideo, Image, Eye, Film, Music, FileText, Download, Zap, Lightbulb, Crown, Coins, Gauge, Clock, ChevronRight, Wand2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ConnectIntegration from './ConnectIntegration';
 import Select from '@/components/ui/Select';
 import Toggle from '@/components/ui/Toggle';
@@ -672,7 +673,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
           { id: `steps.${anc.id}.summary`, label: 'summary (Document / Media Summary & Takeaways)', example: 'Key takeaways: 1. Instant cloud uploads. 2. Visual AI captioning. 3. Zero manual publishing.' },
           { id: `steps.${anc.id}.transcript`, label: 'transcript (Speech-to-Text Transcript)', example: '[00:00 - 00:15] Welcome to the episode! Today we are discussing scalable automated workflows...' },
           { id: `steps.${anc.id}.actionItems`, label: 'actionItems (Extracted Tasks & Checklist)', example: '1. [High Priority] Finalize stakeholder review.\n2. [Actionable] Implement trigger validation.' },
-          { id: `steps.${anc.id}.insights`, label: 'insights (Data Trends & Analysis)', example: '📊 Overview: +28.4% efficiency improvement across automated cycles.' },
+          { id: `steps.${anc.id}.insights`, label: 'insights (Data Trends & Analysis)', example: 'Overview: +28.4% efficiency improvement across automated cycles.' },
           { id: `steps.${anc.id}.tokensUsed`, label: 'tokensUsed (Total Tokens Consumed)', example: '559' },
           { id: `steps.${anc.id}.model`, label: 'model (AI Engine / Model Name)', example: 'Google Gemini (gemini-flash-lite-latest)' },
           { id: `steps.${anc.id}.createdAt`, label: 'createdAt (Generation Timestamp ISO)', example: new Date().toISOString() },
@@ -5508,7 +5509,7 @@ function watchFolderForNewFiles() {
               }
             };
           });
-          toast.success('✨ AI Radahn generation applied to step config!');
+          toast.success('AI Radahn generation applied to step config!');
         }}
       />
       <QuotaUpgradeModal />
