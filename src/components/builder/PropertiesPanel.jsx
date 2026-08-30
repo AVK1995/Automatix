@@ -4065,6 +4065,8 @@ function watchFolderForNewFiles() {
         );
 
       case 'sheets':
+        const actionType = config.actionType || 'WRITE';
+
         const handleAddMapping = () => {
           const mapping = Array.isArray(config.rowDataMapping) ? [...config.rowDataMapping] : [];
           mapping.push({ key: '', value: '' });
@@ -4184,7 +4186,7 @@ function watchFolderForNewFiles() {
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Action Type</label>
               <Select 
-                value={config.actionType || 'WRITE'} 
+                value={actionType} 
                 onChange={(val) => handleChange('actionType', val)}
                 options={[
                   { value: 'WRITE', label: 'Append Row (Write)' },
@@ -4198,7 +4200,7 @@ function watchFolderForNewFiles() {
               />
             </div>
 
-            {['CREATE_SHEET', 'DUPLICATE_SHEET'].includes(config.actionType) && (
+            {['CREATE_SHEET', 'DUPLICATE_SHEET'].includes(actionType) && (
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">New Sheet Name</label>
                 <input 
@@ -4211,11 +4213,11 @@ function watchFolderForNewFiles() {
               </div>
             )}
 
-            {!['CREATE_SHEET'].includes(config.actionType) && (
+            {!['CREATE_SHEET'].includes(actionType) && (
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-medium text-text-secondary">
-                    {config.actionType === 'DUPLICATE_SHEET' ? 'Source Sheet Name to Duplicate' : 'Worksheet Tab'}
+                    {actionType === 'DUPLICATE_SHEET' ? 'Source Sheet Name to Duplicate' : 'Worksheet Tab'}
                   </label>
                   {config.spreadsheetId && (
                     <button
@@ -4233,7 +4235,24 @@ function watchFolderForNewFiles() {
                 {availableSheets.length > 0 ? (
                   <Select 
                     value={config.range || ''} 
-                    onChange={(val) => handleChange('range', val)}
+                    onChange={(val) => {
+                      handleChange('range', val);
+                      if (val && config.spreadsheetId) {
+                        fetch(`/api/integrations/google/public-sheet-meta?sheetId=${config.spreadsheetId}&sheetName=${encodeURIComponent(val)}&_t=${Date.now()}`)
+                          .then(r => r.json())
+                          .then(data => {
+                            if (data.success && data.headers && data.headers.length > 0) {
+                              const currentMapping = config.rowDataMapping || [];
+                              const newMapping = data.headers.map(h => {
+                                const existing = currentMapping.find(m => m.key === h);
+                                return existing || { key: h, value: '' };
+                              });
+                              handleChange('rowDataMapping', newMapping);
+                            }
+                          })
+                          .catch(console.error);
+                      }
+                    }}
                     options={availableSheets}
                   />
                 ) : (
@@ -4241,7 +4260,9 @@ function watchFolderForNewFiles() {
                      type="text" 
                      placeholder={loadingSheets ? "Fetching sheets..." : "e.g. Sheet1"}
                      value={config.range || ''} 
-                     onChange={(e) => handleChange('range', e.target.value)}
+                     onChange={(e) => {
+                       handleChange('range', e.target.value);
+                     }}
                      className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
                      disabled={loadingSheets}
                   />
@@ -4250,7 +4271,7 @@ function watchFolderForNewFiles() {
               </div>
             )}
             
-            {config.actionType === 'WRITE' && config.spreadsheetId && config.range && (
+            {actionType === 'WRITE' && config.spreadsheetId && (
               <div className="space-y-4 pt-4 border-t border-white/5 mt-4">
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1">Insert Position</label>
@@ -4306,7 +4327,7 @@ function watchFolderForNewFiles() {
               </div>
             )}
             
-            {['READ', 'UPDATE', 'DELETE'].includes(config.actionType) && (
+            {['READ', 'UPDATE', 'DELETE'].includes(actionType) && (
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">Search Query / Condition</label>
                 <input 
@@ -4318,9 +4339,9 @@ function watchFolderForNewFiles() {
                 />
                 <div className="mt-2 p-2.5 bg-[#1C1C1C] rounded border border-white/5 space-y-1.5">
                   <p className="text-[10px] text-white/70 font-medium">
-                    {config.actionType === 'READ' && 'Returns all rows that match this condition.'}
-                    {config.actionType === 'UPDATE' && 'Finds the row to update based on this condition.'}
-                    {config.actionType === 'DELETE' && 'Deletes all rows that match this condition.'}
+                    {actionType === 'READ' && 'Returns all rows that match this condition.'}
+                    {actionType === 'UPDATE' && 'Finds the row to update based on this condition.'}
+                    {actionType === 'DELETE' && 'Deletes all rows that match this condition.'}
                   </p>
                   <div className="text-[10px] text-text-tertiary space-y-1">
                     <p className="font-semibold text-white/50">Syntax Guide:</p>
@@ -4335,7 +4356,7 @@ function watchFolderForNewFiles() {
               </div>
             )}
 
-            {config.actionType === 'READ' && (
+            {actionType === 'READ' && (
               <>
                 <div className="mt-4">
                   <label className="block text-xs font-medium text-text-secondary mb-1">Search Direction</label>
@@ -4380,7 +4401,7 @@ function watchFolderForNewFiles() {
               </>
             )}
 
-            {config.actionType === 'CLEAR' && (
+            {actionType === 'CLEAR' && (
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">Range to Clear</label>
                 <input 
@@ -4396,25 +4417,51 @@ function watchFolderForNewFiles() {
               </div>
             )}
             
-            {['WRITE', 'UPDATE'].includes(config.actionType) && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
+            {['WRITE', 'UPDATE'].includes(actionType) && (
+              <div className="space-y-3 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between">
                   <label className="block text-xs font-medium text-text-secondary">Column Mapping</label>
-                  <button onClick={handleRefreshFields} className="flex items-center gap-1 text-[10px] bg-white/5 hover:bg-white/10 text-white px-2 py-1 rounded transition-colors">
-                    <RefreshCw className="w-3 h-3" /> Refresh Fields
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      type="button"
+                      onClick={handleAddMapping} 
+                      className="flex items-center gap-1 text-[10px] bg-accent-blue/15 hover:bg-accent-blue/25 text-accent-blue border border-accent-blue/30 px-2 py-1 rounded transition-colors"
+                    >
+                      <Plus className="w-3 h-3" /> Add Field
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={handleRefreshFields} 
+                      className="flex items-center gap-1 text-[10px] bg-white/5 hover:bg-white/10 text-white px-2 py-1 rounded border border-white/10 transition-colors"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Refresh Fields
+                    </button>
+                  </div>
                 </div>
+                
                 <div className="space-y-2">
                   {(config.rowDataMapping || []).map((map, idx) => (
                     <div key={idx} className="flex flex-col gap-1.5 p-2 bg-black/20 border border-white/5 rounded-md">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-white/90 truncate max-w-[200px]" title={map.key}>
-                          {map.key}
-                        </span>
+                        <input
+                          type="text"
+                          value={map.key}
+                          placeholder="Column Name (e.g. Email, Name, Date)"
+                          onChange={(e) => handleUpdateMapping(idx, 'key', e.target.value)}
+                          className="bg-transparent text-xs font-semibold text-white/90 focus:outline-none border-b border-transparent focus:border-accent-blue max-w-[200px]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMapping(idx)}
+                          className="text-text-tertiary hover:text-rose-400 p-0.5 rounded transition-colors"
+                          title="Remove Field"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
                       <div className="w-full">
                         <VariableInput 
-                          placeholder="Value to write"
+                          placeholder="Value to write (e.g. {{trigger.email}})"
                           value={map.value}
                           onChange={(val) => handleUpdateMapping(idx, 'value', val)}
                           variables={variableGroups}
@@ -4422,9 +4469,26 @@ function watchFolderForNewFiles() {
                       </div>
                     </div>
                   ))}
+                  
                   {(!config.rowDataMapping || config.rowDataMapping.length === 0) && (
-                    <div className="text-[11px] text-text-tertiary text-center p-4 border border-dashed border-white/10 rounded-md">
-                      No columns loaded. Select a Worksheet Tab and click Refresh Fields.
+                    <div className="text-[11px] text-text-tertiary text-center p-4 border border-dashed border-white/10 rounded-md space-y-2">
+                      <p>No columns mapped yet. Select a Worksheet Tab or click below:</p>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleRefreshFields}
+                          className="px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-white text-[10px] font-medium transition-colors"
+                        >
+                          Auto-Fetch Sheet Headers
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddMapping}
+                          className="px-2.5 py-1 rounded bg-accent-blue/20 hover:bg-accent-blue/30 text-accent-blue text-[10px] font-medium transition-colors"
+                        >
+                          + Add Custom Column
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4432,7 +4496,7 @@ function watchFolderForNewFiles() {
             )}
 
             {/* AI Radahn Replica Watcher: STRICTLY for dynamic external lookup/read row steps */}
-            {config.actionType === 'READ' && (
+            {actionType === 'READ' && (
               <div className="pt-4 border-t border-white/10 space-y-2.5">
                 <div className="flex items-center justify-between p-3 rounded-xl bg-purple-950/20 border border-purple-500/30">
                   <div className="flex items-center gap-2.5">
