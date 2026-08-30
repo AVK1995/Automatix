@@ -42,6 +42,8 @@ import {
 } from './actions';
 import Link from 'next/link';
 
+import ConfirmModal from '@/components/ui/ConfirmModal';
+
 const PROVIDER_OPTIONS = [
   {
     value: 'gemini',
@@ -75,6 +77,7 @@ export default function AiRadahnSettingsForm({ user }) {
   const [savedKeys, setSavedKeys] = useState([]);
   const [isSavingMode, setIsSavingMode] = useState(false);
   const [saveBanner, setSaveBanner] = useState(null);
+  const [keyToDelete, setKeyToDelete] = useState(null);
 
   // New Key Modal / Inline State
   const [isAddingKey, setIsAddingKey] = useState(false);
@@ -234,15 +237,13 @@ export default function AiRadahnSettingsForm({ user }) {
     }
   };
 
-  const handleDeleteKey = async (keyId, keyName) => {
-    if (!window.confirm(`Are you sure you want to remove API key "${keyName}" from your vault?`)) {
-      return;
-    }
-
+  const confirmDeleteKey = async () => {
+    if (!keyToDelete) return;
     try {
-      const res = await deleteAiRadahnKey(keyId);
+      const res = await deleteAiRadahnKey(keyToDelete.id);
       if (res?.error) throw new Error(res.error);
-      toast.success('Key removed from vault.');
+      toast.success(`Key "${keyToDelete.name}" removed from vault.`);
+      setKeyToDelete(null);
       await fetchKeys();
       fetchConsumptionLogs();
     } catch (err) {
@@ -290,6 +291,19 @@ export default function AiRadahnSettingsForm({ user }) {
   return (
     <div className="space-y-8">
       
+      {/* Confirm Deletion Modal */}
+      {keyToDelete && (
+        <ConfirmModal
+          isOpen={!!keyToDelete}
+          onClose={() => setKeyToDelete(null)}
+          onConfirm={confirmDeleteKey}
+          title="Remove API Key"
+          message={`Are you sure you want to remove "${keyToDelete.name}"? This action cannot be undone and will break any workflows using this specific key.`}
+          confirmLabel="Remove Key"
+          variant="danger"
+        />
+      )}
+
       {/* If User is on Free Plan, show exclusive PRO lock */}
       {!isPaid ? (
         <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-950/30 via-black to-black border border-purple-500/30 shadow-2xl space-y-4">
@@ -515,7 +529,7 @@ export default function AiRadahnSettingsForm({ user }) {
                   <button
                     type="button"
                     onClick={() => setIsAddingKey(false)}
-                    className="text-xs text-text-tertiary hover:text-white"
+                    className="text-xs text-text-tertiary hover:text-white cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -552,7 +566,7 @@ export default function AiRadahnSettingsForm({ user }) {
                     <button
                       type="button"
                       onClick={() => setShowNewKey(!showNewKey)}
-                      className="text-[11px] text-text-tertiary hover:text-white"
+                      className="text-[11px] text-text-tertiary hover:text-white cursor-pointer"
                     >
                       {showNewKey ? 'Hide' : 'Show'}
                     </button>
@@ -566,16 +580,23 @@ export default function AiRadahnSettingsForm({ user }) {
                   />
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs text-text-secondary">
-                    <input
-                      type="checkbox"
-                      checked={newKeyIsDefault}
-                      onChange={e => setNewKeyIsDefault(e.target.checked)}
-                      className="rounded bg-black/60 border-white/20 text-purple-600 focus:ring-0 shrink-0"
-                    />
-                    <span>Set as primary default key for this provider</span>
-                  </label>
+                {/* Custom Themed Checkbox */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                  <div
+                    onClick={() => setNewKeyIsDefault(!newKeyIsDefault)}
+                    className="flex items-center gap-2.5 cursor-pointer select-none group"
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${
+                      newKeyIsDefault 
+                        ? 'bg-purple-600 border-purple-500 text-white shadow-sm shadow-purple-500/30' 
+                        : 'bg-black/60 border-white/20 group-hover:border-purple-500/50'
+                    }`}>
+                      {newKeyIsDefault && <Check size={11} strokeWidth={3} />}
+                    </div>
+                    <span className="text-xs text-text-secondary group-hover:text-white transition-colors">
+                      Set as primary default key for this provider
+                    </span>
+                  </div>
 
                   <button
                     type="submit"
@@ -631,7 +652,7 @@ export default function AiRadahnSettingsForm({ user }) {
                     <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                       <button
                         type="button"
-                        onClick={() => handleDeleteKey(k.id, k.name)}
+                        onClick={() => setKeyToDelete(k)}
                         className="p-1.5 text-text-tertiary hover:text-rose-400 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
                         title="Delete Key"
                       >

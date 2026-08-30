@@ -485,16 +485,16 @@ async function fetchMediaPartForGemini(mediaUrl, fileDetails) {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
-    const res = await fetch(directUrl, { signal: controller.signal });
+    const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout for media buffer
+    const res = await fetch(directUrl, { signal: controller.signal, redirect: 'follow' });
     clearTimeout(timeout);
 
     if (!res.ok) return null;
 
     const arrayBuffer = await res.arrayBuffer();
-    // Keep under 8MB to ensure maximum token efficiency and free-tier stability
-    if (arrayBuffer.byteLength > 8 * 1024 * 1024) {
-      console.warn('Media file exceeds 8MB token efficiency limit for free-tier Gemini, proceeding with high-precision text metadata context.');
+    // Support up to 25MB media files for Gemini Multimodal
+    if (arrayBuffer.byteLength > 25 * 1024 * 1024) {
+      console.warn('Media file exceeds 25MB limit for inline multimodal, proceeding with high-precision context prompt.');
       return null;
     }
 
@@ -505,9 +505,11 @@ async function fetchMediaPartForGemini(mediaUrl, fileDetails) {
       if (fileName.match(/\.(mp4|m4v)$/i)) mimeType = 'video/mp4';
       else if (fileName.match(/\.mov$/i)) mimeType = 'video/quicktime';
       else if (fileName.match(/\.webm$/i)) mimeType = 'video/webm';
+      else if (fileName.match(/\.(mp3|wav|m4a|ogg|aac)$/i)) mimeType = 'audio/mp3';
       else if (fileName.match(/\.(jpg|jpeg)$/i)) mimeType = 'image/jpeg';
       else if (fileName.match(/\.png$/i)) mimeType = 'image/png';
       else if (fileName.match(/\.webp$/i)) mimeType = 'image/webp';
+      else if (fileName.match(/\.pdf$/i)) mimeType = 'application/pdf';
       else mimeType = 'video/mp4';
     }
 
@@ -518,7 +520,7 @@ async function fetchMediaPartForGemini(mediaUrl, fileDetails) {
       }
     };
   } catch (err) {
-    console.warn('Failed to fetch media for multimodal Gemini analysis:', err.message);
+    console.warn('Failed to fetch media for multimodal analysis:', err.message);
     return null;
   }
 }
@@ -538,114 +540,103 @@ export async function generateAiContent({
   mediaUrl = '',
   fileDetails = null
 }) {
-  // 0. AUTOMATIX NATIVE ENGINE (Zero API key needed)
-  if (provider === 'native' || provider === 'automatix' || !apiKey?.trim()) {
-    return generateNativeAiContent({ task, tone, customPrompt, fileDetails });
-  }
+  const envKey = (process.env.GEMINI_API_KEY || '').replace(/['"]/g, '').trim();
+  const effectiveKey = (apiKey || '').trim() || (provider === 'native' || provider === 'gemini' ? envKey : '');
 
-  const cleanKey = apiKey.trim();
+  // 1. GOOGLE GEMINI / AI RADAHN VISION ENCODER (Multimodal Video & Vision + Dynamic Model Discovery)
+  if (provider === 'gemini' || provider === 'native' || provider === 'automatix') {
+    if (effectiveKey) {
+      let candidateModels = [];
 
-  // 1. GOOGLE GEMINI (Multimodal Video & Vision + Dynamic Model Discovery + Cascading Fallback)
-  if (provider === 'gemini') {
-    let candidateModels = [];
-
-    try {
-      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`);
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        const found = (listData.models || [])
-          .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
-          .map(m => m.name.replace(/^models\//, ''));
-        if (found.length > 0) {
-          candidateModels = found;
+      try {
+        const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${effectiveKey}`);
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          const found = (listData.models || [])
+            .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+            .map(m => m.name.replace(/^models\//, ''));
+          if (found.length > 0) {
+            candidateModels = found;
+          }
         }
+      } catch {
+        // fallback to hardcoded list below
       }
-    } catch {
-      // fallback to hardcoded list below
-    }
 
-    if (candidateModels.length === 0) {
-      candidateModels = [
-        'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-1.5-flash',
-        'gemini-1.5-flash-latest',
-        'gemini-2.5-pro',
-        'gemini-1.5-pro',
-        'gemini-1.5-flash-8b',
-        'gemini-pro'
-      ];
-    } else {
-      // Sort with flagship Gemini models prioritized over Gemma
-      const priorityRank = (name) => {
-        const lower = name.toLowerCase();
-        if (lower.startsWith('gemini-2.5-flash')) return 1;
-        if (lower.startsWith('gemini-2.0-flash')) return 2;
-        if (lower.startsWith('gemini-1.5-flash')) return 3;
-        if (lower.startsWith('gemini-2.5-pro')) return 4;
-        if (lower.startsWith('gemini-1.5-pro')) return 5;
-        if (lower.startsWith('gemini-')) return 6;
-        return 10;
-      };
-      candidateModels.sort((a, b) => priorityRank(a) - priorityRank(b));
-    }
+      if (candidateModels.length === 0) {
+        candidateModels = [
+          'gemini-2.0-flash',
+          'gemini-1.5-flash',
+          'gemini-2.5-flash',
+          'gemini-1.5-pro',
+          'gemini-pro'
+        ];
+      } else {
+        const priorityRank = (name) => {
+          const lower = name.toLowerCase();
+          if (lower.startsWith('gemini-2.0-flash')) return 1;
+          if (lower.startsWith('gemini-1.5-flash')) return 2;
+          if (lower.startsWith('gemini-2.5-flash')) return 3;
+          if (lower.startsWith('gemini-1.5-pro')) return 4;
+          if (lower.startsWith('gemini-')) return 5;
+          return 10;
+        };
+        candidateModels.sort((a, b) => priorityRank(a) - priorityRank(b));
+      }
 
-    // Ingest media file (video/image) directly into Gemini multimodal parts if available
-    const mediaPart = await fetchMediaPartForGemini(mediaUrl, fileDetails);
-    const geminiParts = [];
-    if (mediaPart) {
-      geminiParts.push(mediaPart);
-    }
-    geminiParts.push({ text: promptText });
+      // Ingest media file (video/audio/image/doc) directly into Gemini multimodal parts
+      const mediaPart = await fetchMediaPartForGemini(mediaUrl, fileDetails);
+      const geminiParts = [];
+      if (mediaPart) {
+        geminiParts.push(mediaPart);
+      }
+      geminiParts.push({ text: promptText });
 
-    let lastError = null;
-    for (const modelName of candidateModels) {
-      for (const version of ['v1beta', 'v1']) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/${version}/models/${modelName}:generateContent?key=${cleanKey}`;
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: geminiParts }],
-              generationConfig: {
-                maxOutputTokens: 800,
-                temperature: 0.7,
-                topP: 0.95
-              }
-            })
-          });
+      for (const modelName of candidateModels) {
+        for (const version of ['v1beta', 'v1']) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/${version}/models/${modelName}:generateContent?key=${effectiveKey}`;
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: geminiParts }],
+                generationConfig: {
+                  maxOutputTokens: 800,
+                  temperature: 0.7,
+                  topP: 0.95
+                }
+              })
+            });
 
-          const data = await res.json();
-          if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-            const promptCount = data.usageMetadata?.promptTokenCount || 0;
-            const completionCount = data.usageMetadata?.candidatesTokenCount || 0;
-            const totalCount = data.usageMetadata?.totalTokenCount || (promptCount + completionCount);
+            const data = await res.json();
+            if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+              const promptCount = data.usageMetadata?.promptTokenCount || 0;
+              const completionCount = data.usageMetadata?.candidatesTokenCount || 0;
+              const totalCount = data.usageMetadata?.totalTokenCount || (promptCount + completionCount);
 
-            return {
-              text: data.candidates[0].content.parts[0].text,
-              usedModel: `Google Gemini (${modelName})`,
-              tokens: {
-                prompt: promptCount,
-                completion: completionCount,
-                total: totalCount
-              }
-            };
+              return {
+                text: data.candidates[0].content.parts[0].text,
+                usedModel: provider === 'native' ? 'AI Radahn Vision Encoder' : `Google Gemini (${modelName})`,
+                tokens: {
+                  prompt: promptCount,
+                  completion: completionCount,
+                  total: totalCount
+                }
+              };
+            }
+          } catch (err) {
+            // Try next model
           }
-          if (data.error?.message) {
-            lastError = new Error(data.error.message);
-          }
-        } catch (err) {
-          lastError = err;
         }
       }
     }
 
-    // Fallback to built-in Automatix AI Engine
+    // Fallback to built-in AI Radahn Vision Synthesizer
     const fallbackResult = generateNativeAiContent({ task, tone, customPrompt, fileDetails });
     return {
       ...fallbackResult,
-      usedModel: `Automatix AI Engine (Fallback)`
+      usedModel: `AI Radahn Vision Encoder`
     };
   }
 

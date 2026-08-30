@@ -259,8 +259,8 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
     const nodeConfig = selectedNode?.config || {};
     const provider = nodeConfig?.provider || 'native';
 
-    if (provider !== 'native' && provider !== 'automatix' && !nodeConfig?.apiKey?.trim()) {
-      setAiPreviewError(`Please enter a valid ${(provider || 'AI').toUpperCase()} API key, or switch to the free Automatix Native Engine.`);
+    if (provider !== 'native' && provider !== 'automatix' && !provider.startsWith('vault_') && !nodeConfig?.apiKey?.trim()) {
+      setAiPreviewError(`Please enter a valid ${(provider || 'AI').toUpperCase()} API key, or select AI Radahn Vision Encoder.`);
       return;
     }
     setAiPreviewLoading(true);
@@ -2792,8 +2792,7 @@ function watchFolderForNewFiles() {
                   })),
                   { value: 'gemini', label: 'Google Gemini (Direct BYOK)' },
                   { value: 'openai', label: 'OpenAI ChatGPT (Direct BYOK)' },
-                  { value: 'claude', label: 'Anthropic Claude (Direct BYOK)' },
-                  { value: 'custom', label: 'Custom OpenAI-Compatible (Direct BYOK)' }
+                  { value: 'claude', label: 'Anthropic Claude (Direct BYOK)' }
                 ]}
               />
             </div>
@@ -2806,12 +2805,12 @@ function watchFolderForNewFiles() {
               if (isVaultKey && selectedVaultKey) {
                 return (
                   <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-1.5 shadow-sm">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
                         <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
                         <span>Vault Key: {selectedVaultKey.name}</span>
                       </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0 self-start sm:self-auto">
                         <ShieldCheck className="w-3 h-3 text-emerald-400" /> Verified
                       </span>
                     </div>
@@ -2825,12 +2824,12 @@ function watchFolderForNewFiles() {
               if (!config.provider || config.provider === 'native') {
                 return (
                   <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-1.5 shadow-sm">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
                         <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
                         <span>AI Radahn Vision Encoder Active</span>
                       </div>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0 self-start sm:self-auto whitespace-nowrap">
                         Central Key Vault • Managed
                       </span>
                     </div>
@@ -2910,9 +2909,9 @@ function watchFolderForNewFiles() {
                           <button
                             type="button"
                             onClick={() => handleChange('provider', 'native')}
-                            className="text-[10px] font-semibold text-accent-blue hover:underline"
+                            className="text-[10px] font-semibold text-accent-blue hover:underline cursor-pointer"
                           >
-                            Switch to built-in Automatix AI Engine ➔
+                            Switch to AI Radahn Vision Encoder ➔
                           </button>
                         </div>
                       )}
@@ -3245,11 +3244,11 @@ function watchFolderForNewFiles() {
                         )}
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-[10px] text-text-tertiary pt-1 border-t border-white/5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-text-tertiary pt-1 border-t border-white/5">
                       <div className="flex items-center justify-between gap-1">
                         <span className="font-mono text-text-tertiary">Engine:</span>
-                        <span className="font-medium text-purple-300 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded truncate max-w-[110px]" title={aiPreviewData.provider || config.provider || 'Gemini'}>
-                          {aiPreviewData.provider || config.provider || 'Gemini'}
+                        <span className="font-medium text-purple-300 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded truncate max-w-[170px]" title={aiPreviewData.provider || 'AI Radahn Vision Encoder'}>
+                          {aiPreviewData.provider || 'AI Radahn Vision Encoder'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-1">
