@@ -985,14 +985,10 @@ export default function WorkflowBuilder({ workflow }) {
           )}
         </AnimatePresence>
 
-        {/* Right Pane: Execution History (Animated slide in) */}
-        <AnimatePresence>
-          {isHistoryOpen && (
-            <div className="absolute inset-y-0 right-0 z-20 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
-              <ExecutionHistoryPanel onClose={() => setIsHistoryOpen(false)} workflowId={workflow.id} />
-            </div>
-          )}
-        </AnimatePresence>
+        {/* Fullscreen Overlay: Execution History */}
+        {isHistoryOpen && (
+          <ExecutionHistoryPanel onClose={() => setIsHistoryOpen(false)} workflowId={workflow.id} />
+        )}
 
       </div>
 

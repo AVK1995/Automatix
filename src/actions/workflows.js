@@ -372,23 +372,35 @@ export async function getWorkflowExecutionHistory(filters = {}) {
     where.status = status;
   }
 
+  // Strict 90-Day Retention Ceiling (Enforced across all queries)
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+  // Background auto-prune of logs older than 90 days
+  prisma.executionLog.deleteMany({
+    where: {
+      workflow: { clientId: session.user.id },
+      createdAt: { lt: ninetyDaysAgo }
+    }
+  }).catch(() => {});
+
+  let fromDate = ninetyDaysAgo;
   if (dateRange && dateRange.from) {
-    where.createdAt = {
-      ...where.createdAt,
-      gte: new Date(dateRange.from)
-    };
-  }
-  
-  if (dateRange && dateRange.to) {
-    where.createdAt = {
-      ...where.createdAt,
-      lte: new Date(dateRange.to)
-    };
+    const customFrom = new Date(dateRange.from);
+    if (customFrom > ninetyDaysAgo) {
+      fromDate = customFrom;
+    }
   }
 
-  // If the user provided filters, we remove the strict limit to fetch all matching results
-  const hasFilters = workflowId || (status && status !== 'ALL') || (dateRange && dateRange.from);
-  const take = hasFilters ? undefined : 100; // Default to last 100 if no filters
+  where.createdAt = {
+    gte: fromDate
+  };
+  
+  if (dateRange && dateRange.to) {
+    where.createdAt.lte = new Date(dateRange.to);
+  }
+
+  // If the user provided filters, fetch matching up to 200, else default to last 100
+  const take = 200;
 
   const logs = await prisma.executionLog.findMany({
     where,

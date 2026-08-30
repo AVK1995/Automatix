@@ -39,15 +39,15 @@ export async function updateAiRadahnSettings({ aiRadahnProvider = 'gemini', aiRa
 
   const isPaid = user?.subscriptionTier && user.subscriptionTier.toLowerCase() !== 'free';
 
-  // Free users cannot enable BYOK True AI Brain
-  if (aiRadahnEngineMode === 'byok' && !isPaid) {
+  // AI Radahn is strictly for Paid subscribers only
+  if (!isPaid) {
     return {
-      error: 'AI Radahn True AI Brain (BYOK) is an exclusive feature for Paid subscribers. Please upgrade your plan or use the AI Radahn Native Core Brain.'
+      error: 'AI Radahn Engine is an exclusive feature for Paid subscribers. Please upgrade your plan to unlock AI Radahn.'
     };
   }
 
   // If BYOK is chosen and a new API key is provided, validate it live!
-  if (aiRadahnEngineMode === 'byok' && isPaid) {
+  if (aiRadahnEngineMode === 'byok') {
     const keyToValidate = (typeof aiRadahnApiKey === 'string' && aiRadahnApiKey.trim())
       ? aiRadahnApiKey.trim()
       : user.aiRadahnApiKey;
@@ -71,7 +71,7 @@ export async function updateAiRadahnSettings({ aiRadahnProvider = 'gemini', aiRa
 
   const updateData = {
     aiRadahnProvider: aiRadahnProvider || 'gemini',
-    aiRadahnEngineMode: (isPaid && aiRadahnEngineMode === 'byok') ? 'byok' : 'native'
+    aiRadahnEngineMode: aiRadahnEngineMode === 'byok' ? 'byok' : 'native'
   };
 
   // Only update apiKey if provided (or if user intentionally cleared it)
@@ -86,7 +86,7 @@ export async function updateAiRadahnSettings({ aiRadahnProvider = 'gemini', aiRa
 
   revalidatePath('/dashboard/settings');
 
-  if (aiRadahnEngineMode === 'byok' && isPaid) {
+  if (aiRadahnEngineMode === 'byok') {
     const providerLabel = aiRadahnProvider === 'gemini' ? 'Google Gemini' : aiRadahnProvider === 'openai' ? 'OpenAI' : 'Anthropic Claude';
     return {
       success: true,
@@ -98,26 +98,59 @@ export async function updateAiRadahnSettings({ aiRadahnProvider = 'gemini', aiRa
   return {
     success: true,
     mode: 'native',
-    message: 'AI Radahn Native Core Brain activated. Ready for instant, deterministic zero-key generations.'
+    message: 'AI Radahn Native Core Brain activated. Ready for instant, deterministic generations.'
   };
 }
 
-export async function getAiConsumptionLogs(limit = 20) {
+export async function getAiConsumptionLogs(options = {}) {
   const session = await auth();
   
   if (!session?.user?.id) {
     return { logs: [], summary: { totalCredits: 0, totalTokens: 0, totalEvents: 0 } };
   }
 
+  const { limit = 50, startDate, endDate } = options;
+
+  // Strict 90-Day Retention Enforcement (Nothing older than 90 days is retained or loaded)
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+  // Background auto-cleanup of records older than 90 days
+  prisma.aiConsumptionLog.deleteMany({
+    where: {
+      userId: session.user.id,
+      createdAt: { lt: ninetyDaysAgo }
+    }
+  }).catch(() => {});
+
+  const dateFilter = { gte: ninetyDaysAgo };
+
+  if (startDate) {
+    const start = new Date(startDate);
+    if (start > ninetyDaysAgo) {
+      dateFilter.gte = start;
+    }
+  }
+
+  if (endDate) {
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    dateFilter.lte = end;
+  }
+
+  const whereClause = {
+    userId: session.user.id,
+    createdAt: dateFilter
+  };
+
   const logs = await prisma.aiConsumptionLog.findMany({
-    where: { userId: session.user.id },
+    where: whereClause,
     orderBy: { createdAt: 'desc' },
     take: limit
   });
 
-  // Calculate summary metrics
+  // Calculate summary metrics for the filtered period
   const aggregations = await prisma.aiConsumptionLog.aggregate({
-    where: { userId: session.user.id },
+    where: whereClause,
     _sum: {
       creditsUsed: true,
       totalTokens: true
