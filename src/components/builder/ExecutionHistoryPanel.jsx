@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   X, 
   History as HistoryIcon, 
@@ -11,7 +11,7 @@ import {
   Download, 
   RefreshCw, 
   Loader2, 
-  Calendar, 
+  Calendar as CalendarIcon, 
   Filter, 
   Copy, 
   Check, 
@@ -43,7 +43,13 @@ import {
   Hash,
   ExternalLink,
   ChevronRight,
-  Sparkle
+  ChevronLeft,
+  Eye,
+  EyeOff,
+  User,
+  Users,
+  ShieldAlert,
+  Play
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Select from '@/components/ui/Select';
@@ -56,6 +62,33 @@ const DATE_RANGE_OPTIONS = [
   { value: '90d', label: 'Last 90 Days (Max)' },
   { value: 'custom', label: 'Custom Range...' }
 ];
+
+/**
+ * Recursively masks sensitive credentials (API keys, tokens, secrets, passwords)
+ * so they are NEVER exposed in plaintext within telemetry or logs.
+ */
+export function maskSensitiveData(data) {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(maskSensitiveData);
+
+  const sensitivePattern = /(api_?key|token|secret|password|auth|authorization|private_?key|client_?secret|access_?token|refresh_?token|bearer|webhook_?secret)/i;
+
+  const masked = {};
+  for (const [key, val] of Object.entries(data)) {
+    if (sensitivePattern.test(key) && typeof val === 'string' && val.length > 0) {
+      if (val.length <= 8) {
+        masked[key] = '••••••••';
+      } else {
+        masked[key] = `${val.slice(0, 4)}••••••••••••${val.slice(-3)}`;
+      }
+    } else if (typeof val === 'object' && val !== null) {
+      masked[key] = maskSensitiveData(val);
+    } else {
+      masked[key] = val;
+    }
+  }
+  return masked;
+}
 
 /**
  * Classifies pipeline steps strictly under Automatix Engine Rules:
@@ -118,11 +151,207 @@ export function classifyStepTask(node, index = 0) {
   return { isPaid: false, isAi: false, label: 'Free Utility', category: 'INTERNAL' };
 }
 
+/**
+ * Custom Dark Obsidian Calendar Component for selecting custom date ranges
+ */
+function DarkDateRangePicker({ startDate, endDate, onApply, onClose }) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [tempStart, setTempStart] = useState(startDate ? new Date(startDate) : null);
+  const [tempEnd, setTempEnd] = useState(endDate ? new Date(endDate) : null);
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  const prevMonthDays = new Date(year, month, 0).getDate();
+
+  const days = [];
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    days.push({ day: prevMonthDays - i, isCurrentMonth: false, date: new Date(year, month - 1, prevMonthDays - i) });
+  }
+  for (let i = 1; i <= totalDays; i++) {
+    days.push({ day: i, isCurrentMonth: true, date: new Date(year, month, i) });
+  }
+  const remaining = 42 - days.length;
+  for (let i = 1; i <= remaining; i++) {
+    days.push({ day: i, isCurrentMonth: false, date: new Date(year, month + 1, i) });
+  }
+
+  const handleDateClick = (d) => {
+    if (!tempStart || (tempStart && tempEnd)) {
+      setTempStart(d);
+      setTempEnd(null);
+    } else if (tempStart && !tempEnd) {
+      if (d < tempStart) {
+        setTempStart(d);
+        setTempEnd(tempStart);
+      } else {
+        setTempEnd(d);
+      }
+    }
+  };
+
+  const isSelected = (d) => {
+    if (tempStart && d.toDateString() === tempStart.toDateString()) return 'start';
+    if (tempEnd && d.toDateString() === tempEnd.toDateString()) return 'end';
+    if (tempStart && tempEnd && d > tempStart && d < tempEnd) return 'in_range';
+    return null;
+  };
+
+  const handlePreset = (daysAgo) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - daysAgo);
+    setTempStart(start);
+    setTempEnd(end);
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3 animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-[#121218] border border-white/15 rounded-2xl w-full max-w-sm p-4 shadow-2xl space-y-3.5 text-white"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+          <div className="flex items-center gap-2">
+            <CalendarIcon size={15} className="text-accent-blue" />
+            <span className="text-xs font-bold">Select Custom Range</span>
+          </div>
+          <button onClick={onClose} className="text-text-tertiary hover:text-white p-1 rounded">
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Quick Presets */}
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono">
+          <button 
+            onClick={() => handlePreset(0)} 
+            className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-text-secondary hover:text-white transition-colors"
+          >
+            Today
+          </button>
+          <button 
+            onClick={() => handlePreset(7)} 
+            className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-text-secondary hover:text-white transition-colors"
+          >
+            7 Days
+          </button>
+          <button 
+            onClick={() => handlePreset(15)} 
+            className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-text-secondary hover:text-white transition-colors"
+          >
+            15 Days
+          </button>
+          <button 
+            onClick={() => handlePreset(30)} 
+            className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-text-secondary hover:text-white transition-colors"
+          >
+            30 Days
+          </button>
+          <button 
+            onClick={() => handlePreset(90)} 
+            className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-text-secondary hover:text-white transition-colors"
+          >
+            90 Days (Max)
+          </button>
+        </div>
+
+        {/* Month Navigation */}
+        <div className="flex items-center justify-between px-1">
+          <button
+            onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+            className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="text-xs font-bold font-mono">
+            {currentMonth.toLocaleString('default', { month: 'long' })} {year}
+          </span>
+          <button
+            onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+            className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {/* Days Header */}
+        <div className="grid grid-cols-7 gap-1 text-center font-mono text-[10px] text-text-tertiary">
+          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1 text-center font-mono text-xs">
+          {days.map((item, idx) => {
+            const state = isSelected(item.date);
+            const isStartOrEnd = state === 'start' || state === 'end';
+            const inRange = state === 'in_range';
+
+            return (
+              <button
+                key={idx}
+                onClick={() => handleDateClick(item.date)}
+                className={`h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer text-xs ${
+                  isStartOrEnd 
+                    ? 'bg-accent-blue text-white font-bold shadow-sm ring-1 ring-accent-blue' 
+                    : inRange 
+                      ? 'bg-accent-blue/20 text-accent-blue rounded-none' 
+                      : item.isCurrentMonth 
+                        ? 'text-white/90 hover:bg-white/10' 
+                        : 'text-text-tertiary/40 hover:bg-white/5'
+                }`}
+              >
+                {item.day}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Selected Range Display & Apply Buttons */}
+        <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+          <div className="text-[10px] font-mono text-text-secondary truncate">
+            {tempStart ? tempStart.toLocaleDateString() : 'Start'} &rarr; {tempEnd ? tempEnd.toLocaleDateString() : 'End'}
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={onClose}
+              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] text-text-secondary hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (tempStart) {
+                  onApply(
+                    tempStart.toISOString().split('T')[0],
+                    tempEnd ? tempEnd.toISOString().split('T')[0] : tempStart.toISOString().split('T')[0]
+                  );
+                }
+              }}
+              className="px-3 py-1 rounded-lg bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold text-[11px] shadow-sm cursor-pointer"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ExecutionHistoryPanel({ onClose, workflowId }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState('15d');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [logs, setLogs] = useState([]);
   const [workflowName, setWorkflowName] = useState('Workflow Automation');
   const [nodes, setNodes] = useState([]);
@@ -135,6 +364,12 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
   const [telemetryViewMode, setTelemetryViewMode] = useState('emitted'); // 'ingest', 'emitted', 'metrics'
   const [dataViewFormat, setDataViewFormat] = useState('matrix'); // 'matrix' or 'raw_stream'
   const [telemetrySearch, setTelemetrySearch] = useState('');
+
+  // Interactive Re-run Reshoot Modal State
+  const [isRerunModalOpen, setIsRerunModalOpen] = useState(false);
+  const [rerunSearch, setRerunSearch] = useState('');
+  const [selectedRerunIds, setSelectedRerunIds] = useState(new Set());
+  const [isReshooting, setIsReshooting] = useState(false);
 
   useEffect(() => {
     fetchHistory();
@@ -259,39 +494,105 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
     toast.success('Chrono-Audit logs exported as CSV!');
   };
 
-  const handleRetryExecution = async (execId) => {
+  // Open Re-run Reshoot Modal with pre-selected log or full range
+  const openRerunModal = (initialLogId = null) => {
+    if (initialLogId) {
+      setSelectedRerunIds(new Set([initialLogId]));
+    } else {
+      setSelectedRerunIds(new Set(logs.map(l => l.id)));
+    }
+    setIsRerunModalOpen(true);
+  };
+
+  // Execute Batch Re-run
+  const handleExecuteBatchRerun = async () => {
+    const ids = Array.from(selectedRerunIds);
+    if (ids.length === 0) {
+      return toast.error('Please select at least 1 past execution to re-shoot.');
+    }
+
+    setIsReshooting(true);
     try {
       const res = await fetch('/api/workflows/rerun', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflowId, executionLogId: execId })
+        body: JSON.stringify({ 
+          workflowId, 
+          executionLogIds: ids 
+        })
       });
+
+      const data = await res.json();
       if (res.ok) {
-        toast.success(`Re-trigger queued for Trace ${execId.slice(0, 8)}...`);
+        toast.success(`Successfully queued re-trigger for ${ids.length} workflow run(s)!`);
+        setIsRerunModalOpen(false);
         fetchHistory();
       } else {
-        throw new Error('Failed to re-execute workflow');
+        throw new Error(data.error || 'Failed to re-execute workflow');
       }
     } catch (e) {
       toast.error(e.message || 'Re-execution failed');
+    } finally {
+      setIsReshooting(false);
     }
   };
 
   const filteredLogs = logs.filter(log => {
     const q = searchQuery.toLowerCase();
+    const payloadStr = JSON.stringify(log.currentNodeState || log.payload || '').toLowerCase();
     return (
       log.id.toLowerCase().includes(q) ||
       (log.status && log.status.toLowerCase().includes(q)) ||
-      (log.externalReferenceId && log.externalReferenceId.toLowerCase().includes(q))
+      (log.externalReferenceId && log.externalReferenceId.toLowerCase().includes(q)) ||
+      payloadStr.includes(q)
     );
   });
+
+  const rerunFilteredLogs = logs.filter(log => {
+    if (!rerunSearch.trim()) return true;
+    const q = rerunSearch.toLowerCase();
+    const payloadStr = JSON.stringify(log.currentNodeState || log.payload || '').toLowerCase();
+    return (
+      log.id.toLowerCase().includes(q) ||
+      (log.status && log.status.toLowerCase().includes(q)) ||
+      payloadStr.includes(q)
+    );
+  });
+
+  const toggleSelectAllRerun = () => {
+    if (selectedRerunIds.size === rerunFilteredLogs.length) {
+      setSelectedRerunIds(new Set());
+    } else {
+      setSelectedRerunIds(new Set(rerunFilteredLogs.map(l => l.id)));
+    }
+  };
+
+  const toggleRerunItem = (id) => {
+    const next = new Set(selectedRerunIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedRerunIds(next);
+  };
+
+  // Helper to extract clean lead identifier from payload
+  const getLeadIdentifier = (log) => {
+    const state = log.currentNodeState || {};
+    const payload = state.payload || log.payload || {};
+
+    if (payload.email) return payload.email;
+    if (payload.user?.email) return payload.user.email;
+    if (payload.sender?.id) return `IG: ${payload.sender.id}`;
+    if (payload.name) return payload.name;
+    if (payload.fileName) return payload.fileName;
+    return `Trace ${log.id.slice(0, 8)}...`;
+  };
 
   // Calculate Metrics
   const totalExecutions = logs.length;
   const totalTasksConsumed = logs.length * paidStepsPerRun;
   const totalFreeTasks = logs.length * freeStepsPerRun;
 
-  // Extract Step Telemetry Data (Ingest vs Emitted)
+  // Extract Step Telemetry Data (With Strict Masking)
   const getStepTelemetry = (stepNode, index) => {
     if (!selectedExecution) return { ingestData: {}, emittedData: {}, metrics: {} };
 
@@ -299,17 +600,17 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
     const payload = state.payload || selectedExecution.payload || {};
     const stepOutputs = state.stepOutputs || {};
 
-    let ingestData = {};
-    let emittedData = {};
+    let rawIngest = {};
+    let rawEmitted = {};
 
     if (index === 0) {
       // Trigger Node
-      ingestData = {
+      rawIngest = {
         originSource: stepNode.type || 'webhook',
         channel: stepNode.config?.provider || 'Automatix Cloud Gateway',
         capturedTimestamp: new Date(selectedExecution.createdAt).toISOString()
       };
-      emittedData = payload && Object.keys(payload).length > 0 ? payload : {
+      rawEmitted = payload && Object.keys(payload).length > 0 ? payload : {
         status: 'RESOLVED_200',
         eventTrigger: 'ingress_payload_verified',
         receivedAt: new Date(selectedExecution.createdAt).toISOString(),
@@ -317,12 +618,12 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
       };
     } else {
       // Action Node
-      ingestData = stepNode.config ? { ...stepNode.config } : { inputState: 'Inherited from Pipeline Context' };
+      rawIngest = stepNode.config ? { ...stepNode.config } : { inputState: 'Inherited from Pipeline Context' };
       
       if (stepOutputs[stepNode.id]) {
-        emittedData = stepOutputs[stepNode.id];
+        rawEmitted = stepOutputs[stepNode.id];
       } else if (stepNode.type === 'sheets') {
-        emittedData = {
+        rawEmitted = {
           executionState: 'RESOLVED_200',
           destinationApp: 'Google Sheets API v4',
           operation: stepNode.config?.actionType || 'WRITE_ROW',
@@ -333,7 +634,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
           timestamp: new Date(selectedExecution.createdAt).toISOString()
         };
       } else if (stepNode.type === 'ai' || stepNode.type === 'ai_content') {
-        emittedData = {
+        rawEmitted = {
           executionState: 'RESOLVED_200',
           neuralEngine: stepNode.config?.provider || 'Google Gemini 1.5 (BYOK)',
           taskPipeline: stepNode.config?.taskOperation || 'AI Content Synthesizer',
@@ -343,14 +644,14 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
           timestamp: new Date(selectedExecution.createdAt).toISOString()
         };
       } else if (stepNode.type === 'delay') {
-        emittedData = {
+        rawEmitted = {
           executionState: 'RESUMED_AFTER_DELAY',
           delayPolicy: 'Smart Delay Scheduler',
           configuredSpan: stepNode.config?.delayDuration || '48 hours',
           wakeTimestamp: new Date(selectedExecution.createdAt).toISOString()
         };
       } else {
-        emittedData = {
+        rawEmitted = {
           executionState: 'RESOLVED_200',
           transformerType: stepNode.type || 'DateTimeFormatter',
           transformedOutput: new Date(selectedExecution.createdAt).toISOString().replace('T', ' ').slice(0, 19),
@@ -368,7 +669,12 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
       traceState: 'VERIFIED'
     };
 
-    return { ingestData, emittedData, metrics };
+    // Mask sensitive keys across both ingest and emitted data
+    return { 
+      ingestData: maskSensitiveData(rawIngest), 
+      emittedData: maskSensitiveData(rawEmitted), 
+      metrics 
+    };
   };
 
   const getStepIcon = (stepNode, index) => {
@@ -380,7 +686,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
     if (type.includes('mail') || type.includes('smtp') || title.includes('email')) return <Mail size={14} className="shrink-0" />;
     if (type.includes('ai') || title.includes('ai') || title.includes('vision')) return <Bot size={14} className="shrink-0" />;
     if (type.includes('delay') || title.includes('delay')) return <Timer size={14} className="shrink-0" />;
-    if (type.includes('format') || title.includes('format') || title.includes('date')) return <Calendar size={14} className="shrink-0" />;
+    if (type.includes('format') || title.includes('format') || title.includes('date')) return <CalendarIcon size={14} className="shrink-0" />;
     return <Zap size={14} className="shrink-0" />;
   };
 
@@ -399,10 +705,9 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
   return (
     <div className="fixed inset-0 z-50 bg-[#09090d] flex flex-col overflow-hidden text-white font-sans animate-in fade-in duration-200">
       
-      {/* 1. TOP COMMAND BAR (Always pins Close button to top-right on ALL screens) */}
+      {/* 1. TOP COMMAND BAR */}
       <div className="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-white/10 bg-[#0e0e14] shrink-0">
         
-        {/* Main Title Row with Pinned Top-Right Close Button */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-text-tertiary truncate">
@@ -422,15 +727,19 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                 90-Day Retention
               </span>
             </div>
-
-            <p className="text-[11px] sm:text-xs text-text-secondary mt-1 hidden sm:block">
-              Immutable log of pipeline executions. 3rd-party connectors and AI deduct standard tasks; internal formatters and triggers are free.
-            </p>
           </div>
 
           {/* Action Tools & Top-Right Pinned Close Button */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Desktop Action Buttons */}
+            <button
+              type="button"
+              onClick={() => openRerunModal()}
+              className="hidden sm:flex px-3 py-1.5 rounded-xl bg-accent-blue hover:bg-accent-blue/90 border border-accent-blue/40 text-xs font-semibold text-white items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            >
+              <RotateCcw size={12} className="shrink-0" />
+              <span>Reshoot Range</span>
+            </button>
+
             <button
               type="button"
               onClick={handleDownloadCsv}
@@ -450,7 +759,6 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
               <span>Live Sync</span>
             </button>
 
-            {/* Close Button: Always easily accessible at top-right corner */}
             <button
               type="button"
               onClick={onClose}
@@ -467,10 +775,19 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
         <div className="flex sm:hidden items-center gap-2 mt-2.5 pt-2 border-t border-white/5">
           <button
             type="button"
+            onClick={() => openRerunModal()}
+            className="flex-1 py-1.5 rounded-lg bg-accent-blue hover:bg-accent-blue/90 text-[11px] font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <RotateCcw size={11} className="shrink-0" />
+            <span>Reshoot Runs</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleDownloadCsv}
             className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
-            <Download size={12} className="text-emerald-400 shrink-0" />
+            <Download size={11} className="text-emerald-400 shrink-0" />
             <span>Export CSV</span>
           </button>
 
@@ -478,20 +795,18 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             type="button"
             onClick={fetchHistory}
             disabled={isLoading}
-            className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-white flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw size={12} className={`text-accent-blue shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Live Sync</span>
+            <RefreshCw size={13} className={`text-accent-blue shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
       </div>
 
-      {/* 2. COMPACT METRIC STRIP (Single Row on Mobile, Balanced Cards on Desktop) */}
+      {/* 2. COMPACT METRIC STRIP */}
       <div className="px-3 py-2 sm:px-6 sm:py-3 border-b border-white/10 bg-[#0b0b10] shrink-0">
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           
-          {/* Tile 1: Runs */}
           <div className="p-2.5 sm:p-3.5 rounded-xl bg-[#121218] border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-[9px] sm:text-[11px] text-text-secondary font-medium uppercase tracking-wider truncate">
@@ -504,7 +819,6 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             </div>
           </div>
 
-          {/* Tile 2: Paid Tasks */}
           <div className="p-2.5 sm:p-3.5 rounded-xl bg-[#121218] border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-[9px] sm:text-[11px] text-text-secondary font-medium uppercase tracking-wider truncate">
@@ -517,7 +831,6 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             </div>
           </div>
 
-          {/* Tile 3: Free Utilities */}
           <div className="p-2.5 sm:p-3.5 rounded-xl bg-[#121218] border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-[9px] sm:text-[11px] text-text-secondary font-medium uppercase tracking-wider truncate">
@@ -533,54 +846,52 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
         </div>
       </div>
 
-      {/* 3. FILTERS & SEARCH (Responsive on Mobile & Desktop) */}
+      {/* 3. FILTERS & THEMED DATE SELECTOR */}
       <div className="px-3 py-2.5 sm:px-6 sm:py-3 border-b border-white/10 bg-[#0d0d12] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
         
-        {/* Search Input */}
+        {/* Search */}
         <div className="relative flex-1 w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary" />
           <input
             type="text"
-            placeholder="Search by Trace ID or state..."
+            placeholder="Search by Trace ID or lead payload..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue font-mono"
           />
         </div>
 
-        {/* Custom Headless UI Dropdown for Date Range */}
+        {/* Themed Dropdown + Custom Date Picker Launcher */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <div className="w-full sm:w-48">
             <Select
               value={dateRange}
-              onChange={setDateRange}
+              onChange={(val) => {
+                setDateRange(val);
+                if (val === 'custom') {
+                  setIsDatePickerOpen(true);
+                }
+              }}
               options={DATE_RANGE_OPTIONS}
               className="w-full text-xs"
             />
           </div>
 
           {dateRange === 'custom' && (
-            <div className="flex items-center gap-1.5 text-xs w-full sm:w-auto">
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="flex-1 sm:flex-none bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:border-accent-blue focus:outline-none"
-              />
-              <span className="text-text-tertiary text-xs">to</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="flex-1 sm:flex-none bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:border-accent-blue focus:outline-none"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsDatePickerOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-accent-blue/15 hover:bg-accent-blue/25 border border-accent-blue/30 text-accent-blue text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <CalendarIcon size={13} className="shrink-0" />
+              <span>{startDate && endDate ? `${startDate} to ${endDate}` : 'Choose Custom Dates...'}</span>
+            </button>
           )}
         </div>
 
       </div>
 
-      {/* 4. EXECUTION AUDIT: DESKTOP TABLE & NATIVE MOBILE CARDS */}
+      {/* 4. EXECUTION AUDIT TABLE & MOBILE CARDS (Max 3 Stage Icons) */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 flex flex-col">
         <div className="bg-[#111116] border border-white/10 rounded-2xl overflow-hidden shadow-xl flex-1 flex flex-col min-h-[300px]">
           {isLoading ? (
@@ -598,7 +909,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             </div>
           ) : (
             <>
-              {/* DESKTOP DATA TABLE (Visible on >= 768px screens) */}
+              {/* DESKTOP DATA TABLE (Max 3 Icons Displayed) */}
               <div className="hidden md:block overflow-x-auto w-full">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-white/5 border-b border-white/10 text-text-secondary font-semibold">
@@ -642,10 +953,10 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                             </div>
                           </td>
 
-                          {/* Stage Sequence Badges */}
+                          {/* Stage Sequence Badges: Strictly MAX 3 Icons */}
                           <td className="p-3.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {stepClassifications.slice(0, 5).map((s, idx) => (
+                            <div className="flex items-center gap-1.5">
+                              {stepClassifications.slice(0, 3).map((s, idx) => (
                                 <div 
                                   key={idx} 
                                   className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 ${
@@ -660,9 +971,9 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                                   {getStepIcon(s.node, idx)}
                                 </div>
                               ))}
-                              {stepClassifications.length > 5 && (
-                                <span className="text-[10px] text-text-tertiary font-mono">
-                                  +{stepClassifications.length - 5}
+                              {stepClassifications.length > 3 && (
+                                <span className="text-[10px] text-text-tertiary font-mono bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                                  +{stepClassifications.length - 3}
                                 </span>
                               )}
                             </div>
@@ -709,7 +1020,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                 </table>
               </div>
 
-              {/* NATIVE MOBILE INTERACTIVE CARDS (Visible on < 768px screens) */}
+              {/* NATIVE MOBILE INTERACTIVE CARDS (Max 3 Icons Displayed) */}
               <div className="md:hidden divide-y divide-white/5">
                 {filteredLogs.map((log) => {
                   const execDate = new Date(log.createdAt);
@@ -724,7 +1035,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                       }}
                       className="p-3.5 hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors cursor-pointer space-y-2.5"
                     >
-                      {/* Top Row: Status & Timestamp */}
+                      {/* Top Row */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {log.status === 'FAILED' ? (
@@ -753,9 +1064,9 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                         </div>
                       </div>
 
-                      {/* Middle Row: Stage Sequence Icons */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {stepClassifications.slice(0, 6).map((s, idx) => (
+                      {/* Middle Row: Strictly MAX 3 Icons */}
+                      <div className="flex items-center gap-1.5">
+                        {stepClassifications.slice(0, 3).map((s, idx) => (
                           <div 
                             key={idx} 
                             className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 ${
@@ -769,14 +1080,14 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                             {getStepIcon(s.node, idx)}
                           </div>
                         ))}
-                        {stepClassifications.length > 6 && (
-                          <span className="text-[10px] text-text-tertiary font-mono">
-                            +{stepClassifications.length - 6}
+                        {stepClassifications.length > 3 && (
+                          <span className="text-[10px] text-text-tertiary font-mono bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                            +{stepClassifications.length - 3}
                           </span>
                         )}
                       </div>
 
-                      {/* Bottom Row: Breakdown and Tap CTA */}
+                      {/* Bottom Row */}
                       <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/5 font-mono">
                         <span className="text-text-secondary">
                           <strong className="text-accent-blue">{paidStepsPerRun} Paid</strong> · <strong className="text-emerald-400">{freeStepsPerRun} Free</strong>
@@ -794,7 +1105,167 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
         </div>
       </div>
 
-      {/* 5. RESPONSIVE CHRONO-AUDIT TELEMETRY STUDIO MODAL */}
+      {/* 5. CUSTOM DARK DATE RANGE PICKER MODAL */}
+      {isDatePickerOpen && (
+        <DarkDateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onApply={(start, end) => {
+            setStartDate(start);
+            setEndDate(end);
+            setIsDatePickerOpen(false);
+          }}
+          onClose={() => setIsDatePickerOpen(false)}
+        />
+      )}
+
+      {/* 6. INTERACTIVE RE-RUN RESHOOT MODAL (Allows user search & selection by date range) */}
+      {isRerunModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 animate-in fade-in duration-200"
+          onClick={() => setIsRerunModalOpen(false)}
+        >
+          <div 
+            className="bg-[#101016] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 border-b border-white/10 bg-[#14141c] flex items-center justify-between gap-3 shrink-0">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <RotateCcw size={16} className="text-accent-blue shrink-0" />
+                  <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+                    Re-shoot Workflow for Past Runs
+                  </h3>
+                </div>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  Select past execution leads from the current date range ({dateRange.toUpperCase()}) to re-execute downstream actions.
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsRerunModalOpen(false)}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-text-secondary hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Search Bar & Select All Toggle */}
+            <div className="p-3 border-b border-white/10 bg-[#0d0d12] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary" />
+                <input
+                  type="text"
+                  placeholder="Search past runs by email, name, or Trace ID..."
+                  value={rerunSearch}
+                  onChange={(e) => setRerunSearch(e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue font-mono"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={toggleSelectAllRerun}
+                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              >
+                <Check size={12} className={selectedRerunIds.size === rerunFilteredLogs.length && rerunFilteredLogs.length > 0 ? 'text-accent-blue' : 'text-text-tertiary'} />
+                <span>{selectedRerunIds.size === rerunFilteredLogs.length && rerunFilteredLogs.length > 0 ? 'Deselect All' : 'Select All in Range'}</span>
+              </button>
+            </div>
+
+            {/* Execution Leads Selection List */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 divide-y divide-white/5">
+              {rerunFilteredLogs.length === 0 ? (
+                <div className="py-12 text-center text-text-tertiary text-xs">
+                  No execution records match your search query in this date range.
+                </div>
+              ) : (
+                rerunFilteredLogs.map((log) => {
+                  const isChecked = selectedRerunIds.has(log.id);
+                  const leadLabel = getLeadIdentifier(log);
+                  const execDate = new Date(log.createdAt);
+
+                  return (
+                    <div
+                      key={log.id}
+                      onClick={() => toggleRerunItem(log.id)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isChecked 
+                          ? 'bg-accent-blue/10 border-accent-blue/40 shadow-sm' 
+                          : 'bg-black/30 border-white/5 hover:border-white/15'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Checkbox */}
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                          isChecked ? 'bg-accent-blue border-accent-blue text-white' : 'border-white/30 bg-black/40'
+                        }`}>
+                          {isChecked && <Check size={11} strokeWidth={3} />}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-xs text-white truncate max-w-xs">{leadLabel}</span>
+                            {log.status === 'FAILED' ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                FAULT
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                RESOLVED
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="font-mono text-[11px] text-text-tertiary mt-0.5 truncate">
+                            Trace: <span className="text-text-secondary">{log.id.slice(0, 16)}...</span> · {execDate.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0 font-mono text-[11px] text-accent-blue hidden sm:block">
+                        {paidStepsPerRun} Paid Tasks
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Modal Bottom Summary & CTA */}
+            <div className="p-3 sm:p-4 border-t border-white/10 bg-[#13131a] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div className="text-xs font-mono text-text-secondary">
+                Selected: <strong className="text-white">{selectedRerunIds.size}</strong> / {rerunFilteredLogs.length} runs · 
+                Est. Consumption: <strong className="text-accent-blue">{selectedRerunIds.size * paidStepsPerRun} Paid Tasks</strong>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsRerunModalOpen(false)}
+                  disabled={isReshooting}
+                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-text-secondary hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExecuteBatchRerun}
+                  disabled={isReshooting || selectedRerunIds.size === 0}
+                  className="px-4 py-1.5 rounded-xl bg-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                >
+                  {isReshooting ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
+                  <span>Confirm & Re-shoot ({selectedRerunIds.size})</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 7. RESPONSIVE CHRONO-AUDIT TELEMETRY STUDIO (With STRICT Masked API Keys) */}
       {selectedExecution && (
         <div 
           className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
@@ -839,11 +1310,11 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
               <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                 <button
                   type="button"
-                  onClick={() => handleRetryExecution(selectedExecution.id)}
+                  onClick={() => openRerunModal(selectedExecution.id)}
                   className="px-3 py-1.5 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                 >
                   <RotateCcw size={12} className="shrink-0" />
-                  <span>Re-run</span>
+                  <span>Re-run Trace</span>
                 </button>
 
                 <button
@@ -859,7 +1330,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             {/* DUAL-PANE BODY */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
               
-              {/* Chrono-Rail: Horizontal Swipe Carousel on Mobile, Vertical on Desktop */}
+              {/* Chrono-Rail: Horizontal Carousel on Mobile, Vertical on Desktop */}
               <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-white/10 bg-[#0a0a0f] p-3 sm:p-4 overflow-x-auto md:overflow-y-auto custom-scrollbar shrink-0">
                 
                 <div className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2 flex items-center justify-between">
@@ -1048,13 +1519,13 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                   </div>
                 </div>
 
-                {/* Console Main Content Area */}
+                {/* Console Main Content Area (With Masked Sensitive Data) */}
                 <div className="flex-1 p-3 sm:p-4 overflow-y-auto custom-scrollbar min-h-0">
                   
                   <div className="mb-3 p-2.5 rounded-xl bg-accent-blue/10 border border-accent-blue/25 flex items-center justify-between text-xs text-blue-200 font-mono">
                     <div className="flex items-center gap-1.5">
                       <ShieldCheck size={14} className="text-accent-blue shrink-0" />
-                      <span className="truncate">Stage telemetry validated.</span>
+                      <span className="truncate">Stage telemetry validated with secret masking active.</span>
                     </div>
                     <span className="text-[10px] text-accent-blue font-bold uppercase shrink-0">
                       Code 200
