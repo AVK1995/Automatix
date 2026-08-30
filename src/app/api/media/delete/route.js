@@ -26,6 +26,12 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Media not found or unauthorized' }, { status: 404 });
     }
 
+    if (existingMedia.nodeId && existingMedia.nodeId.startsWith('wf_trigger_')) {
+      return NextResponse.json({ 
+        error: 'This file is locked by an active workflow trigger. It will automatically update when new files are uploaded, or can be freed by deleting the workflow.' 
+      }, { status: 400 });
+    }
+
     // Delete from Vercel Blob
     try {
       await del(existingMedia.url);

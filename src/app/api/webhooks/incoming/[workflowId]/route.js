@@ -244,32 +244,139 @@ async function handleRequest(request, { params }, method) {
       }
     }
 
-    // 2. Initialize Execution Log (Start of Run)
+    // 2. Storage Bucket Allocation & Quota Enforcement (for storage_trigger or webhook media)
+    let storageQuotaError = null;
+    let lockedMediaRecord = null;
+    const isMediaTrigger = webhookNode && (webhookNode.integration?.id === 'storage_trigger' || webhookNode.integrationId === 'storage_trigger' || (body.fileUrl || body.downloadUrl || body.name));
+
+    if (isMediaTrigger && workflow.clientId) {
+      try {
+        const rawFileName = body.fileName || body.name || 'Uploaded Media';
+        const remoteUrl = body.fileUrl || body.downloadUrl || '';
+        const driveMatch = remoteUrl.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|lh3\.googleusercontent\.com\/d\/)([\w-]+)/i);
+        const driveId = driveMatch ? driveMatch[1] : '';
+
+        let fileSizeMB = 1.0;
+        if (body.fileSizeMB) {
+          fileSizeMB = parseFloat(body.fileSizeMB);
+        } else if (body.size) {
+          fileSizeMB = parseFloat((Number(body.size) / (1024 * 1024)).toFixed(2));
+        }
+
+        const isDoc = !!rawFileName.match(/\.(pdf|csv|xlsx|xls|docx|doc|pptx|ppt|txt)$/i);
+        const isVideo = !isDoc && (body.fileType?.startsWith('video/') || !!rawFileName.match(/\.(mp4|mov|webm|m4v|mkv)$/i));
+        const mediaType = isDoc ? 'DOCUMENT' : isVideo ? 'VIDEO' : 'IMAGE';
+
+        // 25 MB max capacity limit per input file per trigger
+        if (fileSizeMB > 25) {
+          storageQuotaError = `File Size Exceeded: Media file (${fileSizeMB.toFixed(1)} MB) exceeds maximum allowed trigger input limit of 25.0 MB.`;
+        }
+
+        // Check User Storage Quota Capacity
+        const user = await prisma.user.findUnique({
+          where: { id: workflow.clientId },
+          select: { maxStorageMB: true }
+        });
+
+        const lockedNodeId = `wf_trigger_${workflow.id}_${webhookNode?.id || 'trigger'}`;
+
+        if (user && !storageQuotaError) {
+          const userMedia = await prisma.media.findMany({
+            where: { userId: workflow.clientId }
+          });
+
+          // Exclude this workflow's existing locked trigger file (since it updates the slot in-place)
+          const otherMedia = userMedia.filter(m => m.nodeId !== lockedNodeId);
+          const currentUsedMB = otherMedia.reduce((sum, m) => sum + (m.sizeMB || 0), 0);
+          const remainingStorageMB = Math.max(0, (user.maxStorageMB || 50) - currentUsedMB);
+
+          if (fileSizeMB > remainingStorageMB) {
+            storageQuotaError = `Storage Bucket Full: File (${fileSizeMB.toFixed(1)} MB) exceeds your remaining storage capacity (${remainingStorageMB.toFixed(1)} MB of ${(user.maxStorageMB || 50)} MB). Please free up storage or upgrade your quota to resume automation.`;
+          }
+        }
+
+        if (!storageQuotaError) {
+          const streamUrl = driveId
+            ? `/api/media/raw?id=${driveId}&filename=${encodeURIComponent(rawFileName)}`
+            : (remoteUrl.startsWith('http') ? `/api/media/raw?url=${encodeURIComponent(remoteUrl)}&filename=${encodeURIComponent(rawFileName)}` : remoteUrl);
+
+          const existingMedia = await prisma.media.findFirst({
+            where: { userId: workflow.clientId, nodeId: lockedNodeId }
+          });
+
+          if (existingMedia) {
+            lockedMediaRecord = await prisma.media.update({
+              where: { id: existingMedia.id },
+              data: {
+                fileName: rawFileName,
+                url: streamUrl,
+                sizeMB: fileSizeMB,
+                type: mediaType,
+                createdAt: new Date()
+              }
+            });
+          } else {
+            lockedMediaRecord = await prisma.media.create({
+              data: {
+                userId: workflow.clientId,
+                nodeId: lockedNodeId,
+                fileName: rawFileName,
+                url: streamUrl,
+                sizeMB: fileSizeMB,
+                type: mediaType
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Storage bucket allocation error:', e.message);
+      }
+    }
+
+    // 3. Initialize Execution Log (Start of Run)
+    const triggerPayload = {
+      ...body,
+      ...(storageQuotaError ? { storageQuotaError } : {}),
+      ...(lockedMediaRecord ? { storageMediaId: lockedMediaRecord.id, isStorageLocked: true } : {})
+    };
+
     const executionLog = await prisma.executionLog.create({
       data: {
         workflowId: workflow.id,
         externalReferenceId: externalReferenceId,
-        status: SYSTEM_STATUS.ACTIVE,
-        currentNodeState: { step: 'TRIGGER', payload: body }
+        status: storageQuotaError ? 'FAILED' : SYSTEM_STATUS.ACTIVE,
+        currentNodeState: { step: 'TRIGGER', payload: triggerPayload, ...(storageQuotaError ? { error: storageQuotaError } : {}) }
       }
     });
 
     // Cache latest trigger payload to the node config for immediate builder & UI availability
     if (webhookNode && (webhookNode.integration?.id === 'storage_trigger' || webhookNode.integration?.id === 'sheets_trigger' || webhookNode.integration?.id === 'webhook')) {
       try {
+        const rawFileName = body.fileName || body.name || 'Uploaded File';
+        const remoteUrl = body.fileUrl || body.downloadUrl || '';
+        const driveMatch = remoteUrl.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|lh3\.googleusercontent\.com\/d\/)([\w-]+)/i);
+        const driveId = driveMatch ? driveMatch[1] : '';
+        const streamUrl = driveId
+          ? `/api/media/raw?id=${driveId}&filename=${encodeURIComponent(rawFileName)}`
+          : (remoteUrl.startsWith('http') ? `/api/media/raw?url=${encodeURIComponent(remoteUrl)}&filename=${encodeURIComponent(rawFileName)}` : remoteUrl);
+
         const updatedNodes = nodes.map(n => {
           if (n.id === webhookNode.id) {
             return {
               ...n,
               config: {
                 ...n.config,
-                capturedPayload: body,
+                capturedPayload: triggerPayload,
+                storageQuotaError: storageQuotaError || null,
                 latestUploadedFile: (body.fileUrl || body.downloadUrl || body.name) ? {
-                  fileName: body.fileName || body.name || 'Uploaded File',
-                  fileUrl: body.fileUrl || body.downloadUrl || '',
+                  fileName: rawFileName,
+                  fileUrl: streamUrl,
                   fileType: body.fileType || body.mimeType || 'video/mp4',
                   fileSizeMB: body.fileSizeMB || (body.size ? (Number(body.size)/(1024*1024)).toFixed(2) : '1.0'),
                   folderName: n.config?.folderName || 'Automatix Uploads',
+                  storageMediaId: lockedMediaRecord?.id || null,
+                  isStorageLocked: !!lockedMediaRecord,
+                  storageQuotaError: storageQuotaError || null,
                   capturedAt: new Date().toISOString()
                 } : n.config?.latestUploadedFile
               }
@@ -287,7 +394,15 @@ async function handleRequest(request, { params }, method) {
       }
     }
 
-    // 3. Trigger Vercel Workflow Engine
+    if (storageQuotaError) {
+      return NextResponse.json({
+        success: false,
+        error: storageQuotaError,
+        executionLogId: executionLog.id
+      }, { status: 400 });
+    }
+
+    // 4. Trigger Inngest Workflow Engine
     await inngest.send({
       name: 'engine/workflow.start',
       data: {

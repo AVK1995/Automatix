@@ -426,14 +426,26 @@ export async function verifyApiKey({ provider = 'gemini', apiKey = '', baseUrl =
 }
 
 /**
- * Direct Media URL resolution with Google Drive streaming support
+ * Direct Media URL resolution with Google Drive and storage proxy support
  */
 export function resolveDirectMediaUrl(rawUrl, fileDetails) {
   if (!rawUrl && fileDetails?.fileUrl) rawUrl = fileDetails.fileUrl;
   if (!rawUrl || typeof rawUrl !== 'string') return '';
+
+  if (rawUrl.includes('/api/media/raw')) {
+    const matchId = rawUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (matchId && matchId[1]) {
+      return `https://drive.google.com/uc?export=download&id=${matchId[1]}`;
+    }
+    const matchUrl = rawUrl.match(/[?&]url=([^&]+)/);
+    if (matchUrl && matchUrl[1]) {
+      return decodeURIComponent(matchUrl[1]);
+    }
+  }
+
   const driveMatch = rawUrl.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|lh3\.googleusercontent\.com\/d\/)([\w-]+)/i);
   if (driveMatch && driveMatch[1]) {
-    return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+    return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
   }
   return rawUrl;
 }
@@ -444,7 +456,7 @@ export function resolveDirectMediaUrl(rawUrl, fileDetails) {
 async function fetchMediaPartForGemini(mediaUrl, fileDetails) {
   let directUrl = resolveDirectMediaUrl(mediaUrl, fileDetails);
   if (!directUrl && fileDetails?.fileUrl) directUrl = fileDetails.fileUrl;
-  if (!directUrl || typeof directUrl !== 'string' || !directUrl.startsWith('http')) {
+  if (!directUrl || typeof directUrl !== 'string') {
     return null;
   }
 
@@ -544,6 +556,17 @@ export async function generateAiContent({
   mediaUrl = '',
   fileDetails = null
 }) {
+  if (fileDetails?.storageQuotaError) {
+    return {
+      text: `[STORAGE BUCKET QUOTA EXCEEDED]\n${fileDetails.storageQuotaError}`,
+      usedModel: 'AI Radahn Transcriber & Vision Synthesizer',
+      error: fileDetails.storageQuotaError,
+      transcript: 'Transcription unavailable — storage bucket capacity full.',
+      summary: fileDetails.storageQuotaError,
+      tokens: { prompt: 0, completion: 0, total: 0 }
+    };
+  }
+
   const envKey = (process.env.GEMINI_API_KEY || '').replace(/['"]/g, '').trim();
   const effectiveKey = (apiKey || '').trim() || (provider === 'native' || provider === 'gemini' ? envKey : '');
 
@@ -621,7 +644,7 @@ export async function generateAiContent({
 
               return {
                 text: data.candidates[0].content.parts[0].text,
-                usedModel: provider === 'native' ? 'AI Radahn Vision Encoder' : `Google Gemini (${modelName})`,
+                usedModel: provider === 'native' ? 'AI Radahn Transcriber & Vision Synthesizer' : `Google Gemini (${modelName})`,
                 tokens: {
                   prompt: promptCount,
                   completion: completionCount,
@@ -640,7 +663,7 @@ export async function generateAiContent({
     const fallbackResult = generateNativeAiContent({ task, tone, customPrompt, fileDetails, mediaUrl });
     return {
       ...fallbackResult,
-      usedModel: `AI Radahn Vision Encoder`
+      usedModel: `AI Radahn Transcriber & Vision Synthesizer`
     };
   }
 

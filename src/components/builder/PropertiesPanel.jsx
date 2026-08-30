@@ -1600,19 +1600,35 @@ function watchFolderForNewFiles() {
                       </button>
                     </div>
 
+                    {/* Storage Quota Error Warning (if file exceeded capacity) */}
+                    {activeFile.storageQuotaError && (
+                      <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-1.5 text-xs text-rose-200">
+                        <div className="flex items-center gap-1.5 text-rose-300 font-semibold">
+                          <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                          <span>Storage Bucket Quota Exceeded</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-rose-200/90">{activeFile.storageQuotaError}</p>
+                        <div className="pt-1">
+                          <Link href="/dashboard/storage" className="text-[11px] font-semibold text-sky-400 hover:underline flex items-center gap-1">
+                            <span>Manage & Free Up Storage Space &rarr;</span>
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Storage & Variable Mapping Pill */}
-                    <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[11px] text-emerald-300 space-y-1">
+                    <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[11px] text-emerald-300 space-y-1">
                       <div className="flex items-center justify-between font-semibold">
                         <span className="flex items-center gap-1.5">
                           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span>Single-Slot Overwrite Active</span>
+                          <span>Storage Bucket: Single-Slot Lock Active</span>
                         </span>
                         <span className="text-[10px] bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-200 font-mono">
-                          25 MB Limit OK
+                          Max 25 MB / Trigger
                         </span>
                       </div>
                       <p className="text-[10px] text-emerald-300/80 leading-relaxed">
-                        Overwrites automatically with every new upload to prevent storage bloat. Mapped to <code className="bg-emerald-950 px-1 py-0.5 rounded text-emerald-200 font-mono select-all">{"{{trigger.body.fileUrl}}"}</code>.
+                        Dedicated trigger storage slot locked in your Storage Bucket. Auto-refreshes on new uploads and freed on workflow delete.
                       </p>
                     </div>
 
@@ -2768,6 +2784,22 @@ function watchFolderForNewFiles() {
                 <span>1 Credit / Run</span>
               </span>
             </div>
+
+            {/* Storage Quota Warning (if attached trigger file was over capacity) */}
+            {activeStorageFile?.storageQuotaError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-1.5 text-xs text-rose-200">
+                <div className="flex items-center gap-1.5 text-rose-300 font-semibold">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>Input Media Quota Exceeded</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-rose-200/90">{activeStorageFile.storageQuotaError}</p>
+                <div className="pt-1">
+                  <Link href="/dashboard/storage" className="text-[11px] font-semibold text-sky-400 hover:underline flex items-center gap-1">
+                    <span>Free Up Storage or Upgrade Capacity &rarr;</span>
+                  </Link>
+                </div>
+              </div>
+            )}
 
             <div>
               <div className="flex items-center justify-between mb-1">

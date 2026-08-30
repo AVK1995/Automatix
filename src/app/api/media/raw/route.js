@@ -49,15 +49,20 @@ export async function GET(request) {
 
     let fetchUrl = targetUrl;
     if (driveId) {
-      // Use direct Googleusercontent CDN or Google Drive export link
       fetchUrl = `https://drive.google.com/uc?export=download&id=${driveId}`;
     }
 
+    const clientRange = request.headers.get('range');
+    const fetchHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': '*/*'
+    };
+    if (clientRange) {
+      fetchHeaders['Range'] = clientRange;
+    }
+
     let response = await fetch(fetchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': '*/*'
-      },
+      headers: fetchHeaders,
       redirect: 'follow'
     });
 
@@ -65,32 +70,30 @@ export async function GET(request) {
     const contentType = response.headers.get('content-type') || '';
     if (driveId && contentType.includes('text/html')) {
       const htmlText = await response.text();
-      // Try to extract confirm token or alternate download link
       const confirmMatch = htmlText.match(/confirm=([a-zA-Z0-9_-]+)/) || htmlText.match(/name="confirm" value="([a-zA-Z0-9_-]+)"/);
       if (confirmMatch && confirmMatch[1]) {
         const confirmedUrl = `https://drive.google.com/uc?export=download&id=${driveId}&confirm=${confirmMatch[1]}`;
         response = await fetch(confirmedUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-          },
+          headers: fetchHeaders,
           redirect: 'follow'
         });
       } else {
         // Fallback to direct lh3 CDN
         const lh3Url = `https://lh3.googleusercontent.com/d/${driveId}`;
-        const lh3Response = await fetch(lh3Url, { redirect: 'follow' });
+        const lh3Response = await fetch(lh3Url, { headers: fetchHeaders, redirect: 'follow' });
         if (lh3Response.ok && !lh3Response.headers.get('content-type')?.includes('text/html')) {
           response = lh3Response;
         }
       }
     }
 
-    if (!response.ok) {
+    if (!response.ok && response.status !== 206) {
       return NextResponse.json({ error: `Remote storage returned HTTP ${response.status}` }, { status: response.status });
     }
 
     const resolvedMime = getMimeFromFilename(filename) || response.headers.get('content-type') || 'application/octet-stream';
     const contentLength = response.headers.get('content-length');
+    const contentRange = response.headers.get('content-range');
 
     const headers = new Headers();
     headers.set('Content-Type', resolvedMime);
@@ -98,12 +101,16 @@ export async function GET(request) {
     headers.set('Accept-Ranges', 'bytes');
     headers.set('Access-Control-Allow-Origin', '*');
     headers.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+
+    if (contentRange) {
+      headers.set('Content-Range', contentRange);
+    }
     if (contentLength) {
       headers.set('Content-Length', contentLength);
     }
 
     return new Response(response.body, {
-      status: 200,
+      status: response.status === 206 ? 206 : 200,
       headers
     });
   } catch (error) {

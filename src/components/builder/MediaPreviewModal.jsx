@@ -50,15 +50,12 @@ export default function MediaPreviewModal({ isOpen, onClose, file }) {
   const isArchive = fileType.includes('zip') || fileType.includes('tar') || fileType.includes('rar') || !!fileName.match(/\.(zip|tar|gz|rar|7z)$/i);
 
   // Compute streaming URLs
-  const drivePreviewUrl = driveId ? `https://drive.google.com/file/d/${driveId}/preview` : '';
   const rawStreamUrl = driveId 
     ? `/api/media/raw?id=${driveId}&filename=${encodeURIComponent(fileName)}`
-    : (rawUrl.startsWith('http') ? `/api/media/raw?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(fileName)}` : rawUrl);
-
-  const directCdnUrl = driveId ? `https://lh3.googleusercontent.com/d/${driveId}` : rawUrl;
+    : (rawUrl.startsWith('http') ? `/api/media/raw?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(fileName)}` : (rawUrl || ''));
 
   const handleCopyUrl = () => {
-    navigator.clipboard.writeText(rawUrl);
+    navigator.clipboard.writeText(rawUrl || rawStreamUrl);
     setCopiedUrl(true);
     toast.success('Direct Media URL copied!');
     setTimeout(() => setCopiedUrl(false), 2000);
@@ -126,7 +123,7 @@ export default function MediaPreviewModal({ isOpen, onClose, file }) {
 
             <button
               onClick={onClose}
-              className="p-1.5 sm:p-2 text-text-tertiary hover:text-white rounded-lg hover:bg-white/5 transition-colors shrink-0"
+              className="p-1.5 sm:p-2 text-text-tertiary hover:text-white rounded-lg hover:bg-white/5 transition-colors shrink-0 cursor-pointer"
               title="Close Preview"
             >
               <X className="w-5 h-5 shrink-0" />
@@ -138,36 +135,26 @@ export default function MediaPreviewModal({ isOpen, onClose, file }) {
             {/* 16:9 Standard Aspect Ratio Player Container */}
             <div className="w-full aspect-video bg-black rounded-xl border border-white/10 overflow-hidden relative flex items-center justify-center shadow-lg">
               {isVideo ? (
-                playerMode === 'html5' || !drivePreviewUrl ? (
-                  <video
-                    src={directCdnUrl || rawStreamUrl}
-                    controls
-                    playsInline
-                    webkit-playsinline="true"
-                    preload="metadata"
-                    className="w-full h-full object-contain bg-black"
-                  >
-                    Your browser does not support HTML5 video playback.
-                  </video>
-                ) : (
-                  <iframe
-                    src={drivePreviewUrl}
-                    title={fileName}
-                    className="w-full h-full border-0 bg-black"
-                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                    allowFullScreen
-                    loading="lazy"
-                  />
-                )
+                <video
+                  key={rawStreamUrl}
+                  src={rawStreamUrl}
+                  controls
+                  playsInline
+                  webkit-playsinline="true"
+                  preload="metadata"
+                  className="w-full h-full object-contain bg-black"
+                >
+                  Your browser does not support HTML5 video playback.
+                </video>
               ) : isImage ? (
                 <img
-                  src={directCdnUrl || rawStreamUrl}
+                  src={rawStreamUrl}
                   alt={fileName}
                   className="w-full h-full object-contain bg-black/40"
                 />
               ) : isPdf ? (
                 <iframe
-                  src={drivePreviewUrl || rawStreamUrl}
+                  src={rawStreamUrl}
                   title={fileName}
                   className="w-full h-full border-0 bg-zinc-900"
                 />
@@ -177,7 +164,7 @@ export default function MediaPreviewModal({ isOpen, onClose, file }) {
                     <Music className="w-6 h-6 shrink-0" />
                   </div>
                   <p className="text-sm font-medium text-white">{fileName}</p>
-                  <audio controls src={directCdnUrl || rawStreamUrl} className="w-full max-w-md mx-auto" />
+                  <audio controls src={rawStreamUrl} className="w-full max-w-md mx-auto" />
                 </div>
               ) : (
                 <div className="p-6 sm:p-8 text-center space-y-3">
@@ -194,60 +181,6 @@ export default function MediaPreviewModal({ isOpen, onClose, file }) {
                 </div>
               )}
             </div>
-
-            {/* Video Player Switcher (When Google Drive video is detected) */}
-            {isVideo && driveId && (
-              <div className="space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-zinc-900/60 border border-white/5 px-3.5 py-2.5 rounded-xl gap-2 text-xs">
-                  <span className="text-text-secondary flex items-center gap-1.5">
-                    <MonitorPlay className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                    <span>Playback Engine:</span>
-                  </span>
-                  <div className="flex items-center gap-1.5 p-0.5 bg-black/40 border border-white/5 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setPlayerMode('html5')}
-                      className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
-                        playerMode === 'html5' 
-                          ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-sm' 
-                          : 'text-text-tertiary hover:text-white'
-                      }`}
-                    >
-                      Direct Native Player (Fast)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPlayerMode('embed')}
-                      className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
-                        playerMode === 'embed' 
-                          ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-sm' 
-                          : 'text-text-tertiary hover:text-white'
-                      }`}
-                    >
-                      Google Drive Player
-                    </button>
-                  </div>
-                </div>
-
-                {playerMode === 'embed' && (
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs animate-in fade-in duration-200">
-                    <div className="flex items-center gap-2 text-amber-200 min-w-0">
-                      <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="text-[11px] leading-relaxed">
-                        Google Drive embeds require third-party cookies in some browsers. Switch to Direct Native Player for cookie-free instant streaming.
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setPlayerMode('html5')}
-                      className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[11px] font-semibold shrink-0 cursor-pointer self-start sm:self-auto transition-colors"
-                    >
-                      Switch to Direct Native
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Direct Raw Stream & 25MB Guard Notice */}
             <div className="p-3.5 bg-zinc-900/60 border border-white/5 rounded-xl space-y-1.5">

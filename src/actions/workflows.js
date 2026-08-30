@@ -694,27 +694,133 @@ export async function simulateStorageUpload(workflowId, fileData = {}) {
 
   const workflow = await prisma.workflow.findUnique({
     where: { id: workflowId },
-    select: { id: true, nodesJson: true }
+    select: { id: true, clientId: true, nodesJson: true }
   });
 
   if (!workflow) throw new Error('Workflow not found');
 
+  const rawFileName = fileData.fileName || 'sample_upload.mp4';
+  const remoteUrl = fileData.fileUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1080&auto=format&fit=crop';
+  const driveMatch = remoteUrl.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|lh3\.googleusercontent\.com\/d\/)([\w-]+)/i);
+  const driveId = driveMatch ? driveMatch[1] : '';
+  const streamUrl = driveId
+    ? `/api/media/raw?id=${driveId}&filename=${encodeURIComponent(rawFileName)}`
+    : (remoteUrl.startsWith('http') ? `/api/media/raw?url=${encodeURIComponent(remoteUrl)}&filename=${encodeURIComponent(rawFileName)}` : remoteUrl);
+
+  const fileSizeMB = Number(fileData.fileSizeMB || 14.2);
+  const isDoc = !!rawFileName.match(/\.(pdf|csv|xlsx|xls|docx|doc|pptx|ppt|txt)$/i);
+  const isVideo = !isDoc && (fileData.fileType?.startsWith('video/') || !!rawFileName.match(/\.(mp4|mov|webm|m4v|mkv)$/i));
+  const mediaType = isDoc ? 'DOCUMENT' : isVideo ? 'VIDEO' : 'IMAGE';
+
+  let storageQuotaError = null;
+  if (fileSizeMB > 25) {
+    storageQuotaError = `File Size Exceeded: Media file (${fileSizeMB.toFixed(1)} MB) exceeds maximum allowed trigger input limit of 25.0 MB.`;
+  }
+
+  // Check user storage quota
+  const user = await prisma.user.findUnique({
+    where: { id: workflow.clientId },
+    select: { maxStorageMB: true }
+  });
+
+  let nodes = [];
+  try {
+    nodes = typeof workflow.nodesJson === 'string' ? JSON.parse(workflow.nodesJson) : (workflow.nodesJson || []);
+  } catch (e) {}
+  const triggerNode = nodes.find(n => n.type === 'TRIGGER' || n.type === 'trigger' || n.integration?.id === 'storage_trigger');
+  const lockedNodeId = `wf_trigger_${workflow.id}_${triggerNode?.id || 'trigger'}`;
+
+  let lockedMediaRecord = null;
+  if (user && !storageQuotaError) {
+    const userMedia = await prisma.media.findMany({ where: { userId: workflow.clientId } });
+    const otherMedia = userMedia.filter(m => m.nodeId !== lockedNodeId);
+    const currentUsedMB = otherMedia.reduce((sum, m) => sum + (m.sizeMB || 0), 0);
+    const remainingStorageMB = Math.max(0, (user.maxStorageMB || 50) - currentUsedMB);
+
+    if (fileSizeMB > remainingStorageMB) {
+      storageQuotaError = `Storage Bucket Full: File (${fileSizeMB.toFixed(1)} MB) exceeds your remaining storage capacity (${remainingStorageMB.toFixed(1)} MB of ${(user.maxStorageMB || 50)} MB). Please free up storage or upgrade your quota to resume automation.`;
+    }
+  }
+
+  if (!storageQuotaError) {
+    const existingMedia = await prisma.media.findFirst({
+      where: { userId: workflow.clientId, nodeId: lockedNodeId }
+    });
+
+    if (existingMedia) {
+      lockedMediaRecord = await prisma.media.update({
+        where: { id: existingMedia.id },
+        data: {
+          fileName: rawFileName,
+          url: streamUrl,
+          sizeMB: fileSizeMB,
+          type: mediaType,
+          createdAt: new Date()
+        }
+      });
+    } else {
+      lockedMediaRecord = await prisma.media.create({
+        data: {
+          userId: workflow.clientId,
+          nodeId: lockedNodeId,
+          fileName: rawFileName,
+          url: streamUrl,
+          sizeMB: fileSizeMB,
+          type: mediaType
+        }
+      });
+    }
+  }
+
   const payload = {
-    fileName: fileData.fileName || 'sample_upload.mp4',
-    fileUrl: fileData.fileUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1080&auto=format&fit=crop',
-    fileType: fileData.fileType || 'video/mp4',
-    fileSizeMB: Number(fileData.fileSizeMB || 14.2),
+    fileName: rawFileName,
+    fileUrl: streamUrl,
+    fileType: fileData.fileType || (isVideo ? 'video/mp4' : isDoc ? 'application/pdf' : 'image/jpeg'),
+    fileSizeMB,
     folderName: fileData.folderName || 'Automatix Uploads',
+    storageMediaId: lockedMediaRecord?.id || null,
+    isStorageLocked: !!lockedMediaRecord,
+    storageQuotaError: storageQuotaError || null,
     uploadedAt: new Date().toISOString()
   };
+
+  // Update nodesJson cache
+  if (triggerNode) {
+    const updatedNodes = nodes.map(n => {
+      if (n.id === triggerNode.id) {
+        return {
+          ...n,
+          config: {
+            ...n.config,
+            capturedPayload: payload,
+            storageQuotaError: storageQuotaError || null,
+            latestUploadedFile: {
+              ...payload,
+              capturedAt: new Date().toISOString()
+            }
+          }
+        };
+      }
+      return n;
+    });
+
+    await prisma.workflow.update({
+      where: { id: workflow.id },
+      data: { nodesJson: JSON.stringify(updatedNodes) }
+    });
+  }
 
   const executionLog = await prisma.executionLog.create({
     data: {
       workflowId: workflow.id,
-      status: 'ACTIVE',
-      currentNodeState: { step: 'TRIGGER', payload }
+      status: storageQuotaError ? 'FAILED' : 'ACTIVE',
+      currentNodeState: { step: 'TRIGGER', payload, ...(storageQuotaError ? { error: storageQuotaError } : {}) }
     }
   });
+
+  if (storageQuotaError) {
+    return { success: false, error: storageQuotaError, payload };
+  }
 
   try {
     await inngest.send({

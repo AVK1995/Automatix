@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Database, Image as ImageIcon, Film, FileText, Trash2, Loader2, ArrowUpRight, HardDrive } from 'lucide-react';
+import { Database, Image as ImageIcon, Film, FileText, Trash2, Loader2, ArrowUpRight, HardDrive, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -145,6 +145,8 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
                 <tbody className="divide-y divide-white/5">
                   {filteredFiles.map(file => {
                     const rawName = file.fileName || file.url.split('/').pop() || 'Asset File';
+                    const isWorkflowLocked = !!(file.nodeId && file.nodeId.startsWith('wf_trigger_'));
+
                     return (
                       <tr key={file.id} className="hover:bg-white/[0.02] transition-colors">
                         <td className="py-3 px-4">
@@ -152,20 +154,35 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
                             <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center shrink-0">
                               {getFileIcon(file.type)}
                             </div>
-                            <a 
-                              href={file.url} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="text-sm text-white font-medium hover:underline hover:text-accent-blue max-w-[200px] sm:max-w-xs truncate block"
-                            >
-                              {decodeURIComponent(rawName)}
-                            </a>
+                            <div className="min-w-0 max-w-[200px] sm:max-w-xs">
+                              <a 
+                                href={file.url} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="text-sm text-white font-medium hover:underline hover:text-accent-blue truncate block"
+                              >
+                                {decodeURIComponent(rawName)}
+                              </a>
+                              {isWorkflowLocked && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-mono text-purple-400 font-semibold mt-0.5">
+                                  <Lock size={9} className="shrink-0" />
+                                  <span>Workflow Locked Trigger</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-3 px-4 text-xs">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/5 text-text-secondary border border-white/10">
-                            {file.type}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/5 text-text-secondary border border-white/10">
+                              {file.type}
+                            </span>
+                            {isWorkflowLocked && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-purple-500/15 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                                <Lock size={8} /> LOCKED
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-xs text-text-secondary">
                           {file.sizeMB < 1 ? (file.sizeMB * 1024).toFixed(0) + ' KB' : file.sizeMB.toFixed(1) + ' MB'}
@@ -174,13 +191,24 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
                           {new Date(file.createdAt).toLocaleDateString()}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button 
-                            onClick={() => promptDelete(file)}
-                            disabled={deletingId === file.id}
-                            className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-red-400/10 rounded transition-colors disabled:opacity-50"
-                          >
-                            {deletingId === file.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                          </button>
+                          {isWorkflowLocked ? (
+                            <button
+                              type="button"
+                              disabled
+                              title="Locked by active workflow trigger. Updates automatically on new uploads."
+                              className="p-1.5 text-purple-400/60 bg-purple-500/10 rounded cursor-not-allowed border border-purple-500/20"
+                            >
+                              <Lock size={14} />
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => promptDelete(file)}
+                              disabled={deletingId === file.id}
+                              className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-red-400/10 rounded transition-colors disabled:opacity-50 cursor-pointer"
+                            >
+                              {deletingId === file.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
