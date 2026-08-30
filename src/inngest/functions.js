@@ -1075,10 +1075,7 @@ export const executeWorkflow = inngest.createFunction(
                 if (output !== null && output !== undefined) {
                   if (!execution.currentNodeState) execution.currentNodeState = {};
                   if (!execution.currentNodeState.stepOutputs) execution.currentNodeState.stepOutputs = {};
-                  execution.currentNodeState.stepOutputs[node.id] = { 
-                    result: typeof output === 'object' && output !== null && output.result !== undefined ? output.result : output, 
-                    output 
-                  };
+                  execution.currentNodeState.stepOutputs[node.id] = typeof output === 'object' && output !== null ? output : { output };
                   
                   await prisma.executionLog.update({
                     where: { id: executionLogId },

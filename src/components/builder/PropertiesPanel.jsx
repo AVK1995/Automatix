@@ -1,4 +1,4 @@
-import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal, HardDrive, ShieldCheck, FileVideo, Image, Eye, Film, Music, FileText, Download, Zap, Lightbulb, Crown, Coins, Gauge, Clock, ChevronRight, Wand2 } from 'lucide-react';
+import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal, HardDrive, ShieldCheck, FileVideo, Image, Eye, Film, Music, FileText, Download, Zap, Lightbulb, Crown, Coins, Gauge, Clock, ChevronRight, Wand2, Hash } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

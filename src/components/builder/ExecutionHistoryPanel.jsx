@@ -656,15 +656,47 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
           ...(payload.fileSizeMB ? { 'Media File Size': `${payload.fileSizeMB} MB` } : {})
         };
 
-        rawDataOut = stepOutputs[stepNode.id] || {
-          'Execution Status': 'Successfully Generated (Code 200)',
-          'AI Engine': (cfg.provider === 'native' || !cfg.provider) ? 'AI Radahn Vision Encoder' : cfg.provider,
-          'Output Caption': 'Dynamic multimodal analysis generated and forwarded to downstream steps.',
-          'Hook / Headline': 'High-converting hook synthesized from media asset.',
-          'Targeted Hashtags': '#Viral #Automation #AI #Productivity',
-          'Tokens Consumed': 320,
-          'Execution Duration': '240 ms'
-        };
+        let rawStepOut = stepOutputs[stepNode.id];
+        if (rawStepOut && typeof rawStepOut === 'object') {
+          // De-duplicate if nested under output or result
+          if (rawStepOut.output && typeof rawStepOut.output === 'object' && !Array.isArray(rawStepOut.output)) {
+            rawStepOut = rawStepOut.output;
+          } else if (rawStepOut.result && typeof rawStepOut.result === 'object' && !Array.isArray(rawStepOut.result)) {
+            rawStepOut = rawStepOut.result;
+          }
+        }
+
+        if (rawStepOut && typeof rawStepOut === 'object' && Object.keys(rawStepOut).length > 0) {
+          const formatted = {};
+          if (rawStepOut.transcript) formatted['🎙️ Audio Transcript'] = rawStepOut.transcript;
+          if (rawStepOut.summary) formatted['📊 Visual & Content Summary'] = rawStepOut.summary;
+          if (rawStepOut.hook || rawStepOut.title) formatted['✨ Viral Hook'] = rawStepOut.hook || rawStepOut.title;
+          if (rawStepOut.caption || rawStepOut.output) formatted['🎯 Synthesized Caption'] = rawStepOut.caption || rawStepOut.output;
+          if (rawStepOut.hashtags) formatted['🏷️ Targeted Hashtags'] = rawStepOut.hashtags;
+          if (rawStepOut.actionItems) formatted['🚀 Action Items'] = rawStepOut.actionItems;
+          if (rawStepOut.insights) formatted['💡 Insights & Metrics'] = rawStepOut.insights;
+          if (rawStepOut.tokensUsed || rawStepOut.tokens?.total) formatted['AI Tokens Consumed'] = rawStepOut.tokensUsed || rawStepOut.tokens?.total;
+          if (rawStepOut.model || rawStepOut.provider) formatted['AI Model Engine'] = rawStepOut.model || rawStepOut.provider;
+          if (rawStepOut.generationTimeSec || rawStepOut.generationTimeMs) formatted['Latency'] = `${rawStepOut.generationTimeSec || ((rawStepOut.generationTimeMs || 0)/1000).toFixed(2)}s`;
+          if (rawStepOut.timestamp || rawStepOut.createdAt) formatted['Timestamp'] = new Date(rawStepOut.timestamp || rawStepOut.createdAt).toLocaleString();
+          
+          for (const [k, v] of Object.entries(rawStepOut)) {
+            if (!['transcript', 'summary', 'hook', 'title', 'caption', 'output', 'hashtags', 'actionItems', 'insights', 'tokensUsed', 'tokens', 'model', 'provider', 'generationTimeSec', 'generationTimeMs', 'timestamp', 'createdAt', 'rawOutput', 'result'].includes(k)) {
+              formatted[k] = v;
+            }
+          }
+          rawDataOut = formatted;
+        } else {
+          rawDataOut = {
+            'Execution Status': 'Successfully Generated (Code 200)',
+            'AI Engine': (cfg.provider === 'native' || !cfg.provider) ? 'AI Radahn Vision Encoder' : cfg.provider,
+            'Output Caption': 'Dynamic multimodal analysis generated and forwarded to downstream steps.',
+            'Hook / Headline': 'High-converting hook synthesized from media asset.',
+            'Targeted Hashtags': '#Viral #Automation #AI #Productivity',
+            'Tokens Consumed': 320,
+            'Execution Duration': '240 ms'
+          };
+        }
       } else if (nodeType.includes('mail') || integId.includes('mail') || nodeType.includes('smtp')) {
         rawDataIn = {
           'Recipient Email': cfg.to || 'lead@example.com',
