@@ -365,11 +365,13 @@ export default function PlanUpgradeModal() {
                     </div>
 
                     {/* Payment Screenshot Upload */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-white flex items-center justify-between">
-                        <span>Step 2: Attach Payment Screenshot</span>
+                    <div className="p-3.5 bg-zinc-900/60 border border-white/10 rounded-xl space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-white flex items-center gap-1.5">
+                          <ImageIcon className="w-4 h-4 text-sky-400" /> Step 2: Attach Payment Screenshot
+                        </span>
                         <span className="text-[10px] text-sky-400 font-normal">* Required for verification</span>
-                      </label>
+                      </div>
                       <input 
                         type="file" 
                         accept="image/*" 
@@ -659,7 +661,7 @@ export default function PlanUpgradeModal() {
             <button 
               onClick={handleSubmit}
               disabled={isSubmitting || (activeTab === 'pro' && !session?.user)}
-              className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-accent-blue hover:bg-accent-blue/90 transition-all flex items-center gap-2 shadow-lg shadow-accent-blue/20 disabled:opacity-50 cursor-pointer"
+              className="px-5 py-2 rounded-lg text-xs font-semibold text-white bg-accent-blue hover:bg-accent-blue/90 transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
               {activeTab === 'pro' ? 'Submit Upgrade Request' : activeTab === 'enterprise' ? 'Send Enterprise Inquiry' : 'Request Add-on Quota'}

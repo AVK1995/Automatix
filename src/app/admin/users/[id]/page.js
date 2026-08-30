@@ -22,6 +22,10 @@ export default async function ManageTenantPage({ params }) {
             take: 100
           }
         }
+      },
+      quotaRequests: {
+        orderBy: { createdAt: 'desc' },
+        take: 20
       }
     }
   });
@@ -39,7 +43,12 @@ export default async function ManageTenantPage({ params }) {
         <p className="text-sm text-text-secondary">Edit subscription settings, quotas, support tickets, and export workflow execution logs for {tenant.name || tenant.email}.</p>
       </div>
 
-      <ManageTenantClient tenant={tenant} mediaFiles={tenant.media} userWorkflows={tenant.workflows} />
+      <ManageTenantClient 
+        tenant={tenant} 
+        mediaFiles={tenant.media} 
+        userWorkflows={tenant.workflows} 
+        quotaRequests={tenant.quotaRequests || []}
+      />
     </div>
   );
 }

@@ -19,7 +19,10 @@ import {
   Search, 
   ExternalLink,
   Clock,
-  Play
+  Play,
+  Crown,
+  RotateCcw,
+  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { exportToCsv } from '@/lib/csvExport';
@@ -94,7 +97,7 @@ const PRESET_PLANS = [
   }
 ];
 
-export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows = [] }) {
+export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows = [], quotaRequests = [] }) {
   const [activeTab, setActiveTab] = useState('access'); // 'access' | 'storage' | 'support' | 'workflows'
 
   const [tier, setTier] = useState(tenant.subscriptionTier || 'Professional');
@@ -112,6 +115,10 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
   const [maxSupportTickets, setMaxSupportTickets] = useState(tenant.maxSupportTickets || 5);
   const [supportTicketsRemaining, setSupportTicketsRemaining] = useState(tenant.supportTicketsRemaining ?? 5);
   const [ticketCooldownHours, setTicketCooldownHours] = useState(tenant.ticketCooldownHours ?? 24);
+
+  // Upgrade Requests State
+  const [userQuotaRequests, setUserQuotaRequests] = useState(quotaRequests);
+  const [isResettingUpgradeCooldown, setIsResettingUpgradeCooldown] = useState(false);
 
   // Workflow Filters
   const [workflowDateRange, setWorkflowDateRange] = useState('ALL'); // '7' | '30' | '90' | 'ALL'
@@ -688,57 +695,146 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
       )}
 
       {activeTab === 'support' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          <section className="bg-card border border-border-subtle p-6 rounded-xl">
-            <h3 className="text-base font-semibold text-foreground mb-4">Support Ticket Limits</h3>
-            <form onSubmit={handleUpdate} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 mb-3">
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1">Max Tickets</label>
-                  <input type="number" value={maxSupportTickets} onChange={(e) => setMaxSupportTickets(e.target.value)} className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <section className="bg-card border border-border-subtle p-6 rounded-xl space-y-4">
+              <h3 className="text-base font-semibold text-foreground">Support Ticket Limits</h3>
+              <form onSubmit={handleUpdate} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">Max Tickets</label>
+                    <input type="number" value={maxSupportTickets} onChange={(e) => setMaxSupportTickets(e.target.value)} className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">Cooldown Duration (Hours)</label>
+                    <input type="number" value={ticketCooldownHours} onChange={(e) => setTicketCooldownHours(e.target.value)} className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1">Cooldown Duration (Hours)</label>
-                  <input type="number" value={ticketCooldownHours} onChange={(e) => setTicketCooldownHours(e.target.value)} className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue" />
+                
+                <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 p-3 rounded-lg mb-4">
+                  <div>
+                    <div className="text-xs font-medium text-white mb-0.5">Current Quota Status</div>
+                    <div className="text-[10px] text-text-secondary">{supportTicketsRemaining} of {maxSupportTickets} tickets remaining</div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`/api/admin/users/${tenant.id}/reset-quota`, { method: 'POST' });
+                        if (!res.ok) throw new Error('Failed to reset quota');
+                        setSupportTicketsRemaining(maxSupportTickets);
+                        toast.success('Quota reset successfully');
+                      } catch(e) {
+                        toast.error(e.message);
+                      }
+                    }}
+                    className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Reset Quota Now
+                  </button>
                 </div>
-              </div>
-              
-              <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 p-3 rounded-lg mb-4">
-                <div>
-                  <div className="text-xs font-medium text-white mb-0.5">Current Quota Status</div>
-                  <div className="text-[10px] text-text-secondary">{supportTicketsRemaining} of {maxSupportTickets} tickets remaining</div>
-                </div>
-                <button 
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const res = await fetch(`/api/admin/users/${tenant.id}/reset-quota`, { method: 'POST' });
-                      if (!res.ok) throw new Error('Failed to reset quota');
-                      setSupportTicketsRemaining(maxSupportTickets);
-                      toast.success('Quota reset successfully');
-                    } catch(e) {
-                      toast.error(e.message);
-                    }
-                  }}
-                  className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  Reset Quota Now
-                </button>
-              </div>
 
-              <div className="pt-2 flex items-center gap-4">
-                <button type="submit" disabled={loading} className="bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
-                  {loading ? 'Saving...' : 'Save Support Quotas'}
-                </button>
-                {success && <span className="text-xs text-emerald-400 font-medium">{success}</span>}
-                {error && <span className="text-xs text-red-400 font-medium">{error}</span>}
-              </div>
-            </form>
-          </section>
+                <div className="pt-2 flex items-center gap-4">
+                  <button type="submit" disabled={loading} className="bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 cursor-pointer">
+                    {loading ? 'Saving...' : 'Save Support Quotas'}
+                  </button>
+                  {success && <span className="text-xs text-emerald-400 font-medium">{success}</span>}
+                  {error && <span className="text-xs text-red-400 font-medium">{error}</span>}
+                </div>
+              </form>
+            </section>
 
-          <section className="bg-card border border-border-subtle p-6 rounded-xl">
-            <h3 className="text-base font-semibold text-foreground mb-4">User Support Tickets</h3>
-            <AdminTicketList tenantId={tenant.id} />
+            <section className="bg-card border border-border-subtle p-6 rounded-xl">
+              <h3 className="text-base font-semibold text-foreground mb-4">User Support Tickets</h3>
+              <AdminTicketList tenantId={tenant.id} />
+            </section>
+          </div>
+
+          {/* Upgrade Request Quota & Anti-Spam Cooldown Section */}
+          <section className="bg-card border border-border-subtle p-6 rounded-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <Crown size={17} className="text-accent-blue" />
+                  Upgrade Request Quota & Anti-Spam Cooldown
+                </h3>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  Manage the 24-hour upgrade request cooldown and clear pending submission locks for this tenant.
+                </p>
+              </div>
+            </div>
+
+            {(() => {
+              const pendingUpgrade = userQuotaRequests.find(q => q.status === 'PENDING');
+              const latestUpgrade = userQuotaRequests[0];
+              const isLocked = !!pendingUpgrade;
+
+              return (
+                <div className="space-y-3">
+                  <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div>
+                      <span className="text-[10px] text-text-tertiary uppercase font-bold block">Current Upgrade Request Status</span>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          isLocked ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        }`}>
+                          {isLocked ? '24h Pending Cooldown Active' : 'No Cooldown Active'}
+                        </span>
+                        <span className="text-text-secondary">
+                          {isLocked ? `Pending Plan: "${pendingUpgrade.requestedPlan}"` : 'User can immediately submit plan upgrade requests'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isResettingUpgradeCooldown}
+                      onClick={async () => {
+                        setIsResettingUpgradeCooldown(true);
+                        try {
+                          const res = await fetch(`/api/admin/users/${tenant.id}/reset-upgrade-cooldown`, { method: 'POST' });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || 'Failed to reset cooldown');
+                          setUserQuotaRequests(prev => prev.map(q => q.status === 'PENDING' ? { ...q, status: 'REJECTED' } : q));
+                          toast.success('Upgrade request cooldown & locks reset successfully! User can submit new upgrade requests immediately.');
+                        } catch (err) {
+                          toast.error(err.message);
+                        } finally {
+                          setIsResettingUpgradeCooldown(false);
+                        }
+                      }}
+                      className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
+                    >
+                      {isResettingUpgradeCooldown ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                      <span>Reset Upgrade Request Cooldown</span>
+                    </button>
+                  </div>
+
+                  {latestUpgrade && (
+                    <div className="p-3 bg-black/40 border border-white/5 rounded-lg text-xs space-y-1.5">
+                      <div className="flex items-center justify-between text-text-secondary text-[11px]">
+                        <span>Latest Request: <strong className="text-white">{latestUpgrade.requestedPlan}</strong></span>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                          latestUpgrade.status === 'PENDING' ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20' :
+                          latestUpgrade.status === 'APPROVED' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' :
+                          'text-text-tertiary bg-white/5 border border-white/10'
+                        }`}>
+                          {latestUpgrade.status}
+                        </span>
+                      </div>
+                      {latestUpgrade.message && (
+                        <p className="text-text-tertiary text-[11px] italic bg-white/[0.01] p-2 rounded border border-white/5">
+                          "{latestUpgrade.message}"
+                        </p>
+                      )}
+                      <div className="text-[10px] text-text-tertiary">
+                        Submitted on {new Date(latestUpgrade.createdAt).toLocaleDateString()} at {new Date(latestUpgrade.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </section>
         </div>
       )}
