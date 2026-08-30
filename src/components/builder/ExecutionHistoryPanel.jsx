@@ -42,9 +42,11 @@ import {
   Timer,
   Hash,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Sparkle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Select from '@/components/ui/Select';
 
 const DATE_RANGE_OPTIONS = [
   { value: '15d', label: 'Last 15 Days (Default)' },
@@ -59,11 +61,11 @@ const DATE_RANGE_OPTIONS = [
  * Classifies pipeline steps strictly under Automatix Engine Rules:
  * - External 3rd Party Integrations -> PAID TASK (Google Sheets, SMTP, Meta CAPI, etc.)
  * - Smart Delays -> PAID TASK
- * - AI Content & Vision Engines -> PAID TASK
+ * - AI Content & Vision Engines -> PAID TASK (Purple neon)
  * - Internal Automatix Utilities -> FREE UTILITY (Webhook Triggers, Formatters, Filters, Routers, Math, Code JS)
  */
 export function classifyStepTask(node, index = 0) {
-  if (!node) return { isPaid: false, label: 'Free Utility', category: 'INTERNAL' };
+  if (!node) return { isPaid: false, isAi: false, label: 'Free Utility', category: 'INTERNAL' };
 
   const type = (node.type || '').toLowerCase();
   const provider = (node.config?.provider || node.integration?.id || '').toLowerCase();
@@ -71,15 +73,10 @@ export function classifyStepTask(node, index = 0) {
 
   // 1. Triggers are always Free Utilities
   if (index === 0 || type === 'trigger' || type.startsWith('trigger_') || node.isTrigger) {
-    return { isPaid: false, label: 'Free Utility', category: 'TRIGGER' };
+    return { isPaid: false, isAi: false, label: 'Free Utility', category: 'TRIGGER' };
   }
 
-  // 2. Smart Delays are Paid Tasks
-  if (type === 'delay' || type === 'smart_delay' || title.includes('delay')) {
-    return { isPaid: true, label: '1 Task Consumed', category: 'DELAY' };
-  }
-
-  // 3. AI Engines are Paid Tasks
+  // 2. AI Nodes are Paid Tasks (Uses Purple theme)
   if (
     type === 'ai' || 
     type === 'ai_content' || 
@@ -89,10 +86,15 @@ export function classifyStepTask(node, index = 0) {
     title.includes('ai radahn') ||
     title.includes('synthesizer')
   ) {
-    return { isPaid: true, label: '1 Task Consumed', category: 'AI_ENGINE' };
+    return { isPaid: true, isAi: true, label: '1 Task Consumed', category: 'AI_ENGINE' };
   }
 
-  // 4. 3rd Party Integrations are Paid Tasks
+  // 3. Smart Delays are Paid Tasks
+  if (type === 'delay' || type === 'smart_delay' || title.includes('delay')) {
+    return { isPaid: true, isAi: false, label: '1 Task Consumed', category: 'DELAY' };
+  }
+
+  // 4. 3rd Party Integrations are Paid Tasks (Uses Neon Blue theme)
   const paidTypes = [
     'sheets', 'google_sheets', 'drive', 'google_drive', 'gmail', 'smtp',
     'meta_capi', 'facebook', 'instagram', 'slack', 'discord', 'telegram',
@@ -109,11 +111,11 @@ export function classifyStepTask(node, index = 0) {
     title.includes('instagram') || 
     title.includes('slack')
   ) {
-    return { isPaid: true, label: '1 Task Consumed', category: 'INTEGRATION' };
+    return { isPaid: true, isAi: false, label: '1 Task Consumed', category: 'INTEGRATION' };
   }
 
   // 5. Automatix Internal Utilities (Formatters, Filters, Routers, Parsers) are Free
-  return { isPaid: false, label: 'Free Utility', category: 'INTERNAL' };
+  return { isPaid: false, isAi: false, label: 'Free Utility', category: 'INTERNAL' };
 }
 
 export default function ExecutionHistoryPanel({ onClose, workflowId }) {
@@ -395,42 +397,42 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
   });
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#070709] flex flex-col overflow-hidden text-white font-sans animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-[#09090d] flex flex-col overflow-hidden text-white font-sans animate-in fade-in duration-200">
       
       {/* 1. TOP COMMAND BAR */}
-      <div className="p-4 sm:p-5 border-b border-white/10 bg-[#0c0c10] flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 shadow-xl">
+      <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-white/10 bg-[#0e0e14] flex flex-col md:flex-row md:items-center justify-between gap-3.5 shrink-0">
         <div>
           <div className="flex items-center gap-2 text-xs text-text-tertiary">
             <span>Workflows</span>
             <span>/</span>
-            <span className="text-white font-medium">{workflowName}</span>
+            <span className="text-white font-medium truncate max-w-[200px] sm:max-w-xs">{workflowName}</span>
             <span>/</span>
             <span className="text-accent-blue font-semibold">Chrono-Audit Log</span>
           </div>
 
-          <h1 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2.5 mt-1">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
-              <HistoryIcon size={14} />
-            </div>
-            <span>Pipeline Chrono-Audit & Task Consumption Log</span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-text-secondary border border-white/10">
+          <div className="flex flex-wrap items-center gap-2.5 mt-1">
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <HistoryIcon size={16} className="text-accent-blue shrink-0" />
+              <span>Pipeline Chrono-Audit & Task History</span>
+            </h1>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 text-text-secondary border border-white/10">
               90-Day Retention Active
             </span>
-          </h1>
+          </div>
 
           <p className="text-xs text-text-secondary mt-0.5">
-            Immutable trace log of all pipeline executions. 3rd-party connectors and AI nodes deduct standard tasks; internal formatters and triggers are free.
+            Immutable log of all pipeline executions. 3rd-party connectors and AI nodes deduct standard tasks; internal formatters and triggers are free.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
           {/* Download CSV */}
           <button
             type="button"
             onClick={handleDownloadCsv}
-            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1.5 transition-all cursor-pointer hover:border-white/20 shadow-sm"
+            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <Download size={14} className="text-emerald-400" />
+            <Download size={13} className="text-emerald-400 shrink-0" />
             <span>Export CSV Audit</span>
           </button>
 
@@ -439,9 +441,9 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             type="button"
             onClick={fetchHistory}
             disabled={isLoading}
-            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw size={14} className={isLoading ? 'animate-spin text-purple-400' : ''} />
+            <RefreshCw size={13} className={`text-accent-blue shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Live Sync</span>
           </button>
 
@@ -449,44 +451,44 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-text-secondary hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer shrink-0"
             title="Back to Canvas"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
       </div>
 
       {/* 2. CHRONO METRIC TILES */}
-      <div className="p-4 sm:p-5 border-b border-white/10 bg-[#09090c] shrink-0">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+      <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-white/10 bg-[#0b0b10] shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           
-          <div className="p-4 rounded-xl bg-[#111116] border border-white/10 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-[#121218] border border-white/10 flex items-center justify-between">
             <div>
-              <div className="text-xs text-text-secondary font-medium uppercase tracking-wider">Total Pipeline Runs</div>
-              <div className="text-2xl font-black text-white mt-1">{totalExecutions}</div>
+              <div className="text-[11px] text-text-secondary font-medium uppercase tracking-wider">Total Pipeline Runs</div>
+              <div className="text-xl font-bold text-white mt-0.5">{totalExecutions}</div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center">
-              <CheckCircle2 size={18} />
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={16} />
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#111116] border border-white/10 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-[#121218] border border-white/10 flex items-center justify-between">
             <div>
-              <div className="text-xs text-text-secondary font-medium uppercase tracking-wider">Tasks Consumed (Paid)</div>
-              <div className="text-2xl font-black text-purple-300 mt-1">{totalTasksConsumed}</div>
+              <div className="text-[11px] text-text-secondary font-medium uppercase tracking-wider">Tasks Consumed (Paid)</div>
+              <div className="text-xl font-bold text-accent-blue mt-0.5">{totalTasksConsumed}</div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center">
-              <Zap size={18} />
+            <div className="w-8 h-8 rounded-lg bg-accent-blue/10 text-accent-blue border border-accent-blue/20 flex items-center justify-center shrink-0">
+              <Zap size={16} />
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#111116] border border-white/10 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-[#121218] border border-white/10 flex items-center justify-between">
             <div>
-              <div className="text-xs text-text-secondary font-medium uppercase tracking-wider">Free Automatix Utilities</div>
-              <div className="text-2xl font-black text-emerald-400 mt-1">{totalFreeTasks}</div>
+              <div className="text-[11px] text-text-secondary font-medium uppercase tracking-wider">Free Automatix Utilities</div>
+              <div className="text-xl font-bold text-emerald-400 mt-0.5">{totalFreeTasks}</div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-mono font-bold text-xs">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-mono font-bold text-xs shrink-0">
               FREE
             </div>
           </div>
@@ -494,52 +496,46 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
         </div>
       </div>
 
-      {/* 3. FILTERS & SEARCH */}
-      <div className="p-4 sm:px-6 py-3 border-b border-white/10 bg-[#0c0c10] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+      {/* 3. FILTERS & SEARCH (Using custom themed Select dropdown) */}
+      <div className="px-4 py-3 sm:px-6 border-b border-white/10 bg-[#0d0d12] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
         
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary" />
           <input
             type="text"
             placeholder="Search by Trace ID or resolution state..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-3 py-2 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-purple-500 font-mono"
+            className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue font-mono"
           />
         </div>
 
-        {/* Date Selector */}
+        {/* Custom Headless UI Dropdown for Date Range */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-text-secondary">
-            <Filter size={13} className="text-purple-400" />
-            <select
+          <div className="w-48">
+            <Select
               value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="bg-transparent text-white text-xs focus:outline-none cursor-pointer"
-            >
-              {DATE_RANGE_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value} className="bg-[#141418] text-white">
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onChange={setDateRange}
+              options={DATE_RANGE_OPTIONS}
+              className="w-full text-xs"
+            />
           </div>
 
           {dateRange === 'custom' && (
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-1.5 text-xs">
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
+                className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:border-accent-blue focus:outline-none"
               />
-              <span className="text-text-tertiary">to</span>
+              <span className="text-text-tertiary text-xs">to</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
+                className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:border-accent-blue focus:outline-none"
               />
             </div>
           )}
@@ -548,24 +544,24 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
       </div>
 
       {/* 4. EXECUTION AUDIT TABLE */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6">
-        <div className="bg-[#101014] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 flex flex-col">
+        <div className="bg-[#111116] border border-white/10 rounded-2xl overflow-hidden shadow-xl flex-1 flex flex-col min-h-[300px]">
           {isLoading ? (
-            <div className="py-24 flex flex-col items-center justify-center text-text-tertiary gap-2">
-              <Loader2 size={24} className="animate-spin text-purple-400" />
+            <div className="py-24 flex flex-col items-center justify-center text-text-tertiary gap-2 my-auto">
+              <Loader2 size={24} className="animate-spin text-accent-blue" />
               <span className="text-xs">Scanning Chrono-Audit Records...</span>
             </div>
           ) : filteredLogs.length === 0 ? (
-            <div className="py-24 px-4 text-center text-text-tertiary text-xs space-y-2">
-              <Database size={32} className="mx-auto opacity-40 mb-2 text-purple-400" />
-              <p className="text-sm font-bold text-white">No Chrono-Audit Records</p>
+            <div className="py-24 px-4 text-center text-text-tertiary text-xs space-y-2 my-auto">
+              <Database size={32} className="mx-auto opacity-40 mb-2 text-accent-blue" />
+              <p className="text-sm font-bold text-white">No Chrono-Audit Records Found</p>
               <p className="max-w-md mx-auto">
                 No pipeline runs logged for this date range. As triggers arrive, their execution trace and task allocations will appear here.
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-white/5 border-b border-white/10 text-text-secondary font-semibold">
                   <tr>
                     <th className="p-3.5">Execution State / Timestamp</th>
@@ -593,12 +589,12 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                         <td className="p-3.5">
                           <div className="flex items-center gap-2">
                             {log.status === 'FAILED' ? (
-                              <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
-                                <XCircle size={11} /> FAULT
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
+                                <XCircle size={11} className="shrink-0" /> FAULT
                               </span>
                             ) : (
-                              <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                                <CheckCircle2 size={11} /> RESOLVED
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                <CheckCircle2 size={11} className="shrink-0" /> RESOLVED
                               </span>
                             )}
                           </div>
@@ -609,14 +605,16 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
 
                         {/* Stage Sequence Badges */}
                         <td className="p-3.5">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             {stepClassifications.slice(0, 5).map((s, idx) => (
                               <div 
                                 key={idx} 
-                                className={`w-6 h-6 rounded-md border flex items-center justify-center ${
-                                  s.classification.isPaid 
-                                    ? 'bg-purple-500/20 border-purple-500/30 text-purple-300' 
-                                    : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+                                className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 ${
+                                  s.classification.isAi
+                                    ? 'bg-purple-500/20 border-purple-500/30 text-purple-300'
+                                    : s.classification.isPaid 
+                                      ? 'bg-accent-blue/20 border-accent-blue/30 text-accent-blue' 
+                                      : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
                                 }`} 
                                 title={s.node.title || s.node.type}
                               >
@@ -633,7 +631,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
 
                         {/* Workflow Name */}
                         <td className="p-3.5">
-                          <div className="font-bold text-white group-hover:text-accent-blue transition-colors">
+                          <div className="font-semibold text-white group-hover:text-accent-blue transition-colors">
                             {workflowName}
                           </div>
                           <div className="text-[11px] text-text-tertiary">
@@ -643,26 +641,26 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
 
                         {/* Trace ID */}
                         <td className="p-3.5">
-                          <div className="flex items-center gap-1.5 font-mono text-[11px] text-purple-300">
+                          <div className="flex items-center gap-1.5 font-mono text-[11px] text-accent-blue">
                             <span>{log.id.slice(0, 18)}...</span>
                             <button
                               type="button"
                               onClick={(e) => handleCopyId(log.id, e)}
-                              className="p-1 rounded hover:bg-white/10 text-text-tertiary hover:text-white transition-colors"
+                              className="p-1 rounded hover:bg-white/10 text-text-tertiary hover:text-white transition-colors shrink-0"
                               title="Copy Trace ID"
                             >
-                              {copiedId === log.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                              {copiedId === log.id ? <Check size={12} className="text-emerald-400 shrink-0" /> : <Copy size={12} className="shrink-0" />}
                             </button>
                           </div>
                         </td>
 
                         {/* Consumption */}
                         <td className="p-3.5 text-right">
-                          <div className="font-bold text-white text-xs">
+                          <div className="font-semibold text-white text-xs">
                             {activeNodes.length} Stage Pipeline
                           </div>
                           <div className="text-[11px] text-text-secondary mt-0.5 font-mono">
-                            <span className="text-purple-300 font-semibold">{paidStepsPerRun} Paid Tasks</span> · <span className="text-emerald-400">{freeStepsPerRun} Free Utilities</span>
+                            <span className="text-accent-blue font-semibold">{paidStepsPerRun} Paid Tasks</span> · <span className="text-emerald-400">{freeStepsPerRun} Free Utilities</span>
                           </div>
                         </td>
                       </tr>
@@ -675,83 +673,82 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
         </div>
       </div>
 
-      {/* 5. ORIGINAL DUAL-PANE CHRONO-AUDIT TELEMETRY STUDIO (100% Unique Architecture) */}
+      {/* 5. RESPONSIVE DUAL-PANE CHRONO-AUDIT TELEMETRY STUDIO (Mobile/Tablet/Desktop Optimized) */}
       {selectedExecution && (
         <div 
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setSelectedExecution(null)}
         >
           <div 
-            className="bg-[#0e0e13] border border-white/15 rounded-3xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl overflow-hidden relative"
+            className="bg-[#0f0f14] border border-white/15 rounded-2xl sm:rounded-3xl w-full max-w-5xl h-full sm:h-[88vh] flex flex-col shadow-2xl overflow-hidden relative"
             onClick={e => e.stopPropagation()}
           >
             
             {/* Modal Command Header */}
-            <div className="p-4 sm:p-5 border-b border-white/10 bg-[#14141a] flex items-center justify-between gap-4 shrink-0">
+            <div className="p-3.5 sm:p-4 border-b border-white/10 bg-[#13131a] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-white tracking-tight truncate">{workflowName}</h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">{workflowName}</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
                     RESOLVED (200)
                   </span>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-3 mt-1 font-mono text-xs text-text-secondary">
+                <div className="flex flex-wrap items-center gap-2.5 mt-1 font-mono text-xs text-text-secondary">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-text-tertiary">Trace ID:</span>
-                    <span className="text-purple-300 select-all">{selectedExecution.id}</span>
+                    <span className="text-text-tertiary">Trace:</span>
+                    <span className="text-accent-blue select-all">{selectedExecution.id}</span>
                     <button
                       type="button"
                       onClick={(e) => handleCopyId(selectedExecution.id, e)}
-                      className="p-1 rounded hover:bg-white/10 text-text-tertiary hover:text-white"
+                      className="p-1 rounded hover:bg-white/10 text-text-tertiary hover:text-white shrink-0"
                     >
-                      {copiedId === selectedExecution.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      {copiedId === selectedExecution.id ? <Check size={11} className="text-emerald-400 shrink-0" /> : <Copy size={11} className="shrink-0" />}
                     </button>
                   </div>
 
-                  <span className="text-white/20">|</span>
-                  <div className="flex items-center gap-1 text-text-tertiary">
-                    <Clock size={12} />
+                  <span className="text-white/20 hidden sm:inline">|</span>
+                  <div className="flex items-center gap-1 text-text-tertiary text-[11px]">
+                    <Clock size={11} className="shrink-0" />
                     <span>{new Date(selectedExecution.createdAt).toLocaleString()} (IST)</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                 <button
                   type="button"
                   onClick={() => handleRetryExecution(selectedExecution.id)}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-xs font-bold text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-purple-600/20"
+                  className="px-3 py-1.5 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                 >
-                  <RotateCcw size={13} />
+                  <RotateCcw size={12} className="shrink-0" />
                   <span>Re-run Trace</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setSelectedExecution(null)}
-                  className="p-2 rounded-xl hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                  className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-text-secondary hover:text-white transition-colors cursor-pointer shrink-0"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
             </div>
 
-            {/* DUAL-PANE BODY */}
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+            {/* DUAL-PANE BODY (Stacked on Mobile, Side-by-Side on Tablet/Desktop) */}
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
               
-              {/* LEFT PANE: Interactive Chrono-Rail Timeline */}
-              <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-white/10 bg-[#0a0a0e] p-4 overflow-y-auto custom-scrollbar shrink-0">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-3 flex items-center justify-between">
-                  <span>Chrono-Rail Execution Stages</span>
-                  <span className="font-mono text-purple-400">{activeNodes.length} Stages</span>
+              {/* Chrono-Rail: Horizontal Carousel on Mobile (<768px), Vertical Rail on Tablet/Desktop (>=768px) */}
+              <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-white/10 bg-[#0a0a0f] p-3 sm:p-4 overflow-x-auto md:overflow-y-auto custom-scrollbar shrink-0">
+                
+                <div className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2.5 flex items-center justify-between">
+                  <span>Pipeline Stages</span>
+                  <span className="font-mono text-accent-blue">{activeNodes.length} Stages</span>
                 </div>
 
-                <div className="space-y-1 relative">
+                {/* Mobile: Horizontal flex pills / Desktop: Vertical cards */}
+                <div className="flex md:flex-col gap-2 relative">
                   
-                  {/* Vertical Timeline Guide Line */}
-                  <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gradient-to-b from-purple-500/40 via-indigo-500/20 to-emerald-500/40 pointer-events-none" />
-
                   {stepClassifications.map(({ node: step, classification }, idx) => {
                     const isSelected = selectedStepIndex === idx;
 
@@ -759,35 +756,41 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                       <div
                         key={step.id || idx}
                         onClick={() => setSelectedStepIndex(idx)}
-                        className={`relative z-10 p-3 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
+                        className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center md:items-start gap-2.5 select-none shrink-0 min-w-[200px] md:min-w-0 ${
                           isSelected 
-                            ? 'bg-[#181822] border-purple-500/50 shadow-lg shadow-purple-950/40 ring-1 ring-purple-500/30' 
+                            ? 'bg-[#15151f] border-accent-blue/50 shadow-md ring-1 ring-accent-blue/30' 
                             : 'bg-black/30 border-white/5 hover:border-white/15 hover:bg-white/[0.02]'
                         }`}
                       >
-                        {/* Timeline Node Bead */}
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 transition-all ${
+                        {/* Node Bead Icon */}
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${
                           isSelected 
-                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 scale-105' 
-                            : classification.isPaid 
-                              ? 'bg-purple-950/40 border border-purple-500/30 text-purple-400' 
-                              : 'bg-emerald-950/40 border border-emerald-500/30 text-emerald-400'
+                            ? 'bg-accent-blue text-white shadow-sm' 
+                            : classification.isAi
+                              ? 'bg-purple-950/50 border border-purple-500/30 text-purple-300'
+                              : classification.isPaid 
+                                ? 'bg-accent-blue/15 border border-accent-blue/30 text-accent-blue' 
+                                : 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-400'
                         }`}>
                           {getStepIcon(step, idx)}
                         </div>
 
-                        {/* Info */}
+                        {/* Node Details */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
-                            <span className="text-[10px] font-mono font-bold text-text-tertiary uppercase">
+                            <span className="text-[9px] font-mono font-bold text-text-tertiary uppercase">
                               STAGE 0{idx + 1}
                             </span>
-                            {classification.isPaid ? (
-                              <span className="text-[9px] font-bold font-mono px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            {classification.isAi ? (
+                              <span className="text-[8px] font-bold font-mono px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                AI RADAHN
+                              </span>
+                            ) : classification.isPaid ? (
+                              <span className="text-[8px] font-bold font-mono px-1.5 py-0.2 rounded bg-accent-blue/15 text-accent-blue border border-accent-blue/30">
                                 PAID TASK
                               </span>
                             ) : (
-                              <span className="text-[9px] font-bold font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <span className="text-[8px] font-bold font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                                 FREE
                               </span>
                             )}
@@ -797,7 +800,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                             {step.title || `Stage ${idx + 1}`}
                           </div>
 
-                          <div className="flex items-center justify-between text-[10px] text-text-tertiary font-mono mt-1">
+                          <div className="hidden md:flex items-center justify-between text-[10px] text-text-tertiary font-mono mt-1">
                             <span>+{idx * 118}ms</span>
                             <span className="text-emerald-400 flex items-center gap-0.5">
                               <Check size={10} strokeWidth={3} /> OK
@@ -810,99 +813,109 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                 </div>
               </div>
 
-              {/* RIGHT PANE: Deep Telemetry Console */}
-              <div className="flex-1 flex flex-col bg-[#0f0f15] overflow-hidden">
+              {/* RIGHT PANE: Telemetry Inspector Console */}
+              <div className="flex-1 flex flex-col bg-[#101017] overflow-hidden min-h-0">
                 
                 {/* Console Navigation Header */}
-                <div className="p-4 border-b border-white/10 bg-[#121218] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                <div className="p-3.5 sm:p-4 border-b border-white/10 bg-[#14141c] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      currentStep?.classification.isAi
+                        ? 'bg-purple-500/20 border border-purple-500/30 text-purple-300'
+                        : currentStep?.classification.isPaid
+                          ? 'bg-accent-blue/20 border border-accent-blue/30 text-accent-blue'
+                          : 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300'
+                    }`}>
                       {getStepIcon(currentStep?.node, selectedStepIndex)}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-black text-white">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-xs sm:text-sm font-bold text-white truncate">
                           {currentStep?.node?.title || `Stage 0${selectedStepIndex + 1}`}
                         </h4>
-                        {currentStep?.classification.isPaid ? (
-                          <span className="text-[10px] font-bold font-mono px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        {currentStep?.classification.isAi ? (
+                          <span className="text-[9px] font-bold font-mono px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+                            AI Radahn Engine
+                          </span>
+                        ) : currentStep?.classification.isPaid ? (
+                          <span className="text-[9px] font-bold font-mono px-2 py-0.2 rounded-full bg-accent-blue/15 text-accent-blue border border-accent-blue/30 shrink-0">
                             1 Task Consumed
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold font-mono px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          <span className="text-[9px] font-bold font-mono px-2 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
                             Free Automatix Utility
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-text-tertiary font-mono mt-0.5">
-                        Latency: {metrics.latencyMs}ms · Env: {metrics.runtimeEnv}
+                      <p className="text-[10px] sm:text-[11px] text-text-tertiary font-mono mt-0.5">
+                        Latency: {metrics.latencyMs}ms · Runtime: {metrics.runtimeEnv}
                       </p>
                     </div>
                   </div>
 
                   {/* Telemetry Tab Switcher */}
-                  <div className="flex items-center bg-black/60 border border-white/10 rounded-xl p-1 text-xs self-start sm:self-auto font-medium">
+                  <div className="flex items-center bg-black/60 border border-white/10 rounded-xl p-1 text-xs self-start sm:self-auto font-medium shrink-0">
                     <button
                       type="button"
                       onClick={() => setTelemetryViewMode('emitted')}
-                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs ${
                         telemetryViewMode === 'emitted'
-                          ? 'bg-purple-600 text-white font-bold shadow-sm'
+                          ? 'bg-accent-blue text-white font-semibold shadow-sm'
                           : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      <Activity size={12} />
+                      <Activity size={12} className="shrink-0" />
                       <span>Emitted Telemetry</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setTelemetryViewMode('ingest')}
-                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs ${
                         telemetryViewMode === 'ingest'
-                          ? 'bg-purple-600 text-white font-bold shadow-sm'
+                          ? 'bg-accent-blue text-white font-semibold shadow-sm'
                           : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      <Database size={12} />
+                      <Database size={12} className="shrink-0" />
                       <span>Ingest Parameters</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setTelemetryViewMode('metrics')}
-                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs ${
                         telemetryViewMode === 'metrics'
-                          ? 'bg-purple-600 text-white font-bold shadow-sm'
+                          ? 'bg-accent-blue text-white font-semibold shadow-sm'
                           : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      <Gauge size={12} />
+                      <Gauge size={12} className="shrink-0" />
                       <span>Metrics</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Filter & View Mode Controls */}
-                <div className="px-4 py-2.5 border-b border-white/10 bg-[#0d0d12] flex items-center justify-between gap-3 text-xs shrink-0">
-                  <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary" />
+                <div className="px-3.5 py-2 sm:px-4 sm:py-2.5 border-b border-white/10 bg-[#0e0e14] flex items-center justify-between gap-3 text-xs shrink-0">
+                  <div className="relative flex-1 max-w-xs sm:max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-text-tertiary" />
                     <input
                       type="text"
                       placeholder="Filter telemetry keys or values..."
                       value={telemetrySearch}
                       onChange={(e) => setTelemetrySearch(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-purple-500 font-mono"
+                      className="w-full bg-black/50 border border-white/10 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue font-mono"
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 font-mono">
-                    <span className="text-[11px] text-text-tertiary">View:</span>
+                  <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
+                    <span className="text-[10px] text-text-tertiary hidden sm:inline">View:</span>
                     <button
                       type="button"
                       onClick={() => setDataViewFormat('matrix')}
-                      className={`px-2.5 py-1 rounded text-xs transition-colors ${
-                        dataViewFormat === 'matrix' ? 'bg-white/10 text-white font-bold' : 'text-text-tertiary hover:text-white'
+                      className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[11px] transition-colors cursor-pointer ${
+                        dataViewFormat === 'matrix' ? 'bg-white/10 text-white font-semibold' : 'text-text-tertiary hover:text-white'
                       }`}
                     >
                       Matrix Grid
@@ -910,51 +923,51 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                     <button
                       type="button"
                       onClick={() => setDataViewFormat('raw_stream')}
-                      className={`px-2.5 py-1 rounded text-xs transition-colors ${
-                        dataViewFormat === 'raw_stream' ? 'bg-white/10 text-white font-bold' : 'text-text-tertiary hover:text-white'
+                      className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[11px] transition-colors cursor-pointer ${
+                        dataViewFormat === 'raw_stream' ? 'bg-white/10 text-white font-semibold' : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      Raw JSON Stream
+                      Raw JSON
                     </button>
                   </div>
                 </div>
 
                 {/* Console Main Content Area */}
-                <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto custom-scrollbar min-h-0">
                   
                   {/* Verified Notification Callout */}
-                  <div className="mb-4 p-3 rounded-xl bg-purple-950/20 border border-purple-500/30 flex items-center justify-between text-xs text-purple-200 font-mono">
+                  <div className="mb-3.5 p-2.5 sm:p-3 rounded-xl bg-accent-blue/10 border border-accent-blue/25 flex items-center justify-between text-xs text-blue-200 font-mono">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-purple-400 shrink-0" />
+                      <ShieldCheck size={15} className="text-accent-blue shrink-0" />
                       <span>Stage telemetry validated with 0 runtime exceptions.</span>
                     </div>
-                    <span className="text-[10px] text-purple-300 font-bold uppercase">
+                    <span className="text-[10px] text-accent-blue font-bold uppercase shrink-0">
                       Code 200 Resolved
                     </span>
                   </div>
 
                   {dataViewFormat === 'matrix' ? (
                     activeEntries.length === 0 ? (
-                      <div className="p-12 text-center text-text-tertiary text-xs">
+                      <div className="p-8 text-center text-text-tertiary text-xs">
                         No telemetry parameters match your filter.
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         {activeEntries.map(([k, v]) => (
                           <div
                             key={k}
-                            className="p-3 rounded-xl bg-black/50 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
+                            className="p-3 rounded-xl bg-black/40 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
                           >
                             <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <span className="font-mono text-xs font-bold text-purple-300 truncate" title={k}>
+                              <span className="font-mono text-xs font-semibold text-accent-blue truncate" title={k}>
                                 {k}
                               </span>
-                              <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-white/5 text-text-tertiary border border-white/5">
+                              <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-white/5 text-text-tertiary border border-white/5 shrink-0">
                                 {typeof v}
                               </span>
                             </div>
 
-                            <div className="font-mono text-xs text-white/90 break-all select-all bg-black/40 p-2 rounded-lg border border-white/5">
+                            <div className="font-mono text-xs text-white/90 break-all select-all bg-black/50 p-2 rounded-lg border border-white/5">
                               {typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v)}
                             </div>
                           </div>
@@ -962,7 +975,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                       </div>
                     )
                   ) : (
-                    <div className="bg-black/70 border border-white/10 rounded-2xl p-4 font-mono text-xs text-emerald-400 overflow-x-auto custom-scrollbar">
+                    <div className="bg-black/60 border border-white/10 rounded-xl p-3.5 font-mono text-xs text-emerald-400 overflow-x-auto custom-scrollbar">
                       <pre>{JSON.stringify(activeTelemetryPayload, null, 2)}</pre>
                     </div>
                   )}
@@ -974,17 +987,17 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             </div>
 
             {/* Modal Bottom Telemetry Summary Footer */}
-            <div className="p-4 border-t border-white/10 bg-[#121217] flex items-center justify-between text-xs text-text-secondary shrink-0 font-mono">
-              <div className="flex items-center gap-6">
+            <div className="p-3 sm:p-3.5 border-t border-white/10 bg-[#121218] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-text-secondary shrink-0 font-mono">
+              <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
                 <span>Free Utilities: <strong className="text-emerald-400">{freeStepsPerRun}</strong></span>
-                <span>Paid Tasks Consumed: <strong className="text-purple-300">{paidStepsPerRun}</strong></span>
-                <span className="hidden sm:inline">Overall Trace Health: <strong className="text-emerald-400">100% Passed</strong></span>
+                <span>Paid Tasks: <strong className="text-accent-blue">{paidStepsPerRun}</strong></span>
+                <span className="hidden md:inline">Trace Health: <strong className="text-emerald-400">100% Passed</strong></span>
               </div>
 
               <button
                 type="button"
                 onClick={() => setSelectedExecution(null)}
-                className="px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-sans text-xs transition-colors cursor-pointer"
+                className="px-3.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white font-sans text-xs transition-colors cursor-pointer self-end sm:self-auto"
               >
                 Close Inspector
               </button>
