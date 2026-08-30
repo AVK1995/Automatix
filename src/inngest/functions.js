@@ -12,6 +12,7 @@ import timezone from 'dayjs/plugin/timezone.js';
 import customParseFormat from 'dayjs/plugin/customParseFormat.js';
 import { cleanValueForSheets } from '@/lib/dateUtils';
 import { getGoogleAccessToken } from '@/lib/googleAuth';
+import { executeGoogleSheetsAction } from '@/lib/sheetsExecutor';
 import { buildAiPrompt, generateAiContent, parseStructuredAiResponse } from '@/lib/aiProvider';
 
 dayjs.extend(utc);

@@ -15,6 +15,7 @@ import { decrypt } from '@/lib/encryption';
 import { SYSTEM_LIMITS } from '@/lib/limits';
 import { cleanValueForSheets } from '@/lib/dateUtils';
 import { getGoogleAccessToken } from '@/lib/googleAuth';
+import { executeGoogleSheetsAction } from '@/lib/sheetsExecutor';
 import { buildAiPrompt, generateAiContent, verifyApiKey, parseStructuredAiResponse } from '@/lib/aiProvider';
 
 dayjs.extend(utc);

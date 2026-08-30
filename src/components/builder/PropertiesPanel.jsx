@@ -3014,12 +3014,16 @@ function watchFolderForNewFiles() {
                   type="button"
                   onClick={() => {
                     setAiRadahnModalType('ai_prompt');
-                    setAiRadahnContext({ task: config.task || '', tone: config.tone || '' });
+                    setAiRadahnContext({ 
+                      task: config.task || '', 
+                      tone: config.tone || '', 
+                      initialPrompt: config.customPrompt || '' 
+                    });
                     setAiRadahnModalOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 shadow-sm shadow-purple-500/10 transition-all cursor-pointer group"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                  <Sparkles className="w-3 h-3 text-purple-400 group-hover:rotate-12 transition-transform" />
                   <span>AI Radahn Prompt Architect</span>
                 </button>
               </div>
@@ -3749,12 +3753,15 @@ function watchFolderForNewFiles() {
                   type="button"
                   onClick={() => {
                     setAiRadahnModalType('code_js');
-                    setAiRadahnContext({ inputData: config.inputData || '' });
+                    setAiRadahnContext({ 
+                      inputData: config.inputData || '',
+                      initialPrompt: config.code || ''
+                    });
                     setAiRadahnModalOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 shadow-sm shadow-purple-500/10 transition-all cursor-pointer group"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                  <Sparkles className="w-3 h-3 text-purple-400 group-hover:rotate-12 transition-transform" />
                   <span>AI Radahn JS Generator</span>
                 </button>
               </div>
@@ -3920,12 +3927,16 @@ function watchFolderForNewFiles() {
                     type="button"
                     onClick={() => {
                       setAiRadahnModalType('http_payload');
-                      setAiRadahnContext({ url: config.url || '', method: config.method || 'POST' });
+                      setAiRadahnContext({ 
+                        url: config.url || '', 
+                        method: config.method || 'POST',
+                        initialPrompt: config.body || ''
+                      });
                       setAiRadahnModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 shadow-sm shadow-purple-500/10 transition-all cursor-pointer group"
                   >
-                    <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                    <Sparkles className="w-3 h-3 text-purple-400 group-hover:rotate-12 transition-transform" />
                     <span>AI Radahn JSON Architect</span>
                   </button>
                 </div>
@@ -4028,12 +4039,15 @@ function watchFolderForNewFiles() {
                   type="button"
                   onClick={() => {
                     setAiRadahnModalType('slack_message');
-                    setAiRadahnContext({ channel: config.channel || '' });
+                    setAiRadahnContext({ 
+                      channel: config.channel || '',
+                      initialPrompt: config.message || ''
+                    });
                     setAiRadahnModalOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 shadow-sm shadow-purple-500/10 transition-all cursor-pointer group"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                  <Sparkles className="w-3 h-3 text-purple-400 group-hover:rotate-12 transition-transform" />
                   <span>AI Radahn Message Drafter</span>
                 </button>
               </div>
@@ -4749,12 +4763,16 @@ function watchFolderForNewFiles() {
                     type="button"
                     onClick={() => {
                       setAiRadahnModalType('smtp_email');
-                      setAiRadahnContext({ subject: config.subject || '', to: config.to || '' });
+                      setAiRadahnContext({ 
+                        subject: config.subject || '', 
+                        to: config.to || '',
+                        initialPrompt: config.body || config.subject || ''
+                      });
                       setAiRadahnModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-500/40 hover:from-amber-500/30 hover:to-purple-500/30 hover:border-amber-400 shadow-sm transition-all group"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 shadow-sm shadow-purple-500/10 transition-all cursor-pointer group"
                   >
-                    <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                    <Sparkles className="w-3 h-3 text-purple-400 group-hover:rotate-12 transition-transform" />
                     <span>AI Radahn Writer</span>
                   </button>
                 </div>
