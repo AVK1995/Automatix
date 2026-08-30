@@ -212,19 +212,20 @@ export default function ProfileDropdown({ user }) {
                 {/* Plan Badge */}
                 {(() => {
                   const rawTier = (user?.subscriptionTier || 'starter').toLowerCase();
+                  const rawCycle = user?.subscriptionCycle ? ` • ${user.subscriptionCycle.toUpperCase()}` : '';
                   if (rawTier === 'enterprise') {
                     return (
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider shadow-sm shrink-0">
                         <Crown className="w-3 h-3 text-amber-400" />
-                        <span>Enterprise</span>
+                        <span>Enterprise{rawCycle}</span>
                       </div>
                     );
                   }
                   if (rawTier === 'professional' || rawTier === 'pro') {
                     return (
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-blue/10 border border-accent-blue/30 text-accent-blue text-[10px] font-bold uppercase tracking-wider shadow-sm shrink-0">
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-blue/15 border border-accent-blue/40 text-accent-blue text-[10px] font-bold uppercase tracking-wider shadow-sm shrink-0">
                         <Zap className="w-3 h-3 text-accent-blue" />
-                        <span>Professional</span>
+                        <span>Professional{rawCycle}</span>
                       </div>
                     );
                   }

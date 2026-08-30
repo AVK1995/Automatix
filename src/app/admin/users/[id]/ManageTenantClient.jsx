@@ -22,7 +22,8 @@ import {
   Play,
   Crown,
   RotateCcw,
-  Loader2
+  Loader2,
+  Coins
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { exportToCsv } from '@/lib/csvExport';
@@ -97,8 +98,17 @@ const PRESET_PLANS = [
   }
 ];
 
+const AI_PRESET_PLANS = [
+  { name: 'Free Starter (10 Credits)', credits: 10 },
+  { name: 'Pro Monthly Base (100 Credits)', credits: 100 },
+  { name: 'Enterprise Base (500 Credits)', credits: 500 },
+  { name: 'Starter Booster (+50 Credits)', credits: 50 },
+  { name: 'Pro Booster (+150 Credits)', credits: 150 },
+  { name: 'Ultra Booster (+500 Credits)', credits: 500 },
+];
+
 export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows = [], quotaRequests = [] }) {
-  const [activeTab, setActiveTab] = useState('access'); // 'access' | 'storage' | 'support' | 'workflows'
+  const [activeTab, setActiveTab] = useState('access'); // 'access' | 'storage' | 'ai_credits' | 'workflows' | 'support'
 
   const [tier, setTier] = useState(tenant.subscriptionTier || 'Professional');
   const [cycle, setCycle] = useState(tenant.subscriptionCycle || 'monthly');
@@ -110,6 +120,7 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
   const [maxDocs, setMaxDocs] = useState(tenant.maxDocs || 10);
   const [maxDocMB, setMaxDocMB] = useState(tenant.maxDocMB || 10);
   const [maxStorageMB, setMaxStorageMB] = useState(tenant.maxStorageMB || 50);
+  const [aiCredits, setAiCredits] = useState(tenant.aiCredits ?? 10);
   
   // Support Ticket Settings
   const [maxSupportTickets, setMaxSupportTickets] = useState(tenant.maxSupportTickets || 5);
@@ -152,6 +163,45 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
     toast.success(`Loaded "${preset.name}" limits`);
   };
 
+  const applyAiPreset = (preset) => {
+    setAiCredits(preset.credits);
+    toast.success(`Loaded AI quota "${preset.name}" (${preset.credits} Credits)`);
+  };
+
+  // AI Active Workflows Analysis
+  const aiWorkflows = useMemo(() => {
+    return userWorkflows.map(wf => {
+      let nodes = [];
+      try {
+        nodes = typeof wf.nodes === 'string' ? JSON.parse(wf.nodes) : (wf.nodes || []);
+      } catch { nodes = []; }
+
+      const aiNodes = nodes.filter(n => {
+        const t = (n.type || '').toLowerCase();
+        const l = (n.data?.label || '').toLowerCase();
+        return t.includes('ai') || t.includes('gemini') || t.includes('vision') || t.includes('replica') || t.includes('radahn') || l.includes('ai') || l.includes('gemini');
+      });
+
+      const execCount = (wf.executionLogs || []).length;
+      const estimatedCreditsUsed = execCount * (aiNodes.length > 0 ? aiNodes.length * 2 : 0);
+
+      return {
+        id: wf.id,
+        name: wf.name,
+        status: wf.status || (wf.isPublished ? 'ACTIVE' : 'DRAFT'),
+        aiNodesCount: aiNodes.length,
+        aiNodeLabels: aiNodes.map(n => n.data?.label || n.type).join(', ') || 'AI Action Node',
+        executionCount: execCount,
+        creditsUsed: estimatedCreditsUsed,
+        updatedAt: wf.updatedAt
+      };
+    }).filter(wf => wf.aiNodesCount > 0);
+  }, [userWorkflows]);
+
+  const totalAiCreditsUsed = useMemo(() => {
+    return aiWorkflows.reduce((sum, wf) => sum + wf.creditsUsed, 0);
+  }, [aiWorkflows]);
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -173,6 +223,7 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
           maxDocs: Number(maxDocs),
           maxDocMB: Number(maxDocMB),
           maxStorageMB: Number(maxStorageMB),
+          aiCredits: Number(aiCredits),
           maxSupportTickets: parseInt(maxSupportTickets),
           ticketCooldownHours: parseInt(ticketCooldownHours)
         })
@@ -303,6 +354,16 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
           }`}
         >
           Storage & Quotas
+        </button>
+        <button
+          onClick={() => setActiveTab('ai_credits')}
+          className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors shrink-0 ${
+            activeTab === 'ai_credits'
+              ? 'border-accent-blue text-white'
+              : 'border-transparent text-text-secondary hover:text-white'
+          }`}
+        >
+          AI Credits & Quotas
         </button>
         <button
           onClick={() => setActiveTab('workflows')}
@@ -568,6 +629,169 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
           <section className="bg-card border border-border-subtle p-6 rounded-xl space-y-4">
             <h3 className="text-base font-semibold text-foreground">User Storage Bucket</h3>
             <StorageBucketClient user={{ ...tenant, maxDocs, maxDocMB, maxStorageMB }} mediaFiles={mediaFiles} isAdminView={true} />
+          </section>
+        </div>
+      )}
+
+      {activeTab === 'ai_credits' && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+          {/* Left Column: AI Credit Limits & Preset Loaders */}
+          <section className="bg-card border border-border-subtle p-6 rounded-xl space-y-6">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <Coins size={18} className="text-accent-blue" />
+                  Tenant AI Credits & Rate Limits
+                </h3>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-accent-blue/10 text-accent-blue border border-accent-blue/20">
+                  {aiCredits} Credits Available
+                </span>
+              </div>
+              <p className="text-xs text-text-secondary">
+                Configure total generative AI credits available for this tenant across Gemini, Vision, and AI Radahn automation nodes.
+              </p>
+            </div>
+
+            {/* Quick AI Presets Loader */}
+            <div>
+              <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider block mb-2">
+                1-Click Quick Preset Loaders:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {AI_PRESET_PLANS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => applyAiPreset(preset)}
+                    className="p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-accent-blue/30 text-left transition-all group cursor-pointer"
+                  >
+                    <span className="text-xs font-medium text-white group-hover:text-accent-blue block truncate">
+                      {preset.name.split(' (')[0]}
+                    </span>
+                    <span className="text-[10px] text-text-tertiary block mt-0.5 font-mono">
+                      {preset.credits} Credits
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Credits Form */}
+            <form onSubmit={handleUpdate} className="space-y-4 pt-2 border-t border-white/5">
+              <div className="space-y-4">
+                {/* Total Balance */}
+                <div className="bg-accent-blue/5 border border-accent-blue/20 p-3.5 rounded-lg">
+                  <label className="block text-xs font-semibold text-accent-blue mb-1">
+                    Total AI Credits Balance (Current Usable Allocation)
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={aiCredits} 
+                      onChange={(e) => setAiCredits(e.target.value)} 
+                      className="w-full bg-background border border-accent-blue/30 rounded-lg px-3 py-2 text-sm text-foreground font-bold focus:outline-none focus:border-accent-blue font-mono" 
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-text-tertiary">
+                      Credits
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg space-y-1 text-xs text-text-secondary">
+                  <div className="font-semibold text-white flex items-center gap-1.5 mb-1">
+                    <Sparkles size={14} className="text-emerald-400" /> AI Consumption Reference Rate:
+                  </div>
+                  <p>&bull; <strong>Gemini Text / Copywriting:</strong> 1 Credit per run</p>
+                  <p>&bull; <strong>Vision Image Analysis:</strong> 2 Credits per run</p>
+                  <p>&bull; <strong>AI Radahn / Complex Multi-Node:</strong> 2 Credits per generation</p>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between">
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="bg-accent-blue hover:bg-accent-blue/90 text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  {loading ? 'Saving AI Quota...' : 'Save AI Quotas & Credits'}
+                </button>
+                {success && <span className="text-xs text-emerald-400 font-medium">{success}</span>}
+                {error && <span className="text-xs text-red-400 font-medium">{error}</span>}
+              </div>
+            </form>
+          </section>
+
+          {/* Right Column: AI Usage Allocation Gauge & Active Workflows Table */}
+          <section className="bg-card border border-border-subtle p-6 rounded-xl space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                <Workflow size={18} className="text-accent-blue" />
+                Active AI Workflows Utilization
+              </h3>
+              <span className="text-xs text-text-secondary">
+                {aiWorkflows.length} Active AI Workflows
+              </span>
+            </div>
+
+            {/* AI Allocation Stats Bar */}
+            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider block">Total Burn Recorded</span>
+                <span className="text-lg font-bold text-white font-mono">{totalAiCreditsUsed} Credits</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider block">Available Balance</span>
+                <span className="text-lg font-bold text-accent-blue font-mono">{aiCredits} Credits</span>
+              </div>
+            </div>
+
+            {/* AI Workflows Table */}
+            {aiWorkflows.length === 0 ? (
+              <div className="p-8 text-center text-xs text-text-secondary border-2 border-dashed border-white/5 rounded-xl space-y-1">
+                <Sparkles size={24} className="mx-auto text-text-tertiary opacity-40 mb-1" />
+                <p className="font-semibold text-white">No Active AI Nodes Found</p>
+                <p className="text-[11px] text-text-tertiary">Workflows configured with Gemini, Vision, or AI Radahn nodes will appear here automatically.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-[10px] uppercase text-text-secondary font-semibold bg-white/[0.01]">
+                      <th className="py-2.5 px-3">Workflow</th>
+                      <th className="py-2.5 px-3">AI Nodes</th>
+                      <th className="py-2.5 px-3 text-center">Runs</th>
+                      <th className="py-2.5 px-3 text-right">Est. Used</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {aiWorkflows.map(wf => (
+                      <tr key={wf.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-2.5 px-3">
+                          <Link 
+                            href={`/admin/workflows/${wf.id}`} 
+                            className="font-medium text-white hover:text-accent-blue transition-colors flex items-center gap-1.5 truncate max-w-[180px]"
+                          >
+                            <Workflow size={13} className="text-accent-blue shrink-0" />
+                            <span className="truncate">{wf.name}</span>
+                          </Link>
+                        </td>
+                        <td className="py-2.5 px-3 text-text-secondary truncate max-w-[150px]">
+                          <span className="px-1.5 py-0.5 rounded bg-white/5 text-[10px] text-white/80 font-mono">
+                            {wf.aiNodeLabels}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-text-secondary font-mono">
+                          {wf.executionCount}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-emerald-400 font-mono font-bold">
+                          {wf.creditsUsed} Cr
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         </div>
       )}

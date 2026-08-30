@@ -654,7 +654,18 @@ export default function PlanUpgradeModal() {
                   )}
                 </div>
 
-                {/* 4. Notes / UTR */}
+                {/* 4. Anti-Spam & 24h Warning Banner */}
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-1 text-xs">
+                  <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                    <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+                    Anti-Spam Policy: 1 Upgrade Request Per 24 Hours
+                  </span>
+                  <p className="text-amber-200/80 text-[11px] leading-relaxed">
+                    You can only submit 1 upgrade request every 24 hours. Please do not submit fake payments or bluff with screenshots. Repeated false submissions will result in account suspension.
+                  </p>
+                </div>
+
+                {/* 5. Notes / UTR */}
                 <div>
                   <label className="block text-[11px] font-medium text-text-secondary mb-1">
                     Transaction UTR / Reference No. (Optional)
@@ -675,6 +686,24 @@ export default function PlanUpgradeModal() {
               </div>
             )}
 
+          </div>
+
+          {/* Persistent Dynamic Pricing Cart Bar (Above Footer) */}
+          <div className="px-5 py-2.5 bg-black/70 border-t border-white/10 flex items-center justify-between gap-3 text-xs shrink-0">
+            <div className="min-w-0">
+              <span className="text-[10px] text-text-tertiary uppercase tracking-wider block font-bold">
+                Selected: {selectedPlan === 'pro' ? 'Professional' : 'Enterprise'} ({cycleObj.label})
+              </span>
+              <span className="text-white font-medium truncate block text-[11px]">
+                {storageObj.price > 0 ? storageObj.name : 'Base Storage'} &bull; {aiObj.price > 0 ? aiObj.name : 'Base AI'}
+              </span>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="text-[10px] text-text-tertiary uppercase tracking-wider block font-bold">Subtotal</span>
+              <span className="text-sm font-extrabold text-accent-blue font-mono">
+                ₹{totalPayable.toLocaleString('en-IN')}
+              </span>
+            </div>
           </div>
 
           {/* Footer Wizard Controls */}
