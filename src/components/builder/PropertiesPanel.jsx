@@ -2709,7 +2709,42 @@ function watchFolderForNewFiles() {
           </div>
         );
 
-      case 'ai_mediator':
+      case 'ai_mediator': {
+        const storageNode = nodes.find(n => n.integration?.id === 'storage_trigger' || n.id === 'storage_trigger');
+        const activeStorageFile = storageNode?.config?.capturedPayload || null;
+        const detectedCategory = detectFileCategory(config.mediaUrl || '', activeStorageFile);
+
+        const categoryMetaMap = {
+          video: { label: 'Video Asset (Reels / MP4)', icon: Film, color: 'text-purple-400 bg-purple-500/10 border-purple-500/30' },
+          audio: { label: 'Audio Track / Voice Memo', icon: Music, color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
+          image: { label: 'Visual Graphic / Photo', icon: Image, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
+          document: { label: 'Document / PDF File', icon: FileText, color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' },
+          data: { label: 'Data & Spreadsheet (CSV)', icon: Terminal, color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' },
+          text: { label: 'Prompt & Text Engine', icon: Sparkles, color: 'text-zinc-400 bg-zinc-800 border-zinc-700' }
+        };
+
+        const currentCategoryMeta = categoryMetaMap[detectedCategory] || categoryMetaMap.video;
+        const CategoryIcon = currentCategoryMeta.icon;
+
+        const categoryTaskOptions = TASK_OPERATIONS_BY_CATEGORY[detectedCategory] || TASK_OPERATIONS_BY_CATEGORY.video;
+        
+        // Also assemble all other operations so user has full freedom
+        const allOtherOptions = Object.entries(TASK_OPERATIONS_BY_CATEGORY)
+          .filter(([cat]) => cat !== detectedCategory)
+          .flatMap(([, items]) => items)
+          .filter((item, index, self) => self.findIndex(t => t.value === item.value) === index);
+
+        const taskOptions = [
+          ...categoryTaskOptions,
+          ...allOtherOptions.filter(o => !categoryTaskOptions.some(c => c.value === o.value))
+        ];
+
+        const promptExamples = getPromptExamples({
+          category: detectedCategory,
+          task: config.task || 'generate_caption',
+          tone: config.tone || 'engaging'
+        });
+
         return (
           <div className="space-y-4">
             {/* Premium Credit Header */}
@@ -2868,130 +2903,95 @@ function watchFolderForNewFiles() {
               </div>
             )}
 
-            {(() => {
-              const storageNode = nodes.find(n => n.integration?.id === 'storage_trigger' || n.id === 'storage_trigger');
-              const activeStorageFile = storageNode?.config?.capturedPayload || null;
-              const detectedCategory = detectFileCategory(config.mediaUrl || '', activeStorageFile);
+            {/* Media File URL Section with Real-Time File Type Classification */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-medium text-text-secondary">
+                  Media / Document File URL
+                </label>
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border flex items-center gap-1 shrink-0 ${currentCategoryMeta.color}`}>
+                  <CategoryIcon className="w-3 h-3 shrink-0" />
+                  <span>{currentCategoryMeta.label}</span>
+                </span>
+              </div>
 
-              const categoryMetaMap = {
-                video: { label: 'Video Asset (Reels / MP4)', icon: Film, color: 'text-purple-400 bg-purple-500/10 border-purple-500/30' },
-                audio: { label: 'Audio Track / Voice Memo', icon: Music, color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
-                image: { label: 'Visual Graphic / Photo', icon: Image, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
-                document: { label: 'Document / PDF File', icon: FileText, color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' },
-                data: { label: 'Data & Spreadsheet (CSV)', icon: Terminal, color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' },
-                text: { label: 'Prompt & Text Engine', icon: Sparkles, color: 'text-zinc-400 bg-zinc-800 border-zinc-700' }
-              };
+              <VariableInput 
+                placeholder="e.g. {{trigger.body.fileUrl}} or paste file link" 
+                value={config.mediaUrl || ''} 
+                onChange={(val) => handleChange('mediaUrl', val)} 
+                variables={variableGroups} 
+              />
 
-              const currentCategoryMeta = categoryMetaMap[detectedCategory] || categoryMetaMap.video;
-              const CategoryIcon = currentCategoryMeta.icon;
-
-              const categoryTaskOptions = TASK_OPERATIONS_BY_CATEGORY[detectedCategory] || TASK_OPERATIONS_BY_CATEGORY.video;
-              
-              // Also assemble all other operations so user has full freedom
-              const allOtherOptions = Object.entries(TASK_OPERATIONS_BY_CATEGORY)
-                .filter(([cat]) => cat !== detectedCategory)
-                .flatMap(([, items]) => items)
-                .filter((item, index, self) => self.findIndex(t => t.value === item.value) === index);
-
-              const taskOptions = [
-                ...categoryTaskOptions,
-                ...allOtherOptions.filter(o => !categoryTaskOptions.some(c => c.value === o.value))
-              ];
-
-              return (
-                <>
-                  {/* Media File URL Section with Real-Time File Type Classification */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-medium text-text-secondary">
-                        Media / Document File URL
-                      </label>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border flex items-center gap-1 shrink-0 ${currentCategoryMeta.color}`}>
-                        <CategoryIcon className="w-3 h-3 shrink-0" />
-                        <span>{currentCategoryMeta.label}</span>
-                      </span>
+              {activeStorageFile && (
+                <div className="p-2.5 rounded-lg bg-zinc-900/90 border border-purple-500/20 flex items-center justify-between gap-2.5 shadow-inner">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-7 h-7 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0" title="Cloud Storage Trigger Payload">
+                      <HardDrive className="w-3.5 h-3.5" />
                     </div>
-
-                    <VariableInput 
-                      placeholder="e.g. {{trigger.body.fileUrl}} or paste file link" 
-                      value={config.mediaUrl || ''} 
-                      onChange={(val) => handleChange('mediaUrl', val)} 
-                      variables={variableGroups} 
-                    />
-
-                    {activeStorageFile && (
-                      <div className="p-2.5 rounded-lg bg-zinc-900/90 border border-purple-500/20 flex items-center justify-between gap-2.5 shadow-inner">
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <div className="w-7 h-7 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0" title="Cloud Storage Trigger Payload">
-                            <HardDrive className="w-3.5 h-3.5" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-xs font-medium text-white truncate max-w-[180px] sm:max-w-[240px]" title={activeStorageFile.fileName || 'Captured File'}>
-                                {activeStorageFile.fileName || 'Captured File'}
-                              </span>
-                              <span className="text-[10px] text-text-tertiary flex-shrink-0" title={`Size: ${activeStorageFile.fileSizeMB ? `${activeStorageFile.fileSizeMB} MB` : 'Trigger File'}`}>
-                                • {activeStorageFile.fileSizeMB ? `${activeStorageFile.fileSizeMB} MB` : 'Trigger File'}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-text-tertiary truncate" title="Active Trigger File • Auto-mapped to pipeline">
-                              Active Trigger File • Auto-mapped to pipeline
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleChange('mediaUrl', '{{trigger.body.fileUrl}}');
-                              toast.success(`Mapped to ${activeStorageFile.fileName || 'captured file'}`);
-                            }}
-                            className={`text-[11px] px-2.5 py-1 rounded-md font-medium flex items-center gap-1.5 transition-all ${
-                              config.mediaUrl === '{{trigger.body.fileUrl}}'
-                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 shadow-inner'
-                                : 'bg-purple-600 hover:bg-purple-500 text-white shadow-sm'
-                            }`}
-                            title="Auto-fill with variable {{trigger.body.fileUrl}}"
-                          >
-                            <Sparkles className="w-3 h-3 text-purple-300 flex-shrink-0" />
-                            <span>{config.mediaUrl === '{{trigger.body.fileUrl}}' ? 'Mapped' : 'Auto-Fill'}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPreviewFile(activeStorageFile);
-                              setIsPreviewModalOpen(true);
-                            }}
-                            className="p-1.5 text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 rounded-md border border-sky-500/20 transition-all flex items-center justify-center flex-shrink-0"
-                            title="Preview captured media file"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs font-medium text-white truncate max-w-[180px] sm:max-w-[240px]" title={activeStorageFile.fileName || 'Captured File'}>
+                          {activeStorageFile.fileName || 'Captured File'}
+                        </span>
+                        <span className="text-[10px] text-text-tertiary flex-shrink-0" title={`Size: ${activeStorageFile.fileSizeMB ? `${activeStorageFile.fileSizeMB} MB` : 'Trigger File'}`}>
+                          • {activeStorageFile.fileSizeMB ? `${activeStorageFile.fileSizeMB} MB` : 'Trigger File'}
+                        </span>
                       </div>
-                    )}
-
-                    <p className="text-[10px] text-text-tertiary" title="Accepts Videos, Audios, Images, PDFs, Documents, and CSV Spreadsheets for multimodal AI processing.">
-                      Accepts Videos, Audios, Images, PDFs, Documents, and CSV Spreadsheets for multimodal AI processing.
-                    </p>
-                  </div>
-
-                  {/* Context-Aware Task Operation Selector */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-medium text-text-secondary">Task Operation</label>
-                      <span className="text-[10px] text-purple-400 font-medium">Tailored for {detectedCategory.toUpperCase()}</span>
+                      <p className="text-[10px] text-text-tertiary truncate" title="Active Trigger File • Auto-mapped to pipeline">
+                        Active Trigger File • Auto-mapped to pipeline
+                      </p>
                     </div>
-                    <Select 
-                      value={config.task || taskOptions[0]?.value || 'generate_caption'} 
-                      onChange={(val) => handleChange('task', val)}
-                      options={taskOptions}
-                    />
                   </div>
-                </>
-              );
-            })()}
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleChange('mediaUrl', '{{trigger.body.fileUrl}}');
+                        toast.success(`Mapped to ${activeStorageFile.fileName || 'captured file'}`);
+                      }}
+                      className={`text-[11px] px-2.5 py-1 rounded-md font-medium flex items-center gap-1.5 transition-all ${
+                        config.mediaUrl === '{{trigger.body.fileUrl}}'
+                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 shadow-inner'
+                          : 'bg-purple-600 hover:bg-purple-500 text-white shadow-sm'
+                      }`}
+                      title="Auto-fill with variable {{trigger.body.fileUrl}}"
+                    >
+                      <Sparkles className="w-3 h-3 text-purple-300 flex-shrink-0" />
+                      <span>{config.mediaUrl === '{{trigger.body.fileUrl}}' ? 'Mapped' : 'Auto-Fill'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewFile(activeStorageFile);
+                        setIsPreviewModalOpen(true);
+                      }}
+                      className="p-1.5 text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 rounded-md border border-sky-500/20 transition-all flex items-center justify-center flex-shrink-0"
+                      title="Preview captured media file"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[10px] text-text-tertiary" title="Accepts Videos, Audios, Images, PDFs, Documents, and CSV Spreadsheets for multimodal AI processing.">
+                Accepts Videos, Audios, Images, PDFs, Documents, and CSV Spreadsheets for multimodal AI processing.
+              </p>
+            </div>
+
+            {/* Context-Aware Task Operation Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-text-secondary">Task Operation</label>
+                <span className="text-[10px] text-purple-400 font-medium">Tailored for {detectedCategory.toUpperCase()}</span>
+              </div>
+              <Select 
+                value={config.task || taskOptions[0]?.value || 'generate_caption'} 
+                onChange={(val) => handleChange('task', val)}
+                options={taskOptions}
+              />
+            </div>
 
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Brand Tone & Persona</label>
@@ -3039,44 +3039,34 @@ function watchFolderForNewFiles() {
               />
 
               {/* Dynamic 3-4 Quick Example Pills */}
-              {(() => {
-                const examples = getPromptExamples({
-                  category: detectedCategory,
-                  task: config.task || 'generate_caption',
-                  tone: config.tone || 'engaging'
-                });
+              <div className="mt-2 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] text-text-tertiary">
+                  <span className="flex items-center gap-1 font-semibold text-purple-300">
+                    <Sparkles className="w-3 h-3 text-purple-400" />
+                    <span>Example Prompts ({detectedCategory.toUpperCase()}):</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> Plain Text Ready
+                  </span>
+                </div>
 
-                return (
-                  <div className="mt-2 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] text-text-tertiary">
-                      <span className="flex items-center gap-1 font-semibold text-purple-300">
-                        <Sparkles className="w-3 h-3 text-purple-400" />
-                        <span>Example Prompts ({detectedCategory.toUpperCase()}):</span>
-                      </span>
-                      <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1">
-                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> Plain Text Ready
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {examples.map((ex, exIdx) => (
-                        <button
-                          key={exIdx}
-                          type="button"
-                          onClick={() => {
-                            handleChange('customPrompt', ex.prompt);
-                            toast.success(`Applied "${ex.label}" template`);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-zinc-900/90 hover:bg-purple-950/40 text-text-secondary hover:text-purple-200 border border-white/10 hover:border-purple-500/30 text-[11px] transition-all cursor-pointer truncate max-w-[260px] text-left"
-                          title={ex.prompt}
-                        >
-                          {ex.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
+                <div className="flex flex-wrap gap-1.5">
+                  {promptExamples.map((ex, exIdx) => (
+                    <button
+                      key={exIdx}
+                      type="button"
+                      onClick={() => {
+                        handleChange('customPrompt', ex.prompt);
+                        toast.success(`Applied "${ex.label}" template`);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-zinc-900/90 hover:bg-purple-950/40 text-text-secondary hover:text-purple-200 border border-white/10 hover:border-purple-500/30 text-[11px] transition-all cursor-pointer truncate max-w-[260px] text-left"
+                      title={ex.prompt}
+                    >
+                      {ex.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Interactive Live AI Preview & Test Generator */}
@@ -3407,6 +3397,7 @@ function watchFolderForNewFiles() {
             </div>
           </div>
         );
+      }
 
       case 'instagram_publish':
         const igStorageNode = nodes.find(n => n.integration?.id === 'storage_trigger' || n.id === 'storage_trigger');
