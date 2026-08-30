@@ -253,14 +253,16 @@ export default function SupportPage() {
           onClick={() => setActiveMainTab('requests')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
             activeMainTab === 'requests'
-              ? 'border-purple-400 text-purple-300'
+              ? 'border-accent-blue text-white'
               : 'border-transparent text-text-secondary hover:text-white'
           }`}
         >
           <Inbox size={14} />
           <span>My Raised Requests</span>
           {totalRaisedCount > 0 && (
-            <span className="px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px]">
+            <span className={`px-2 py-0.2 rounded-full text-[10px] ${
+              activeMainTab === 'requests' ? 'bg-accent-blue text-white font-bold' : 'bg-white/10 text-text-secondary'
+            }`}>
               {totalRaisedCount}
             </span>
           )}
@@ -414,7 +416,7 @@ export default function SupportPage() {
                   onClick={() => setRequestFilter(tab.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     requestFilter === tab.id
-                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                      ? 'bg-accent-blue text-white shadow-sm'
                       : 'bg-white/5 text-text-secondary hover:text-white border border-white/5'
                   }`}
                 >
@@ -434,7 +436,7 @@ export default function SupportPage() {
 
           {loadingRaised ? (
             <div className="p-12 text-center">
-              <Loader2 className="animate-spin text-purple-400 mx-auto mb-2" size={24} />
+              <Loader2 className="animate-spin text-accent-blue mx-auto mb-2" size={24} />
               <p className="text-xs text-text-secondary">Loading your raised requests...</p>
             </div>
           ) : totalRaisedCount === 0 ? (
@@ -451,7 +453,7 @@ export default function SupportPage() {
               {(requestFilter === 'ALL' || requestFilter === 'QUOTA') && raisedData.quotaRequests?.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
-                    <Crown size={14} className="text-purple-400" />
+                    <Database size={14} className="text-accent-blue" />
                     <span>Plan & Storage Quota Requests ({raisedData.quotaRequests.length})</span>
                   </h3>
 
@@ -459,7 +461,7 @@ export default function SupportPage() {
                     {raisedData.quotaRequests.map(req => (
                       <div 
                         key={req.id} 
-                        className="p-4 bg-[#111] border border-white/10 hover:border-purple-500/30 rounded-xl space-y-3 transition-all"
+                        className="p-4 bg-[#111] border border-white/10 hover:border-accent-blue/30 rounded-xl space-y-3 transition-all"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -502,7 +504,7 @@ export default function SupportPage() {
                           <span className="flex items-center gap-1">
                             <Clock size={11} /> {new Date(req.createdAt).toLocaleDateString()} at {new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          <span className="text-[10px] text-purple-300/80">
+                          <span className="text-[10px] text-accent-blue font-medium">
                             {req.status === 'PENDING' ? '24h Review Active' : req.status === 'APPROVED' ? 'Limits Activated' : 'Review Complete'}
                           </span>
                         </div>

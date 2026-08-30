@@ -222,8 +222,8 @@ export default function ProfileDropdown({ user }) {
                   }
                   if (rawTier === 'professional' || rawTier === 'pro') {
                     return (
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-sky-500/20 border border-purple-500/40 text-purple-300 text-[10px] font-bold uppercase tracking-wider shadow-sm shrink-0">
-                        <Zap className="w-3 h-3 text-purple-400" />
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-blue/10 border border-accent-blue/30 text-accent-blue text-[10px] font-bold uppercase tracking-wider shadow-sm shrink-0">
+                        <Zap className="w-3 h-3 text-accent-blue" />
                         <span>Professional</span>
                       </div>
                     );
@@ -268,14 +268,14 @@ export default function ProfileDropdown({ user }) {
 
               {/* AI Credits & Tier Pills */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center gap-2">
-                  <div className="p-1 rounded bg-purple-500/20 text-purple-400">
+                <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 flex items-center gap-2">
+                  <div className="p-1 rounded bg-accent-blue/10 text-accent-blue">
                     <Coins className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] text-purple-300/70 uppercase font-semibold">AI Credits</p>
-                    <p className="text-xs font-bold text-purple-200 truncate">
-                      {user?.aiCredits ?? 10} <span className="text-[10px] font-normal text-purple-300/60">Credits</span>
+                    <p className="text-[10px] text-text-tertiary uppercase font-semibold">AI Credits</p>
+                    <p className="text-xs font-bold text-white truncate">
+                      {user?.aiCredits ?? 10} <span className="text-[10px] font-normal text-text-tertiary">Credits</span>
                     </p>
                   </div>
                 </div>

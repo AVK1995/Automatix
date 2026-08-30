@@ -205,7 +205,7 @@ export default function PlanUpgradeModal() {
           {/* Header */}
           <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 bg-white/[0.02] shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+              <div className="w-9 h-9 rounded-xl bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center text-accent-blue">
                 <Crown size={18} />
               </div>
               <div>
@@ -231,11 +231,11 @@ export default function PlanUpgradeModal() {
               onClick={() => setActiveTab('pro')}
               className={`pb-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 activeTab === 'pro'
-                  ? 'border-purple-400 text-purple-300'
+                  ? 'border-accent-blue text-white'
                   : 'border-transparent text-text-tertiary hover:text-white'
               }`}
             >
-              <Zap size={14} className="text-purple-400" />
+              <Zap size={14} className="text-accent-blue" />
               <span>Professional (₹499)</span>
             </button>
             <button
@@ -280,8 +280,8 @@ export default function PlanUpgradeModal() {
               <div className="space-y-4">
                 {/* Logged in state check */}
                 {!session?.user ? (
-                  <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-center space-y-3">
-                    <AlertTriangle className="w-8 h-8 text-purple-400 mx-auto" />
+                  <div className="p-4 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-center space-y-3">
+                    <AlertTriangle className="w-8 h-8 text-accent-blue mx-auto" />
                     <div>
                       <h3 className="text-sm font-bold text-white">Create an Account First</h3>
                       <p className="text-xs text-text-secondary mt-1">
@@ -292,7 +292,7 @@ export default function PlanUpgradeModal() {
                       <Link
                         href="/register"
                         onClick={() => setIsOpen(false)}
-                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-sky-600 hover:from-purple-500 hover:to-sky-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+                        className="px-4 py-2 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-accent-blue/20"
                       >
                         <UserPlus size={14} /> Create Free Account
                       </Link>
@@ -320,19 +320,19 @@ export default function PlanUpgradeModal() {
                     </div>
 
                     {/* Plan features summary */}
-                    <div className="p-3.5 bg-gradient-to-br from-purple-950/40 via-zinc-900 to-zinc-950 border border-purple-500/30 rounded-xl space-y-2">
+                    <div className="p-3.5 bg-white/[0.02] border border-accent-blue/30 rounded-xl space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Zap className="w-4 h-4 text-purple-400" />
+                          <Zap className="w-4 h-4 text-accent-blue" />
                           <span className="text-sm font-bold text-white">Professional Tier Upgrade</span>
                         </div>
                         <span className="text-base font-extrabold text-white font-mono">₹499<span className="text-xs text-text-tertiary font-normal">/mo</span></span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs text-text-secondary pt-1 border-t border-white/5">
-                        <span className="flex items-center gap-1.5"><Check size={12} className="text-purple-400" /> 100 Workflows</span>
-                        <span className="flex items-center gap-1.5"><Check size={12} className="text-purple-400" /> 5,000 Executions / mo</span>
-                        <span className="flex items-center gap-1.5"><Check size={12} className="text-purple-400" /> 100 AI Credits / mo</span>
-                        <span className="flex items-center gap-1.5"><Check size={12} className="text-purple-400" /> 200 MB Cloud Storage</span>
+                        <span className="flex items-center gap-1.5"><Check size={12} className="text-accent-blue" /> 100 Workflows</span>
+                        <span className="flex items-center gap-1.5"><Check size={12} className="text-accent-blue" /> 5,000 Executions / mo</span>
+                        <span className="flex items-center gap-1.5"><Check size={12} className="text-accent-blue" /> 100 AI Credits / mo</span>
+                        <span className="flex items-center gap-1.5"><Check size={12} className="text-accent-blue" /> 200 MB Cloud Storage</span>
                       </div>
                     </div>
 
@@ -368,7 +368,7 @@ export default function PlanUpgradeModal() {
                     <div className="space-y-1.5">
                       <label className="block text-xs font-semibold text-white flex items-center justify-between">
                         <span>Step 2: Attach Payment Screenshot</span>
-                        <span className="text-[10px] text-purple-400 font-normal">* Required for verification</span>
+                        <span className="text-[10px] text-sky-400 font-normal">* Required for verification</span>
                       </label>
                       <input 
                         type="file" 
@@ -404,9 +404,9 @@ export default function PlanUpgradeModal() {
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="w-full p-4 border-2 border-dashed border-white/20 hover:border-purple-500/50 rounded-xl bg-black/40 hover:bg-purple-500/5 transition-all text-center space-y-1 cursor-pointer group"
+                          className="w-full p-4 border-2 border-dashed border-white/20 hover:border-accent-blue/50 rounded-xl bg-black/40 hover:bg-accent-blue/5 transition-all text-center space-y-1 cursor-pointer group"
                         >
-                          <Upload className="w-5 h-5 text-text-tertiary group-hover:text-purple-400 mx-auto transition-colors" />
+                          <Upload className="w-5 h-5 text-text-tertiary group-hover:text-accent-blue mx-auto transition-colors" />
                           <p className="text-xs font-medium text-white">Click or drag payment screenshot here</p>
                           <p className="text-[10px] text-text-tertiary">PNG, JPG, WEBP up to 5MB</p>
                         </button>
@@ -423,7 +423,7 @@ export default function PlanUpgradeModal() {
                         value={proNotes}
                         onChange={(e) => setProNotes(e.target.value)}
                         placeholder="e.g. UTR / Ref No. 423984729384"
-                        className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-text-tertiary focus:outline-none focus:border-purple-500"
+                        className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-text-tertiary focus:outline-none focus:border-accent-blue"
                       />
                     </div>
 
@@ -539,7 +539,7 @@ export default function PlanUpgradeModal() {
                     imgLimit: 'Max 8MB each',
                     videos: '+8 Videos',
                     vidLimit: 'Max 50MB each',
-                    border: 'border-purple-500/20 hover:border-purple-500/50'
+                    border: 'border-white/10 hover:border-white/20'
                   }
                 ].map((pack) => {
                   const isSelected = selectedStoragePack === pack.name;
@@ -573,7 +573,7 @@ export default function PlanUpgradeModal() {
                           <span className="text-[9px] font-mono bg-white/10 px-1 rounded text-white/80 shrink-0">{pack.imgLimit}</span>
                         </div>
                         <div className="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-text-secondary">
-                          <span className="flex items-center gap-1 truncate"><Film size={13} className="text-purple-400 shrink-0" /> {pack.videos}</span>
+                          <span className="flex items-center gap-1 truncate"><Film size={13} className="text-sky-400 shrink-0" /> {pack.videos}</span>
                           <span className="text-[9px] font-mono bg-white/10 px-1 rounded text-white/80 shrink-0">{pack.vidLimit}</span>
                         </div>
                       </div>
@@ -605,7 +605,7 @@ export default function PlanUpgradeModal() {
                     price: '₹299 (One-Time)',
                     credits: '+200 Multimodal AI Runs',
                     features: 'Full Multimodal Scene Encoder',
-                    border: 'border-purple-500/30 bg-purple-500/5'
+                    border: 'border-accent-blue/30 bg-accent-blue/5'
                   },
                   {
                     name: 'Ultra AI Booster (+500 Credits)',
@@ -659,7 +659,7 @@ export default function PlanUpgradeModal() {
             <button 
               onClick={handleSubmit}
               disabled={isSubmitting || (activeTab === 'pro' && !session?.user)}
-              className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-accent-blue hover:from-purple-500 hover:to-accent-blue transition-all flex items-center gap-2 shadow-lg shadow-purple-900/30 disabled:opacity-50 cursor-pointer"
+              className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-accent-blue hover:bg-accent-blue/90 transition-all flex items-center gap-2 shadow-lg shadow-accent-blue/20 disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
               {activeTab === 'pro' ? 'Submit Upgrade Request' : activeTab === 'enterprise' ? 'Send Enterprise Inquiry' : 'Request Add-on Quota'}
