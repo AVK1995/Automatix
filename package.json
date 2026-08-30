@@ -12,6 +12,8 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
     "@google/generative-ai": "^0.24.1",
+    "@neondatabase/serverless": "^1.1.0",
+    "@prisma/adapter-neon": "^7.10.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@tiptap/extension-color": "^3.28.0",
@@ -43,7 +45,8 @@
     "react-simple-code-editor": "^0.14.1",
     "recharts": "^3.8.1",
     "swr": "^2.5.1",
-    "uuid": "^14.0.1"
+    "uuid": "^14.0.1",
+    "ws": "^8.21.3"
   },
   "allowScripts": {
     "@prisma/engines": true,

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createBooking } from '@/actions/bookings';
 import { toast } from 'react-hot-toast';
-import { CheckCircle2, Loader2, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { CheckCircle2, Loader2, Calendar as CalendarIcon, Clock, AlertCircle } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Select from '@/components/ui/Select';
 import Checkbox from '@/components/ui/Checkbox';
@@ -22,6 +22,7 @@ const countryOptions = COUNTRIES.map(c => ({
 export default function BookingForm({ calendar, questions, selectedSlot, localTimezone, resolvedTheme }) {
   const themeObj = resolvedTheme || getResolvedTheme(calendar);
   const searchParams = useSearchParams();
+  const formRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
@@ -32,6 +33,16 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
   // Custom Questions State
   const [answers, setAnswers] = useState({});
   const [hiddenParams, setHiddenParams] = useState({});
+  const [errors, setErrors] = useState({});
+
+  const clearError = (fieldKey) => {
+    setErrors(prev => {
+      if (!prev[fieldKey]) return prev;
+      const next = { ...prev };
+      delete next[fieldKey];
+      return next;
+    });
+  };
 
   // Auto-capture hidden URL parameters on mount
   useEffect(() => {
@@ -49,24 +60,75 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    
+    // Validate all fields
+    const newErrors = {};
 
-    try {
-      // Validate required questions
-      for (const q of questions) {
-        if (q.required && !q.isHidden && evaluateVisibility(q)) {
-          const val = answers[q.label];
-          if (!val || (Array.isArray(val) && val.length === 0)) {
-            throw new Error(`Please answer "${q.label}"`);
+    if (!name.trim()) {
+      newErrors.name = 'Please enter your full name';
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) {
+      newErrors.email = 'Please enter your email address';
+    } else if (!emailRegex.test(email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    // Validate custom questions
+    for (const q of questions) {
+      if (q.required && !q.isHidden && evaluateVisibility(q)) {
+        const val = answers[q.label];
+        if (q.type === 'checkbox') {
+          if (!val || !Array.isArray(val) || val.length === 0) {
+            newErrors[q.label] = 'Please select at least one option';
+          }
+        } else if (q.type === 'phone') {
+          if (!val || typeof val !== 'string') {
+            newErrors[q.label] = 'Please enter your phone number';
+          } else {
+            // value is formatted as "IN +91 9876543210" or similar
+            const parts = val.split(' ');
+            const numPart = parts.slice(2).join('').trim();
+            if (!numPart) {
+              newErrors[q.label] = 'Please enter your phone number';
+            } else if (numPart.length < 5) {
+              newErrors[q.label] = 'Please enter a valid phone number';
+            }
+          }
+        } else if (q.type === 'dropdown' || q.type === 'radio') {
+          if (!val || String(val).trim() === '') {
+            newErrors[q.label] = 'Please select an option';
+          }
+        } else {
+          if (!val || String(val).trim() === '') {
+            newErrors[q.label] = 'This field is required';
           }
         }
       }
+    }
 
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.error('Please complete all required fields');
+      if (formRef.current) {
+        const firstErrorEl = formRef.current.querySelector('.\\!border-rose-500\\/80, .border-rose-500\\/40, [style*="border-color: rgb(244, 63, 94)"]');
+        if (firstErrorEl) {
+          firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
       await createBooking({
         calendarId: calendar.id,
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim(),
         startTime: new Date(selectedSlot).toISOString(),
+        timezone: localTimezone,
         answers: { ...answers, ...hiddenParams },
       });
 
@@ -126,32 +188,50 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
     if (q.isHidden) return null;
 
     const value = answers[q.label] || '';
-    const onChange = (e) => setAnswers(prev => ({ ...prev, [q.label]: e.target.value }));
-    const baseInputClass = "w-full border rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent-blue transition-all";
+    const hasError = !!errors[q.label];
+    const onChange = (e) => {
+      setAnswers(prev => ({ ...prev, [q.label]: e.target.value }));
+      clearError(q.label);
+    };
+    const baseInputClass = `w-full border rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-1 transition-all ${
+      hasError ? '!border-rose-500/80 !ring-1 !ring-rose-500/30' : 'focus:ring-accent-blue'
+    }`;
+
+    let inputNode = null;
 
     switch (q.type) {
       case 'text':
-        return (
+        inputNode = (
           <input 
             type="text" 
             value={value} 
             onChange={onChange} 
-            required={q.required} 
+            placeholder={q.placeholder || ''}
             className={baseInputClass} 
-            style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
+            style={{ 
+              backgroundColor: inputBg, 
+              borderColor: hasError ? '#f43f5e' : inputBorder, 
+              color: inputColor 
+            }}
           />
         );
+        break;
       case 'textarea':
-        return (
+        inputNode = (
           <textarea 
             rows={3} 
             value={value} 
             onChange={onChange} 
-            required={q.required} 
+            placeholder={q.placeholder || ''}
             className={`${baseInputClass} resize-none`} 
-            style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
+            style={{ 
+              backgroundColor: inputBg, 
+              borderColor: hasError ? '#f43f5e' : inputBorder, 
+              color: inputColor 
+            }}
           />
         );
+        break;
       case 'phone':
         let currentCode = 'IN +91';
         let currentNum = '';
@@ -169,55 +249,73 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
             currentNum = value;
           }
         }
-        return (
+        inputNode = (
           <div className="flex gap-2">
             <div className="w-36 shrink-0">
                 <Select 
                   value={currentCode}
-                  onChange={(val) => setAnswers(prev => ({ ...prev, [q.label]: `${val} ${currentNum}`.trim() }))}
+                  onChange={(val) => {
+                    setAnswers(prev => ({ ...prev, [q.label]: `${val} ${currentNum}`.trim() }));
+                    clearError(q.label);
+                  }}
                   options={countryOptions}
-                  buttonClassName="py-2.5"
+                  buttonClassName={`py-2.5 ${hasError ? '!border-rose-500/80' : ''}`}
                 />
             </div>
             <input 
               type="tel" 
               value={currentNum} 
-              onChange={(e) => setAnswers(prev => ({ ...prev, [q.label]: `${currentCode} ${e.target.value}`.trim() }))}
+              onChange={(e) => {
+                setAnswers(prev => ({ ...prev, [q.label]: `${currentCode} ${e.target.value}`.trim() }));
+                clearError(q.label);
+              }}
               placeholder="98765 43210"
-              required={q.required} 
               className={`${baseInputClass} flex-1`} 
-              style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
+              style={{ 
+                backgroundColor: inputBg, 
+                borderColor: hasError ? '#f43f5e' : inputBorder, 
+                color: inputColor 
+              }}
             />
           </div>
         );
+        break;
       case 'dropdown':
-        return (
+        inputNode = (
           <Select 
             value={value}
-            onChange={(val) => setAnswers(prev => ({ ...prev, [q.label]: val }))}
+            onChange={(val) => {
+              setAnswers(prev => ({ ...prev, [q.label]: val }));
+              clearError(q.label);
+            }}
             options={(q.options || []).map(opt => ({ value: opt, label: opt }))}
             placeholder="Select an option..."
-            buttonClassName="py-2.5"
+            buttonClassName={`py-2.5 ${hasError ? '!border-rose-500/80 !ring-1 !ring-rose-500/30' : ''}`}
           />
         );
+        break;
       case 'radio':
-        return (
-          <div className="space-y-2 mt-1">
+        inputNode = (
+          <div className={`space-y-2 mt-1 p-2 rounded-lg transition-all ${hasError ? 'bg-rose-500/5 border border-rose-500/30' : ''}`}>
             {(q.options || []).map((opt, i) => (
               <Radio 
                 key={i}
                 name={`radio-${q.label}`} 
                 value={opt} 
                 checked={value === opt} 
-                onChange={(val) => setAnswers(prev => ({ ...prev, [q.label]: val }))} 
+                onChange={(val) => {
+                  setAnswers(prev => ({ ...prev, [q.label]: val }));
+                  clearError(q.label);
+                }} 
                 label={opt}
               />
             ))}
           </div>
         );
+        break;
       case 'checkbox':
-        return (
-          <div className="space-y-2 mt-1">
+        inputNode = (
+          <div className={`space-y-2 mt-1 p-2 rounded-lg transition-all ${hasError ? 'bg-rose-500/5 border border-rose-500/30' : ''}`}>
             {(q.options || []).map((opt, i) => {
               const currentArr = Array.isArray(value) ? value : [];
               const isChecked = currentArr.includes(opt);
@@ -227,6 +325,7 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
                 if (isChecked) newArr = newArr.filter(item => item !== opt);
                 else newArr.push(opt);
                 setAnswers(prev => ({ ...prev, [q.label]: newArr }));
+                clearError(q.label);
               };
 
               return (
@@ -240,9 +339,22 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
             })}
           </div>
         );
+        break;
       default:
-        return null;
+        inputNode = null;
     }
+
+    return (
+      <div>
+        {inputNode}
+        {hasError && (
+          <p className="flex items-center gap-1.5 mt-1.5 text-xs text-rose-400 font-medium animate-in fade-in slide-in-from-top-1">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            {errors[q.label]}
+          </p>
+        )}
+      </div>
+    );
   };
 
   if (isSuccess) {
@@ -311,7 +423,7 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
     calendar.buttonStyle === 'pill' ? 'rounded-full' : 'rounded-lg';
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} noValidate ref={formRef} className="space-y-8">
       <div>
         <div className="flex justify-between items-start mb-6">
           <div>
@@ -350,12 +462,27 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
           </label>
           <input 
             type="text" 
-            required 
             value={name}
-            onChange={e => setName(e.target.value)}
-            className="w-full border rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent-blue transition-all"
-            style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
+            onChange={e => {
+              setName(e.target.value);
+              clearError('name');
+            }}
+            placeholder="John Doe"
+            className={`w-full border rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-1 transition-all ${
+              errors.name ? '!border-rose-500/80 !ring-1 !ring-rose-500/30' : 'focus:ring-accent-blue'
+            }`}
+            style={{ 
+              backgroundColor: inputBg, 
+              borderColor: errors.name ? '#f43f5e' : inputBorder, 
+              color: inputColor 
+            }}
           />
+          {errors.name && (
+            <p className="flex items-center gap-1.5 mt-1.5 text-xs text-rose-400 font-medium animate-in fade-in slide-in-from-top-1">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {errors.name}
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5" style={{ color: themeObj.textSecondary || '#a1a1aa' }}>
@@ -363,12 +490,27 @@ export default function BookingForm({ calendar, questions, selectedSlot, localTi
           </label>
           <input 
             type="email" 
-            required 
             value={email}
-            onChange={e => setEmail(e.target.value)}
-            className="w-full border rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent-blue transition-all"
-            style={{ backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }}
+            onChange={e => {
+              setEmail(e.target.value);
+              clearError('email');
+            }}
+            placeholder="john@example.com"
+            className={`w-full border rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-1 transition-all ${
+              errors.email ? '!border-rose-500/80 !ring-1 !ring-rose-500/30' : 'focus:ring-accent-blue'
+            }`}
+            style={{ 
+              backgroundColor: inputBg, 
+              borderColor: errors.email ? '#f43f5e' : inputBorder, 
+              color: inputColor 
+            }}
           />
+          {errors.email && (
+            <p className="flex items-center gap-1.5 mt-1.5 text-xs text-rose-400 font-medium animate-in fade-in slide-in-from-top-1">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {errors.email}
+            </p>
+          )}
         </div>
 
         {questions.filter(q => !q.isHidden && evaluateVisibility(q)).map((q) => (

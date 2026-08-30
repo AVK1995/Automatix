@@ -23,40 +23,39 @@ export const {
       },
       async authorize(credentials) {
         console.log("=== AUTH ATTEMPT ===");
-        console.log("Credentials received:", { email: credentials?.email, password: credentials?.password ? '***' : 'missing' });
-        
         if (!credentials?.email || !credentials?.password) return null;
 
-        let user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+        const inputEmail = credentials.email.trim().toLowerCase();
+        const inputPassword = credentials.password;
+
+        const adminEmail = (process.env.ADMIN_EMAIL || 'admin@automatix.local').trim().toLowerCase();
+        const adminPassword = (process.env.ADMIN_PASSWORD || 'admin').trim();
+
+        let user = await prisma.user.findFirst({
+          where: {
+            email: { equals: inputEmail, mode: 'insensitive' }
+          },
         });
-        
-        console.log("User found in DB:", !!user, "Has password:", !!user?.password);
 
-        const adminEmail = process.env.ADMIN_EMAIL || 'admin@automatix.local';
-        const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
-        
-        console.log("Expected Admin:", { email: adminEmail, password: adminPassword ? '***' : 'missing' });
-
-        // Developer Fallback: Always allow Master Admin and auto-provision it if missing or corrupted
-        if (credentials.email === adminEmail && credentials.password === adminPassword) {
-          console.log("Matched Developer Fallback logic!");
-          if (!user || !user.password) {
-            console.log("Auto-provisioning missing/corrupted admin...");
-            const hashedPassword = await bcrypt.hash(credentials.password, 10);
+        // Developer Fallback: Always allow Master Admin and auto-provision / fix role if needed
+        if (inputEmail === adminEmail && inputPassword === adminPassword) {
+          console.log("Matched Developer Fallback / Master Admin login!");
+          if (!user || !user.password || user.role !== 'ADMIN') {
+            console.log("Auto-provisioning / syncing master admin...");
+            const hashedPassword = await bcrypt.hash(inputPassword, 10);
             user = await prisma.user.upsert({
-              where: { email: credentials.email },
+              where: { email: inputEmail },
               update: { password: hashedPassword, role: 'ADMIN' },
               create: {
-                email: credentials.email,
+                email: inputEmail,
                 password: hashedPassword,
                 name: 'Automatix Admin',
                 role: 'ADMIN',
               }
             });
-            console.log("Provisioned admin successfully!");
+            console.log("Synced master admin successfully!");
           }
-          return { id: user.id, email: user.email, name: user.name, role: user.role };
+          return { id: user.id, email: user.email, name: user.name, role: 'ADMIN' };
         }
 
         if (!user || !user.password) {
@@ -65,11 +64,9 @@ export const {
         }
 
         const isPasswordValid = await bcrypt.compare(
-          credentials.password,
+          inputPassword,
           user.password
         );
-        
-        console.log("Password valid check:", isPasswordValid);
 
         if (!isPasswordValid) return null;
 

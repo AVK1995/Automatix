@@ -35,7 +35,7 @@ export default function LoginPage() {
     setError('');
 
     const res = await signIn('credentials', {
-      email,
+      email: email.trim(),
       password,
       redirect: false,
     });
@@ -45,11 +45,18 @@ export default function LoginPage() {
       setLoading(false);
     } else {
       setIsSuccess(true);
-      // Wait for success animation before redirecting
-      setTimeout(() => {
-        router.push('/dashboard'); // Middleware intercepts and routes admins to /admin and clients to /dashboard
-        router.refresh();
-      }, 800);
+      try {
+        const sessionRes = await fetch('/api/auth/session');
+        const sessionData = await sessionRes.json();
+        const destination = sessionData?.user?.role === 'ADMIN' ? '/admin' : '/dashboard';
+        setTimeout(() => {
+          window.location.href = destination;
+        }, 500);
+      } catch {
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 500);
+      }
     }
   };
 
