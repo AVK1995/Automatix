@@ -3258,12 +3258,13 @@ function watchFolderForNewFiles() {
                     </div>
                   </div>
 
-                  {/* Speech-to-Text Transcript (if present) */}
+                  {/* 1. Speech-to-Text Transcript (Extracted Audio Breakdown) */}
                   {aiPreviewData.transcript && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-text-secondary font-medium flex items-center gap-1">
-                          <Music className="w-3 h-3 text-amber-400" /> Speech-to-Text Transcript:
+                        <span className="text-amber-300 font-semibold flex items-center gap-1">
+                          <Music className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>🎙️ Transcribed Audio & Speech Breakdown:</span>
                         </span>
                         <button
                           type="button"
@@ -3273,24 +3274,25 @@ function watchFolderForNewFiles() {
                             toast.success('Transcript copied!');
                             setTimeout(() => setAiCopiedField(null), 2000);
                           }}
-                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all cursor-pointer"
                         >
                           {aiCopiedField === 'transcript' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
                           <span>{aiCopiedField === 'transcript' ? 'Copied' : 'Copy'}</span>
                         </button>
                       </div>
-                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-amber-200/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
+                      <div className="p-2.5 bg-black/60 border border-amber-500/20 rounded-lg text-xs text-amber-100/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans shadow-inner">
                         {aiPreviewData.transcript}
                       </div>
                     </div>
                   )}
 
-                  {/* Document Summary / Executive Recap (if present) */}
-                  {aiPreviewData.summary && !aiPreviewData.transcript && (
+                  {/* 2. Visual Analysis & Executive Summary */}
+                  {aiPreviewData.summary && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-text-secondary font-medium flex items-center gap-1">
-                          <FileText className="w-3 h-3 text-blue-400" /> Summary & Key Takeaways:
+                        <span className="text-blue-300 font-semibold flex items-center gap-1">
+                          <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          <span>📊 Visual Analysis & Executive Summary:</span>
                         </span>
                         <button
                           type="button"
@@ -3300,24 +3302,110 @@ function watchFolderForNewFiles() {
                             toast.success('Summary copied!');
                             setTimeout(() => setAiCopiedField(null), 2000);
                           }}
-                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all cursor-pointer"
                         >
                           {aiCopiedField === 'summary' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
                           <span>{aiCopiedField === 'summary' ? 'Copied' : 'Copy'}</span>
                         </button>
                       </div>
-                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-blue-200/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
+                      <div className="p-2.5 bg-black/60 border border-blue-500/20 rounded-lg text-xs text-blue-100/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans shadow-inner">
                         {aiPreviewData.summary}
                       </div>
                     </div>
                   )}
 
-                  {/* Action Items / Deliverables (if present) */}
+                  {/* 3. Title & Hook */}
+                  {(aiPreviewData.title || aiPreviewData.hook) && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-purple-300 font-semibold flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                          <span>✨ Hook / Headline:</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = aiPreviewData.title || aiPreviewData.hook;
+                            navigator.clipboard.writeText(val);
+                            setAiCopiedField('title');
+                            toast.success('Hook copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                        >
+                          {aiCopiedField === 'title' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'title' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2.5 bg-black/60 border border-purple-500/20 rounded-lg text-xs font-semibold text-purple-100 font-sans shadow-inner">
+                        {aiPreviewData.title || aiPreviewData.hook}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Generated Social Caption */}
+                  {aiPreviewData.caption && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-white/90 font-semibold flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                          <span>🎯 Synthesized Post & Caption:</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiPreviewData.caption);
+                            setAiCopiedField('caption');
+                            toast.success('Caption copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                        >
+                          {aiCopiedField === 'caption' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'caption' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2.5 bg-black/60 border border-white/10 rounded-lg text-xs text-white/90 whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto font-sans shadow-inner">
+                        {aiPreviewData.caption}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 5. Targeted Hashtags */}
+                  {aiPreviewData.hashtags && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-purple-300 font-semibold flex items-center gap-1">
+                          <Hash className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                          <span>🏷️ Targeted Hashtags:</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiPreviewData.hashtags);
+                            setAiCopiedField('hashtags');
+                            toast.success('Hashtags copied!');
+                            setTimeout(() => setAiCopiedField(null), 2000);
+                          }}
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                        >
+                          {aiCopiedField === 'hashtags' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{aiCopiedField === 'hashtags' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <div className="p-2 bg-black/60 border border-white/5 rounded-lg text-xs font-mono text-purple-300 select-all">
+                        {aiPreviewData.hashtags}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 6. Action Items & Deliverables (if present) */}
                   {aiPreviewData.actionItems && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-text-secondary font-medium flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Action Items & Checklist:
+                        <span className="text-emerald-300 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>🚀 Action Items & Deliverables:</span>
                         </span>
                         <button
                           type="button"
@@ -3327,24 +3415,25 @@ function watchFolderForNewFiles() {
                             toast.success('Action items copied!');
                             setTimeout(() => setAiCopiedField(null), 2000);
                           }}
-                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all cursor-pointer"
                         >
                           {aiCopiedField === 'actionItems' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
                           <span>{aiCopiedField === 'actionItems' ? 'Copied' : 'Copy'}</span>
                         </button>
                       </div>
-                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-emerald-200/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
+                      <div className="p-2.5 bg-black/60 border border-emerald-500/20 rounded-lg text-xs text-emerald-100/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans shadow-inner">
                         {aiPreviewData.actionItems}
                       </div>
                     </div>
                   )}
 
-                  {/* Data Insights (if present) */}
+                  {/* 7. Data Insights (if present) */}
                   {aiPreviewData.insights && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-text-secondary font-medium flex items-center gap-1">
-                          <Terminal className="w-3 h-3 text-cyan-400" /> Key Data Insights & Metrics:
+                        <span className="text-cyan-300 font-semibold flex items-center gap-1">
+                          <Terminal className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span>💡 Key Data Insights & Metrics:</span>
                         </span>
                         <button
                           type="button"
@@ -3354,89 +3443,14 @@ function watchFolderForNewFiles() {
                             toast.success('Insights copied!');
                             setTimeout(() => setAiCopiedField(null), 2000);
                           }}
-                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
+                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all cursor-pointer"
                         >
                           {aiCopiedField === 'insights' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
                           <span>{aiCopiedField === 'insights' ? 'Copied' : 'Copy'}</span>
                         </button>
                       </div>
-                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-cyan-200/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
+                      <div className="p-2.5 bg-black/60 border border-cyan-500/20 rounded-lg text-xs text-cyan-100/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans shadow-inner">
                         {aiPreviewData.insights}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Generated Caption (if present and not duplicated with summary) */}
-                  {aiPreviewData.caption && !aiPreviewData.transcript && !aiPreviewData.summary && (
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-text-secondary font-medium">Generated Social Caption:</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(aiPreviewData.caption);
-                            setAiCopiedField('caption');
-                            toast.success('Caption copied!');
-                            setTimeout(() => setAiCopiedField(null), 2000);
-                          }}
-                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
-                        >
-                          {aiCopiedField === 'caption' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
-                          <span>{aiCopiedField === 'caption' ? 'Copied' : 'Copy'}</span>
-                        </button>
-                      </div>
-                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg text-xs text-white/90 whitespace-pre-wrap leading-relaxed max-h-44 overflow-y-auto font-sans">
-                        {aiPreviewData.caption}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Title & Hook */}
-                  {aiPreviewData.title && (
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-text-secondary font-medium">Hook / Headline:</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(aiPreviewData.title);
-                            setAiCopiedField('title');
-                            toast.success('Hook copied!');
-                            setTimeout(() => setAiCopiedField(null), 2000);
-                          }}
-                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
-                        >
-                          {aiCopiedField === 'title' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
-                          <span>{aiCopiedField === 'title' ? 'Copied' : 'Copy'}</span>
-                        </button>
-                      </div>
-                      <div className="p-2 bg-black/60 border border-white/5 rounded-lg text-xs font-semibold text-white font-sans">
-                        {aiPreviewData.title}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Hashtags (if present) */}
-                  {aiPreviewData.hashtags && (
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-text-secondary font-medium">Targeted Hashtags:</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(aiPreviewData.hashtags);
-                            setAiCopiedField('hashtags');
-                            toast.success('Hashtags copied!');
-                            setTimeout(() => setAiCopiedField(null), 2000);
-                          }}
-                          className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded transition-all"
-                        >
-                          {aiCopiedField === 'hashtags' ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
-                          <span>{aiCopiedField === 'hashtags' ? 'Copied' : 'Copy'}</span>
-                        </button>
-                      </div>
-                      <div className="p-2 bg-black/60 border border-white/5 rounded-lg text-xs font-mono text-purple-300">
-                        {aiPreviewData.hashtags}
                       </div>
                     </div>
                   )}

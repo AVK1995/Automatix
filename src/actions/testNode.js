@@ -1023,35 +1023,44 @@ async function executeAiMediatorTest(config) {
   let apiKey = config?.apiKey?.trim();
   let keyNameForAudit = null;
 
-  if (rawProvider.startsWith('vault_')) {
-    const vaultKeyId = rawProvider.replace('vault_', '');
-    try {
-      const session = await auth();
-      if (session?.user?.id) {
-        const user = await prisma.user.findUnique({
-          where: { id: session.user.id },
-          select: { aiRadahnApiKey: true, aiRadahnProvider: true }
-        });
-        if (user?.aiRadahnApiKey) {
-          try {
-            const parsed = JSON.parse(user.aiRadahnApiKey);
-            const found = Array.isArray(parsed) ? parsed.find(k => k.id === vaultKeyId) : null;
-            if (found && found.apiKey) {
-              provider = found.provider || 'gemini';
-              apiKey = found.apiKey;
-              keyNameForAudit = found.name;
+  try {
+    const session = await auth();
+    if (session?.user?.id) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { aiRadahnApiKey: true, aiRadahnProvider: true }
+      });
+      if (user?.aiRadahnApiKey) {
+        try {
+          const parsed = JSON.parse(user.aiRadahnApiKey);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (rawProvider.startsWith('vault_')) {
+              const vaultKeyId = rawProvider.replace('vault_', '');
+              const found = parsed.find(k => k.id === vaultKeyId);
+              if (found && found.apiKey) {
+                provider = found.provider || 'gemini';
+                apiKey = found.apiKey;
+                keyNameForAudit = found.name;
+              }
+            } else if (!apiKey || rawProvider === 'native' || rawProvider === 'gemini') {
+              const primary = parsed.find(k => k.isPrimary) || parsed[0];
+              if (primary && primary.apiKey) {
+                provider = primary.provider || 'gemini';
+                apiKey = primary.apiKey;
+                keyNameForAudit = primary.name;
+              }
             }
-          } catch (e) {}
-        }
+          }
+        } catch (e) {}
       }
-    } catch (e) {}
-  }
+    }
+  } catch (e) {}
 
-  if (provider !== 'native' && provider !== 'automatix' && !apiKey) {
+  if (provider !== 'native' && provider !== 'automatix' && !apiKey && !process.env.GEMINI_API_KEY) {
     return {
       success: false,
       error: 'Missing API Key',
-      fix: `Please provide a valid ${provider.toUpperCase()} API key or select a verified Key from your AI Radahn Vault.`
+      fix: `Please add a verified API key in AI Radahn Settings or provide a valid ${provider.toUpperCase()} key.`
     };
   }
 
@@ -1093,6 +1102,7 @@ async function executeAiMediatorTest(config) {
         tokens: result.tokens || null,
         model: usedModel,
         provider: usedModel,
+        keyName: keyNameForAudit,
         createdAt: nowIso,
         timestamp: nowIso,
         rawOutput: text,

@@ -863,6 +863,43 @@ export const executeWorkflow = inngest.createFunction(
                   const mediaUrl = node.config?.mediaUrl ? resolveVars(node.config.mediaUrl) : '';
                   const apiKey = node.config?.apiKey?.trim();
 
+                  let effectiveProvider = provider;
+                  let effectiveApiKey = apiKey;
+
+                  if (execution?.workflowId) {
+                    try {
+                      const wf = await prisma.workflow.findUnique({
+                        where: { id: execution.workflowId },
+                        select: { userId: true }
+                      });
+                      if (wf?.userId) {
+                        const user = await prisma.user.findUnique({
+                          where: { id: wf.userId },
+                          select: { aiRadahnApiKey: true }
+                        });
+                        if (user?.aiRadahnApiKey) {
+                          const parsed = JSON.parse(user.aiRadahnApiKey);
+                          if (Array.isArray(parsed) && parsed.length > 0) {
+                            if (provider?.startsWith('vault_')) {
+                              const vKeyId = provider.replace('vault_', '');
+                              const found = parsed.find(k => k.id === vKeyId);
+                              if (found && found.apiKey) {
+                                effectiveProvider = found.provider || 'gemini';
+                                effectiveApiKey = found.apiKey;
+                              }
+                            } else if (!effectiveApiKey || provider === 'native' || provider === 'gemini') {
+                              const primary = parsed.find(k => k.isPrimary) || parsed[0];
+                              if (primary && primary.apiKey) {
+                                effectiveProvider = primary.provider || 'gemini';
+                                effectiveApiKey = primary.apiKey;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    } catch (e) {}
+                  }
+
                   const triggerPayload = execution.currentNodeState?.payload || {};
                   const promptText = buildAiPrompt({
                     task,
@@ -878,8 +915,8 @@ export const executeWorkflow = inngest.createFunction(
                   let generatedTranscript = '';
                   let generatedSummary = '';
                   const aiResult = await generateAiContent({
-                    provider,
-                    apiKey,
+                    provider: effectiveProvider,
+                    apiKey: effectiveApiKey,
                     baseUrl: node.config?.baseUrl,
                     customModel: node.config?.customModel,
                     promptText,
