@@ -4431,49 +4431,51 @@ function watchFolderForNewFiles() {
               </div>
             )}
 
-            {/* AI Radahn Replica Watcher Box for Dynamic Date/Time Re-evaluation */}
-            <div className="pt-4 border-t border-white/10 space-y-2.5">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-purple-950/20 border border-purple-500/30">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
-                    <Sparkles size={14} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-white">AI Radahn Replica Watcher</span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">PRO</span>
+            {/* AI Radahn Replica Watcher: STRICTLY for dynamic external lookup/read row steps */}
+            {config.actionType === 'READ' && (
+              <div className="pt-4 border-t border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-purple-950/20 border border-purple-500/30">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                      <Sparkles size={14} />
                     </div>
-                    <p className="text-[10px] text-text-secondary mt-0.5">
-                      Watches dynamic date/time cells and reshoots downstream reminder flows.
-                    </p>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-white">AI Radahn Replica Watcher</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">PRO</span>
+                      </div>
+                      <p className="text-[10px] text-text-secondary mt-0.5">
+                        Watches dynamic sheet rows and reshoots downstream reminder flows when dates or data change.
+                      </p>
+                    </div>
                   </div>
+                  <Toggle
+                    checked={Boolean(config.aiRadahnReplicaEnabled)}
+                    onChange={(checked) => {
+                      handleChange('aiRadahnReplicaEnabled', checked);
+                      if (checked) {
+                        setIsReplicaModalOpen(true);
+                      }
+                    }}
+                  />
                 </div>
-                <Toggle
-                  checked={Boolean(config.aiRadahnReplicaEnabled)}
-                  onChange={(checked) => {
-                    handleChange('aiRadahnReplicaEnabled', checked);
-                    if (checked) {
-                      setIsReplicaModalOpen(true);
-                    }
-                  }}
-                />
-              </div>
 
-              {config.aiRadahnReplicaEnabled && (
-                <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs">
-                  <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-                    <CheckCircle2 size={12} /> Replica Active
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsReplicaModalOpen(true)}
-                    className="text-[11px] font-bold text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    Configure Replica &rarr;
-                  </button>
-                </div>
-              )}
-            </div>
+                {config.aiRadahnReplicaEnabled && (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs">
+                    <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 size={12} /> Replica Active
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsReplicaModalOpen(true)}
+                      className="text-[11px] font-bold text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      Configure Replica &rarr;
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
         );
@@ -5125,6 +5127,51 @@ function watchFolderForNewFiles() {
                 <VariableInput multiline={config.varType === 'text'} value={config.varValue || ''} onChange={(val) => handleChange('varValue', val)} placeholder={`Enter ${config.varType || 'text'} value...`} variables={variableGroups} />
               </div>
             )}
+
+            {/* AI Radahn Replica Watcher: Watches manual dynamic variable updates */}
+            <div className="pt-4 border-t border-white/10 space-y-2.5">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-purple-950/20 border border-purple-500/30">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                    <Sparkles size={14} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-white">AI Radahn Replica Watcher</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">PRO</span>
+                    </div>
+                    <p className="text-[10px] text-text-secondary mt-0.5">
+                      Watches dynamic variable edits (dates, times, challenge cohorts) and reshoots past workflow runs with updated variables.
+                    </p>
+                  </div>
+                </div>
+                <Toggle
+                  checked={Boolean(config.aiRadahnReplicaEnabled)}
+                  onChange={(checked) => {
+                    handleChange('aiRadahnReplicaEnabled', checked);
+                    if (checked) {
+                      setIsReplicaModalOpen(true);
+                    }
+                  }}
+                />
+              </div>
+
+              {config.aiRadahnReplicaEnabled && (
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs">
+                  <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Replica Active
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsReplicaModalOpen(true)}
+                    className="text-[11px] font-bold text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    Configure Replica &rarr;
+                  </button>
+                </div>
+              )}
+            </div>
+
           </div>
         );
 
