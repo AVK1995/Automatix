@@ -2797,22 +2797,24 @@ function watchFolderForNewFiles() {
               />
             </div>
 
-            {(() => {
+                      {(() => {
               const isVaultKey = (config.provider || '').startsWith('vault_');
               const selectedVaultKeyId = isVaultKey ? config.provider.replace('vault_', '') : null;
               const selectedVaultKey = userVaultKeys.find(k => k.id === selectedVaultKeyId) || null;
 
               if (isVaultKey && selectedVaultKey) {
                 return (
-                  <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-1.5 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
-                        <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
-                        <span>Vault Key: {selectedVaultKey.name}</span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0 self-start sm:self-auto">
+                  <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-2 shadow-sm">
+                    {/* First row: End aligned */}
+                    <div className="flex justify-end">
+                      <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0">
                         <ShieldCheck className="w-3 h-3 text-emerald-400" /> Verified
                       </span>
+                    </div>
+                    {/* Second row: Start aligned */}
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
+                      <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
+                      <span>Vault Key: {selectedVaultKey.name}</span>
                     </div>
                     <p className="text-[11px] text-white/70 leading-relaxed font-mono">
                       Key: {selectedVaultKey.apiKey || '••••••••••••'} • Managed centrally via AI Radahn Settings.
@@ -2823,15 +2825,17 @@ function watchFolderForNewFiles() {
 
               if (!config.provider || config.provider === 'native') {
                 return (
-                  <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-1.5 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
-                        <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
-                        <span>AI Radahn Vision Encoder Active</span>
-                      </div>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0 self-start sm:self-auto whitespace-nowrap">
+                  <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-2 shadow-sm">
+                    {/* First row: End aligned */}
+                    <div className="flex justify-end">
+                      <span className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0 whitespace-nowrap">
                         Central Key Vault • Managed
                       </span>
+                    </div>
+                    {/* Second row: Start aligned */}
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
+                      <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
+                      <span>AI Radahn Vision Encoder Active</span>
                     </div>
                     <p className="text-[11px] text-white/70 leading-relaxed">
                       Multimodal vision intelligence managed centrally via your AI Radahn settings. Native execution with automated model selection and prompt synthesis.
@@ -2932,7 +2936,7 @@ function watchFolderForNewFiles() {
             {config.provider === 'custom' && (
               <div className="p-3 bg-black/30 rounded-lg border border-white/5 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1">API Base URL</label>
+                  <label className="block text-xs font-medium text-text-secondary">API Base URL</label>
                   <input
                     type="text"
                     placeholder="https://api.groq.com/openai/v1 or http://localhost:11434/v1"
@@ -2942,7 +2946,7 @@ function watchFolderForNewFiles() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1">Model Name</label>
+                  <label className="block text-xs font-medium text-text-secondary">Model Name</label>
                   <input
                     type="text"
                     placeholder="e.g. llama-3.3-70b-versatile, deepseek-chat, mistral"
@@ -2954,43 +2958,34 @@ function watchFolderForNewFiles() {
               </div>
             )}
 
-            {/* Media File URL Section with Real-Time File Type Classification */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-medium text-text-secondary">
-                  Media / Document File URL
-                </label>
-                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border flex items-center gap-1 shrink-0 ${currentCategoryMeta.color}`}>
-                  <CategoryIcon className="w-3 h-3 shrink-0" />
-                  <span>{currentCategoryMeta.label}</span>
+            {/* Media Asset / Document URL Variable Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-text-secondary">Media / Document File URL</label>
+                <span className="text-[10px] text-purple-400 font-mono flex items-center gap-1">
+                  <CategoryIcon className="w-3 h-3" />
+                  <span>{currentCategoryMeta.label.split('/')[0].trim()}</span>
                 </span>
               </div>
-
               <VariableInput 
-                placeholder="e.g. {{trigger.body.fileUrl}} or paste file link" 
+                placeholder="e.g. {{trigger.body.fileUrl}} or https://..." 
                 value={config.mediaUrl || ''} 
                 onChange={(val) => handleChange('mediaUrl', val)} 
                 variables={variableGroups} 
               />
 
+              {/* Instant Auto-Detect Shortcut Bar if Storage Trigger Captured File */}
               {activeStorageFile && (
-                <div className="p-2.5 rounded-lg bg-zinc-900/90 border border-purple-500/20 flex items-center justify-between gap-2.5 shadow-inner">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className="w-7 h-7 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0" title="Cloud Storage Trigger Payload">
-                      <HardDrive className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs font-medium text-white truncate max-w-[180px] sm:max-w-[240px]" title={activeStorageFile.fileName || 'Captured File'}>
-                          {activeStorageFile.fileName || 'Captured File'}
-                        </span>
-                        <span className="text-[10px] text-text-tertiary flex-shrink-0" title={`Size: ${activeStorageFile.fileSizeMB ? `${activeStorageFile.fileSizeMB} MB` : 'Trigger File'}`}>
-                          • {activeStorageFile.fileSizeMB ? `${activeStorageFile.fileSizeMB} MB` : 'Trigger File'}
-                        </span>
+                <div className="mt-2 p-2 rounded-lg bg-zinc-900/90 border border-purple-500/30 flex items-center justify-between gap-2 shadow-sm animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold text-white truncate">
+                        {activeStorageFile.fileName || 'Uploaded Drive File'}
                       </div>
-                      <p className="text-[10px] text-text-tertiary truncate" title="Active Trigger File • Auto-mapped to pipeline">
-                        Active Trigger File • Auto-mapped to pipeline
-                      </p>
+                      <div className="text-[10px] text-text-tertiary font-mono truncate">
+                        {activeStorageFile.fileType || 'Auto'} • {activeStorageFile.fileSizeMB ? `${activeStorageFile.fileSizeMB} MB` : 'Buffer Ready'}
+                      </div>
                     </div>
                   </div>
 
@@ -3038,8 +3033,8 @@ function watchFolderForNewFiles() {
                 <span className="text-[10px] text-purple-400 font-medium">Tailored for {detectedCategory.toUpperCase()}</span>
               </div>
               <Select 
-                value={config.task || taskOptions[0]?.value || 'generate_caption'} 
-                onChange={(val) => handleChange('task', val)}
+                value={config.task || 'generate_caption'} 
+                onChange={(val) => handleChange('task', val)} 
                 options={taskOptions}
               />
             </div>
@@ -3060,25 +3055,27 @@ function watchFolderForNewFiles() {
             </div>
 
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <div className="space-y-1.5 mb-1.5">
                 <label className="block text-xs font-medium text-text-secondary">Custom Instructions & Prompt Additions</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAiRadahnModalType('ai_prompt');
-                    setAiRadahnContext({ 
-                      task: config.task || '', 
-                      tone: config.tone || '', 
-                      initialPrompt: config.customPrompt || '',
-                      mediaType: detectedCategory || 'video'
-                    });
-                    setAiRadahnModalOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 shadow-sm shadow-purple-500/10 transition-all cursor-pointer group whitespace-nowrap shrink-0"
-                >
-                  <Sparkles className="w-3 h-3 text-purple-400 group-hover:rotate-12 transition-transform shrink-0" />
-                  <span className="whitespace-nowrap">AI Radahn Prompt Architect</span>
-                </button>
+                <div className="flex justify-start">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiRadahnModalType('ai_prompt');
+                      setAiRadahnContext({ 
+                        task: config.task || '', 
+                        tone: config.tone || '', 
+                        initialPrompt: config.customPrompt || '',
+                        mediaType: detectedCategory || 'video'
+                      });
+                      setAiRadahnModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 shadow-sm shadow-purple-500/10 transition-all cursor-pointer group whitespace-nowrap shrink-0"
+                  >
+                    <Sparkles className="w-3 h-3 text-purple-400 group-hover:rotate-12 transition-transform shrink-0" />
+                    <span className="whitespace-nowrap">AI Radahn Prompt Architect</span>
+                  </button>
+                </div>
               </div>
               <VariableInput 
                 multiline 

@@ -197,35 +197,55 @@ export default function MediaPreviewModal({ isOpen, onClose, file }) {
 
             {/* Video Player Switcher (When Google Drive video is detected) */}
             {isVideo && driveId && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-zinc-900/60 border border-white/5 px-3.5 py-2.5 rounded-xl gap-2 text-xs">
-                <span className="text-text-secondary flex items-center gap-1.5">
-                  <MonitorPlay className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span>Playback Engine:</span>
-                </span>
-                <div className="flex items-center gap-1.5 p-0.5 bg-black/40 border border-white/5 rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => setPlayerMode('html5')}
-                    className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[11px] font-medium transition-all ${
-                      playerMode === 'html5' 
-                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-sm' 
-                        : 'text-text-tertiary hover:text-white'
-                    }`}
-                  >
-                    Direct Native Player (Fast)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPlayerMode('embed')}
-                    className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[11px] font-medium transition-all ${
-                      playerMode === 'embed' 
-                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-sm' 
-                        : 'text-text-tertiary hover:text-white'
-                    }`}
-                  >
-                    Google Drive Player
-                  </button>
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-zinc-900/60 border border-white/5 px-3.5 py-2.5 rounded-xl gap-2 text-xs">
+                  <span className="text-text-secondary flex items-center gap-1.5">
+                    <MonitorPlay className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    <span>Playback Engine:</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 p-0.5 bg-black/40 border border-white/5 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => setPlayerMode('html5')}
+                      className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                        playerMode === 'html5' 
+                          ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-sm' 
+                          : 'text-text-tertiary hover:text-white'
+                      }`}
+                    >
+                      Direct Native Player (Fast)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPlayerMode('embed')}
+                      className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                        playerMode === 'embed' 
+                          ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-sm' 
+                          : 'text-text-tertiary hover:text-white'
+                      }`}
+                    >
+                      Google Drive Player
+                    </button>
+                  </div>
                 </div>
+
+                {playerMode === 'embed' && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2 text-amber-200 min-w-0">
+                      <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="text-[11px] leading-relaxed">
+                        Google Drive embeds require third-party cookies in some browsers. Switch to Direct Native Player for cookie-free instant streaming.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPlayerMode('html5')}
+                      className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[11px] font-semibold shrink-0 cursor-pointer self-start sm:self-auto transition-colors"
+                    >
+                      Switch to Direct Native
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

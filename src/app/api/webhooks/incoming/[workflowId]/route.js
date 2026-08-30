@@ -72,13 +72,31 @@ async function handleRequest(request, { params }, method) {
     // 1. Verify Workflow Exists and is Active
     let workflow;
     try {
-      workflow = await prisma.workflow.findUnique({
-        where: { id: workflowId },
-        select: { id: true, isActive: true, nodesJson: true }
-      });
+      if (workflowId && workflowId !== 'new') {
+        workflow = await prisma.workflow.findUnique({
+          where: { id: workflowId },
+          select: { id: true, isActive: true, nodesJson: true }
+        });
+      }
     } catch (e) {
-      // Catch invalid UUID errors or other Prisma errors
       console.warn('Prisma findUnique error:', e.message);
+    }
+
+    // Fallback: If workflow not found by ID or ID is 'new', find by webhook token in nodesJson
+    if (!workflow && token) {
+      try {
+        const matchingWorkflows = await prisma.workflow.findMany({
+          where: {
+            nodesJson: { contains: token }
+          },
+          select: { id: true, isActive: true, nodesJson: true }
+        });
+        if (matchingWorkflows.length > 0) {
+          workflow = matchingWorkflows[0];
+        }
+      } catch (e) {
+        console.warn('Fallback token search error:', e.message);
+      }
     }
 
     if (!workflow) {
@@ -235,6 +253,39 @@ async function handleRequest(request, { params }, method) {
         currentNodeState: { step: 'TRIGGER', payload: body }
       }
     });
+
+    // Cache latest trigger payload to the node config for immediate builder & UI availability
+    if (webhookNode && (webhookNode.integration?.id === 'storage_trigger' || webhookNode.integration?.id === 'sheets_trigger' || webhookNode.integration?.id === 'webhook')) {
+      try {
+        const updatedNodes = nodes.map(n => {
+          if (n.id === webhookNode.id) {
+            return {
+              ...n,
+              config: {
+                ...n.config,
+                capturedPayload: body,
+                latestUploadedFile: (body.fileUrl || body.downloadUrl || body.name) ? {
+                  fileName: body.fileName || body.name || 'Uploaded File',
+                  fileUrl: body.fileUrl || body.downloadUrl || '',
+                  fileType: body.fileType || body.mimeType || 'video/mp4',
+                  fileSizeMB: body.fileSizeMB || (body.size ? (Number(body.size)/(1024*1024)).toFixed(2) : '1.0'),
+                  folderName: n.config?.folderName || 'Automatix Uploads',
+                  capturedAt: new Date().toISOString()
+                } : n.config?.latestUploadedFile
+              }
+            };
+          }
+          return n;
+        });
+
+        await prisma.workflow.update({
+          where: { id: workflow.id },
+          data: { nodesJson: JSON.stringify(updatedNodes) }
+        });
+      } catch (e) {
+        console.warn('Could not cache capturedPayload to workflow node:', e.message);
+      }
+    }
 
     // 3. Trigger Vercel Workflow Engine
     await inngest.send({

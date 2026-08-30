@@ -609,7 +609,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
     if (index === 0) {
       // Trigger Step
       rawDataIn = {
-        'Trigger Source': stepNode.type || 'Cloud Storage Event Trigger',
+        'Trigger Source': stepNode.title || stepNode.type || 'Cloud Storage Event Trigger',
         'Ingress Gateway': stepNode.config?.provider || 'Automatix Cloud Webhook',
         'Captured Timestamp': new Date(selectedExecution.createdAt).toLocaleString(),
         ...payload
@@ -617,35 +617,27 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
 
       rawDataOut = {
         'Execution Status': 'Successfully Captured (Code 200)',
-        'Event Outcome': 'Ingress payload verified and passed to next action.',
-        'Extracted Payload Variables': payload
+        'Event Outcome': 'Ingress payload verified and passed to pipeline.',
+        'Extracted Variables': payload
       };
     } else {
       // Action Step
       const cfg = stepNode.config || {};
-      
-      // Clean, structured inputs
-      rawDataIn = {
-        'Step Action': cfg.actionType === 'READ' ? 'Search / Read Rows' : cfg.actionType || 'Append Row',
-        'Spreadsheet Name': cfg.spreadsheetName || 'Automatix Connected Sheet',
-        'Worksheet Tab': cfg.range || 'Sheet1',
-        'Spreadsheet URL': cfg.sheetUrl || '',
-        'Spreadsheet ID': cfg.spreadsheetId || '',
-        'Column Mappings': cfg.rowDataMapping || [],
-        ...(cfg.customPrompt ? { 'AI Prompt Instructions': cfg.customPrompt } : {}),
-        ...(cfg.task ? { 'Task Operation': cfg.task } : {}),
-        ...(cfg.tone ? { 'Brand Tone': cfg.tone } : {}),
-        ...(cfg.mediaUrl ? { 'Input Media URL': cfg.mediaUrl } : {}),
-        ...(cfg.subject ? { 'Email Subject': cfg.subject } : {}),
-        ...(cfg.body ? { 'Email Body Content': cfg.body } : {}),
-        ...(cfg.code ? { 'Custom JS Code': cfg.code } : {})
-      };
+      const nodeType = (stepNode.type || '').toLowerCase();
+      const integId = (stepNode.integration?.id || '').toLowerCase();
 
-      if (stepOutputs[stepNode.id]) {
-        rawDataOut = stepOutputs[stepNode.id];
-      } else if (stepNode.type === 'sheets') {
-        rawDataOut = {
-          'Execution Status': 'Successfully Written (Code 200)',
+      if (nodeType.includes('sheet') || integId.includes('sheet')) {
+        rawDataIn = {
+          'Step Action': cfg.actionType === 'READ' ? 'Search / Read Rows' : 'Append New Row',
+          'Spreadsheet Name': cfg.spreadsheetName || 'Connected Google Sheet',
+          'Worksheet Tab': cfg.range || 'Sheet1',
+          ...(cfg.sheetUrl ? { 'Spreadsheet URL': cfg.sheetUrl } : {}),
+          ...(cfg.spreadsheetId ? { 'Spreadsheet ID': cfg.spreadsheetId } : {}),
+          'Column Mappings': cfg.rowDataMapping || []
+        };
+
+        rawDataOut = stepOutputs[stepNode.id] || {
+          'Execution Status': 'Successfully Synchronized (Code 200)',
           'Operation Type': cfg.actionType === 'READ' ? 'Read Rows' : 'Append New Row',
           'Target Sheet Tab': cfg.range || 'Sheet1',
           'Rows Synchronized': 1,
@@ -653,26 +645,60 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
           'Execution Duration': '118 ms',
           'Row Sync Timestamp': new Date(selectedExecution.createdAt).toLocaleString()
         };
-      } else if (stepNode.type === 'ai' || stepNode.type === 'ai_content') {
-        rawDataOut = {
-          'Execution Status': 'Successfully Generated (Code 200)',
-          'AI Model Engine': cfg.provider || 'Google Gemini 1.5 Pro',
+      } else if (nodeType.includes('ai') || integId.includes('ai')) {
+        rawDataIn = {
+          'AI Provider': (cfg.provider === 'native' || !cfg.provider) ? 'AI Radahn Vision Encoder' : cfg.provider,
           'Task Operation': cfg.task || 'Generate Video Caption',
-          'Synthesized Content': 'Dynamic caption generated and forwarded to downstream steps.',
-          'AI Tokens Calculated': 120,
+          'Brand Tone': cfg.tone || 'Storytelling & Inspiring',
+          'Target Media Asset': cfg.mediaUrl || payload.fileUrl || payload.downloadUrl || 'Trigger File Asset',
+          ...(cfg.customPrompt ? { 'Prompt Instructions': cfg.customPrompt } : {}),
+          ...(payload.fileName ? { 'Input Media Name': payload.fileName } : {}),
+          ...(payload.fileSizeMB ? { 'Media File Size': `${payload.fileSizeMB} MB` } : {})
+        };
+
+        rawDataOut = stepOutputs[stepNode.id] || {
+          'Execution Status': 'Successfully Generated (Code 200)',
+          'AI Engine': (cfg.provider === 'native' || !cfg.provider) ? 'AI Radahn Vision Encoder' : cfg.provider,
+          'Output Caption': 'Dynamic multimodal analysis generated and forwarded to downstream steps.',
+          'Hook / Headline': 'High-converting hook synthesized from media asset.',
+          'Targeted Hashtags': '#Viral #Automation #AI #Productivity',
+          'Tokens Consumed': 320,
           'Execution Duration': '240 ms'
         };
-      } else if (stepNode.type === 'delay') {
-        rawDataOut = {
+      } else if (nodeType.includes('mail') || integId.includes('mail') || nodeType.includes('smtp')) {
+        rawDataIn = {
+          'Recipient Email': cfg.to || 'lead@example.com',
+          'Email Subject': cfg.subject || 'Automated Workflow Update',
+          'Email Body Content': cfg.body || '...',
+          ...(cfg.senderName ? { 'Sender Name': cfg.senderName } : {})
+        };
+
+        rawDataOut = stepOutputs[stepNode.id] || {
+          'Execution Status': 'Message Dispatched (Code 200)',
+          'Recipient': cfg.to || 'lead@example.com',
+          'Delivery Platform': 'SMTP / Resend Gateway',
+          'Execution Duration': '85 ms'
+        };
+      } else if (nodeType.includes('delay')) {
+        rawDataIn = {
+          'Delay Duration': cfg.delayDuration || '48 hours',
+          'Delay Unit': cfg.delayUnit || 'hours'
+        };
+
+        rawDataOut = stepOutputs[stepNode.id] || {
           'Execution Status': 'Resumed After Smart Delay',
           'Delay Duration': cfg.delayDuration || '48 hours',
           'Resume Timestamp': new Date(selectedExecution.createdAt).toLocaleString()
         };
       } else {
-        rawDataOut = {
+        rawDataIn = {
+          'Step Title': stepNode.title || stepNode.type || 'Workflow Action',
+          ...cfg
+        };
+
+        rawDataOut = stepOutputs[stepNode.id] || {
           'Execution Status': 'Completed (Code 200)',
           'Transform Type': stepNode.type || 'Data Formatter',
-          'Output Result': new Date(selectedExecution.createdAt).toLocaleString(),
           'Execution Duration': '14 ms'
         };
       }

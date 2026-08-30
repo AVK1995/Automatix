@@ -107,11 +107,22 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            {/* Section 5 */}
+            {/* Section 5: Cookies & Local Storage */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
+                <ShieldCheck className="w-5 h-5 text-accent-blue" />
+                <h2 className="text-xl font-semibold text-white m-0">5. Cookies & Local Storage Usage</h2>
+              </div>
+              <p className="text-text-secondary leading-relaxed mt-4">
+                Automatix uses essential authentication cookies, session identifiers, and local browser storage to secure your login state, maintain active webhook listener tokens, manage AI Key Vault preferences, and optimize direct media streaming without requiring third-party tracking cookies.
+              </p>
+            </section>
+
+            {/* Section 6 */}
             <section className="space-y-4">
               <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
                 <Mail className="w-5 h-5 text-accent-blue" />
-                <h2 className="text-xl font-semibold text-white m-0">5. Contact Us</h2>
+                <h2 className="text-xl font-semibold text-white m-0">6. Contact Us</h2>
               </div>
               <div className="text-text-secondary leading-relaxed mt-4 bg-background/50 border border-border-subtle p-5 rounded-lg inline-block w-full">
                 <p>For any privacy-related questions, contact us at:</p>
