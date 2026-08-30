@@ -1,4 +1,4 @@
-import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal, HardDrive, ShieldCheck, FileVideo, Image, Eye, Film, Music, FileText, Download, Zap, Lightbulb, Crown, Coins, Gauge, Clock, ChevronRight, Wand2, Hash } from 'lucide-react';
+import { Settings, X, Copy, Plus, Trash2, Sparkles, PlayCircle, AlertCircle, CheckCircle2, RefreshCw, ExternalLink, AlertTriangle, Variable, HelpCircle, Globe, Terminal, HardDrive, ShieldCheck, FileVideo, Image, Eye, Film, Music, FileText, Download, Zap, Lightbulb, Crown, Coins, Gauge, Clock, ChevronRight, Wand2, Hash, Lock, Pencil } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -40,6 +40,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
   const [copiedKey, setCopiedKey] = useState(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [showStorageUnlockModal, setShowStorageUnlockModal] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [activeChecklistVar, setActiveChecklistVar] = useState(null);
   const [events, setEvents] = useState([]);
@@ -830,6 +831,9 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
 
   const handleSaveStep = () => {
     setIsSaved(true);
+    if (selectedNode?.integration?.id === 'storage-file') {
+      handleChange('isLocked', true);
+    }
     setTimeout(() => setIsSaved(false), 3000);
   };
 
@@ -1163,55 +1167,108 @@ function watchFolderForNewFiles() {
 
         const customCurlCode = `curl -X POST "${storageHookUrl}" -H "Content-Type: application/json" -d '{\\n  "fileName": "sample_file.mp4",\\n  "fileUrl": "https://example.com/files/sample_file.mp4",\\n  "fileType": "video/mp4",\\n  "fileSizeMB": 14.2,\\n  "folderName": "${config.folderName || 'Automatix Uploads'}"\\n}'`;
 
+        const isLocked = config.isLocked;
+
         return (
           <div className="space-y-4">
 
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">Storage Provider</label>
-              <Select 
-                value={config.provider || 'gdrive'} 
-                onChange={(val) => handleChange('provider', val)}
-                options={[
-                  { value: 'gdrive', label: 'Google Drive' },
-                  { value: 'onedrive', label: 'Microsoft OneDrive' },
-                  { value: 'proton', label: 'Proton Drive' },
-                  { value: 'custom', label: 'Custom / Direct Webhook API' }
-                ]}
-              />
-            </div>
+            {isLocked ? (
+              <div className="space-y-3 p-3.5 bg-white/[0.02] border border-white/10 rounded-xl">
+                <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Lock size={13} className="text-emerald-400" />
+                    Configuration (Locked)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowStorageUnlockModal(true)}
+                    className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-semibold px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 cursor-pointer transition-colors"
+                  >
+                    <Pencil size={11} /> Edit Configuration
+                  </button>
+                </div>
 
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">Target Folder Name or Path</label>
-              <input
-                type="text"
-                placeholder="e.g. Automatix Uploads, Invoices, Media, or Reports"
-                value={config.folderName || ''}
-                onChange={(e) => handleChange('folderName', e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue"
-              />
-              <p className="text-[10px] text-text-tertiary mt-1">Files dropped in this folder will trigger the automation.</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">Media Format Filter</label>
-              <Select 
-                value={config.fileFilter || 'ALL'} 
-                onChange={(val) => handleChange('fileFilter', val)}
-                options={[
-                  { value: 'ALL', label: 'All Files (Images, Videos, Docs)' },
-                  { value: 'IMAGES_ONLY', label: 'Images Only (.jpg, .png, .webp)' },
-                  { value: 'VIDEOS_ONLY', label: 'Videos Only (.mp4, .mov)' },
-                  { value: 'DOCUMENTS_ONLY', label: 'Documents Only (.pdf, .doc, .txt)' }
-                ]}
-              />
-              <div className="mt-1.5 p-2 bg-sky-500/10 border border-sky-500/20 rounded-md text-[11px] text-sky-300 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 text-sky-400" />
-                  <span>Max File Size: <strong>25 MB</strong> per file</span>
-                </span>
-                <span className="text-[10px] text-white/50">Auto-enforced</span>
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-tertiary block">Storage Provider</span>
+                    <p className="text-white font-medium capitalize mt-0.5">
+                      {config.provider === 'gdrive' ? 'Google Drive' : config.provider === 'onedrive' ? 'Microsoft OneDrive' : config.provider === 'proton' ? 'Proton Drive' : 'Custom / Direct Webhook API'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-tertiary block">Target Folder Name or Path</span>
+                    <p className="text-white font-mono bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/5 mt-0.5 truncate">
+                      {config.folderName || 'Instagram Auto Uploads'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-tertiary block">Media Format Filter</span>
+                    <p className="text-text-secondary mt-0.5">
+                      {config.fileFilter === 'IMAGES_ONLY' ? 'Images Only (.jpg, .png, .webp)' :
+                       config.fileFilter === 'VIDEOS_ONLY' ? 'Videos Only (.mp4, .mov)' :
+                       config.fileFilter === 'DOCUMENTS_ONLY' ? 'Documents Only (.pdf, .doc, .txt)' :
+                       'All Files (Images, Videos, Docs)'}
+                    </p>
+                  </div>
+                  <div className="mt-1 p-2 bg-sky-500/10 border border-sky-500/20 rounded-md text-[11px] text-sky-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 text-sky-400" />
+                      <span>Max File Size: <strong>25 MB</strong> per file</span>
+                    </span>
+                    <span className="text-[10px] text-white/50">Auto-enforced</span>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Storage Provider</label>
+                  <Select 
+                    value={config.provider || 'gdrive'} 
+                    onChange={(val) => handleChange('provider', val)}
+                    options={[
+                      { value: 'gdrive', label: 'Google Drive' },
+                      { value: 'onedrive', label: 'Microsoft OneDrive' },
+                      { value: 'proton', label: 'Proton Drive' },
+                      { value: 'custom', label: 'Custom / Direct Webhook API' }
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Target Folder Name or Path</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Automatix Uploads, Invoices, Media, or Reports"
+                    value={config.folderName || ''}
+                    onChange={(e) => handleChange('folderName', e.target.value)}
+                    className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue"
+                  />
+                  <p className="text-[10px] text-text-tertiary mt-1">Files dropped in this folder will trigger the automation.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Media Format Filter</label>
+                  <Select 
+                    value={config.fileFilter || 'ALL'} 
+                    onChange={(val) => handleChange('fileFilter', val)}
+                    options={[
+                      { value: 'ALL', label: 'All Files (Images, Videos, Docs)' },
+                      { value: 'IMAGES_ONLY', label: 'Images Only (.jpg, .png, .webp)' },
+                      { value: 'VIDEOS_ONLY', label: 'Videos Only (.mp4, .mov)' },
+                      { value: 'DOCUMENTS_ONLY', label: 'Documents Only (.pdf, .doc, .txt)' }
+                    ]}
+                  />
+                  <div className="mt-1.5 p-2 bg-sky-500/10 border border-sky-500/20 rounded-md text-[11px] text-sky-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 text-sky-400" />
+                      <span>Max File Size: <strong>25 MB</strong> per file</span>
+                    </span>
+                    <span className="text-[10px] text-white/50">Auto-enforced</span>
+                  </div>
+                </div>
+              </>
+            )}
 
             {isStorageLocalhost && !config.customOrigin && (
               <div className="bg-amber-500/10 border border-amber-500/25 p-3 rounded-lg space-y-2">
@@ -5834,6 +5891,57 @@ function watchFolderForNewFiles() {
           }));
         }}
       />
+      {/* Storage Trigger Unlock Warning Modal (Solid dark background, no blur) */}
+      <AnimatePresence>
+        {showStorageUnlockModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="fixed inset-0 bg-black/70"
+              onClick={() => setShowStorageUnlockModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-md bg-[#0e0e13] rounded-2xl border border-amber-500/30 p-5 shadow-2xl z-10 space-y-4"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Unlock & Edit Storage Configuration?</h3>
+                  <p className="text-xs text-text-secondary mt-1 leading-relaxed">
+                    <strong>Warning:</strong> If you modify the <strong>Storage Provider</strong> or <strong>Target Folder Name</strong>, the Google Apps Script currently deployed in your Google Drive will be affected and the trigger will not capture files until the updated script is deployed and authorized in your Google Project.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowStorageUnlockModal(false)}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:text-white bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleChange('isLocked', false);
+                    setShowStorageUnlockModal(false);
+                    toast.success('Configuration unlocked for editing. Remember to save trigger when done.');
+                  }}
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold text-black bg-amber-400 hover:bg-amber-300 transition-colors shadow-md cursor-pointer"
+                >
+                  Unlock & Edit Anyway
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <QuotaUpgradeModal />
     </div>
   );

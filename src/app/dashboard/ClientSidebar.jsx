@@ -45,7 +45,7 @@ export default function ClientSidebar({ isMobile, onClose }) {
     { name: 'Connections', href: '/dashboard/connections', icon: <LinkIcon size={16} /> },
     { name: 'Storage Bucket', href: '/dashboard/storage', icon: <Database size={16} /> },
     { name: 'Billing & Invoices', href: '/dashboard/billing', icon: <CreditCard size={16} /> },
-    { name: 'Support & Help Desk', href: '/dashboard/support', icon: <MessageSquare size={16} /> },
+    { name: 'Support & Help Desk / Requests', href: '/dashboard/support', icon: <MessageSquare size={16} /> },
     { name: 'Settings', href: '/dashboard/settings', icon: <Settings size={16} /> },
   ];
 

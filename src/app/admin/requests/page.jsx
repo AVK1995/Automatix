@@ -26,8 +26,10 @@ export default async function AdminRequestsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white mb-2">Tenants & Users Requests</h1>
-        <p className="text-sm text-text-secondary">Manage storage quotas, white-glove setups, and refunds.</p>
+        <h1 className="text-2xl font-bold text-white mb-2">Global Supports & Requests</h1>
+        <p className="text-sm text-text-secondary">
+          Manage storage quotas, plan upgrades, concierge setups, refunds, and live client support chats.
+        </p>
       </div>
 
       <RequestsTabsClient 

@@ -46,7 +46,7 @@ export default function AdminSidebar({ isMobile, onClose }) {
     { name: 'Live Support & Client Chat', href: '/admin/support', icon: <MessageSquare size={16} /> },
     { name: 'Global Storage', href: '/admin/storage', icon: <Database size={16} /> },
     { name: 'Global Connections', href: '/admin/connections', icon: <LinkIcon size={16} /> },
-    { name: 'Tenants/Users Requests', href: '/admin/requests', icon: <Globe size={16} /> },
+    { name: 'Global Supports & Requests', href: '/admin/requests', icon: <Globe size={16} /> },
     { name: 'Usage Analytics', href: '/admin/analytics', icon: <Activity size={16} /> },
     { name: 'System Workflows', href: '/admin/workflows', icon: <Workflow size={16} /> },
     { name: 'Platform Settings', href: '/admin/settings', icon: <Settings size={16} /> },

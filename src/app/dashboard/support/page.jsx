@@ -2,17 +2,48 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Plus, Clock, CheckCircle2, AlertCircle, X, Send, Loader2, Lock, Sparkles, ChevronDown } from 'lucide-react';
+import { 
+  MessageSquare, 
+  Plus, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle, 
+  X, 
+  Send, 
+  Loader2, 
+  Sparkles, 
+  Crown, 
+  HardDrive, 
+  Receipt, 
+  RefreshCw, 
+  HelpCircle, 
+  ExternalLink,
+  ShieldCheck,
+  Check,
+  Inbox
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import Select from '@/components/ui/Select';
 import { resolveTicketNotifications } from '@/actions/notifications';
 
 export default function SupportPage() {
+  const [activeMainTab, setActiveMainTab] = useState('support'); // 'support' | 'requests'
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTicket, setActiveTicket] = useState(null);
   const messagesEndRef = useRef(null);
   
+  // Raised requests state
+  const [raisedData, setRaisedData] = useState({
+    quotaRequests: [],
+    conciergeRequests: [],
+    refundRequests: [],
+    supportTickets: []
+  });
+  const [loadingRaised, setLoadingRaised] = useState(false);
+  const [requestFilter, setRequestFilter] = useState('ALL'); // 'ALL' | 'QUOTA' | 'CONCIERGE' | 'REFUND'
+  const [previewImage, setPreviewImage] = useState(null);
+
   // New ticket state
   const [isCreating, setIsCreating] = useState(false);
   const [newSubject, setNewSubject] = useState('');
@@ -29,6 +60,12 @@ export default function SupportPage() {
     const interval = setInterval(fetchTickets, 3000);
     return () => clearInterval(interval);
   }, [activeTicket?.id]);
+
+  useEffect(() => {
+    if (activeMainTab === 'requests') {
+      fetchRaisedRequests();
+    }
+  }, [activeMainTab]);
 
   useEffect(() => {
     if (activeTicket?.id) {
@@ -69,6 +106,21 @@ export default function SupportPage() {
     }
   };
 
+  const fetchRaisedRequests = async () => {
+    setLoadingRaised(true);
+    try {
+      const res = await fetch('/api/user/raised-requests');
+      const data = await res.json();
+      if (res.ok) {
+        setRaisedData(data);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingRaised(false);
+    }
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!newSubject.trim() || !newMessage.trim()) return;
@@ -91,6 +143,7 @@ export default function SupportPage() {
       setNewSubject('');
       setNewMessage('');
       fetchTickets();
+      if (activeMainTab === 'requests') fetchRaisedRequests();
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -135,6 +188,15 @@ export default function SupportPage() {
     }
   };
 
+  const getQuotaStatusColor = (status) => {
+    switch (status) {
+      case 'PENDING': return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+      case 'APPROVED': return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
+      case 'REJECTED': return 'text-red-400 bg-red-500/10 border-red-500/30';
+      default: return 'text-white/70 bg-white/5 border-white/10';
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-full min-h-[400px] flex items-center justify-center">
@@ -143,252 +205,486 @@ export default function SupportPage() {
     );
   }
 
+  const totalRaisedCount = (raisedData.quotaRequests?.length || 0) + (raisedData.conciergeRequests?.length || 0) + (raisedData.refundRequests?.length || 0);
+
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-5">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1 flex items-center gap-2.5">
             <MessageSquare size={22} className="text-accent-blue" />
-            Support & Help Desk
+            Support & Help Desk / Requests
           </h1>
           <p className="text-sm text-text-secondary">
-            Submit formal support inquiries or connect directly with our administration team.
+            Submit support inquiries, track raised quota upgrades, concierge setups, and refunds.
           </p>
         </div>
-        <button 
-          onClick={() => setIsCreating(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-accent-blue text-white text-xs font-semibold rounded-lg hover:bg-accent-blue/90 transition-colors shadow-lg shadow-accent-blue/10 shrink-0"
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button 
+            onClick={() => setIsCreating(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-accent-blue hover:bg-accent-blue/90 text-white text-xs font-semibold rounded-lg transition-colors shadow-lg shadow-accent-blue/10 cursor-pointer"
+          >
+            <Plus size={15} /> Raise Support Ticket
+          </button>
+        </div>
+      </div>
+
+      {/* Main Top Navigation Tabs */}
+      <div className="flex items-center gap-3 border-b border-white/10 pb-px">
+        <button
+          onClick={() => setActiveMainTab('support')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            activeMainTab === 'support'
+              ? 'border-accent-blue text-white'
+              : 'border-transparent text-text-secondary hover:text-white'
+          }`}
         >
-          <Plus size={15} /> Raise Support Ticket
+          <MessageSquare size={14} />
+          <span>Support & Help Desk</span>
+          {tickets.length > 0 && (
+            <span className="px-2 py-0.2 rounded-full bg-white/10 text-[10px] text-white">
+              {tickets.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveMainTab('requests')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            activeMainTab === 'requests'
+              ? 'border-purple-400 text-purple-300'
+              : 'border-transparent text-text-secondary hover:text-white'
+          }`}
+        >
+          <Inbox size={14} />
+          <span>My Raised Requests</span>
+          {totalRaisedCount > 0 && (
+            <span className="px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px]">
+              {totalRaisedCount}
+            </span>
+          )}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
-        {/* Left Side: Ticket List */}
-        <div className="lg:col-span-4 bg-[#111] border border-border-subtle rounded-xl overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Your Tickets ({tickets.length})</span>
+      {/* TAB 1: SUPPORT & HELP DESK */}
+      {activeMainTab === 'support' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+          {/* Left Side: Ticket List */}
+          <div className="lg:col-span-4 bg-[#111] border border-border-subtle rounded-xl overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Your Tickets ({tickets.length})</span>
+            </div>
+
+            {tickets.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
+                <MessageSquare size={32} className="text-text-tertiary mb-3" />
+                <p className="text-white font-medium text-sm">No support tickets</p>
+                <p className="text-text-tertiary text-xs mt-1">Need help? Open a support ticket to start chatting.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
+                {tickets.map(ticket => {
+                  const isSelected = activeTicket?.id === ticket.id;
+                  return (
+                    <button
+                      key={ticket.id}
+                      onClick={() => setActiveTicket(ticket)}
+                      className={`w-full text-left p-4 transition-colors flex flex-col gap-1.5 cursor-pointer ${
+                        isSelected ? 'bg-accent-blue/10 border-l-2 border-accent-blue' : 'hover:bg-white/[0.02]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-xs text-white truncate max-w-[200px]">
+                          {ticket.subject}
+                        </span>
+                        <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${getStatusColor(ticket.status)}`}>
+                          {ticket.status}
+                        </span>
+                      </div>
+                      <p className="text-text-tertiary text-xs line-clamp-1">
+                        {ticket.message}
+                      </p>
+                      <div className="flex items-center justify-between text-[10px] text-text-secondary mt-1">
+                        <span className="capitalize">{ticket.type.toLowerCase()}</span>
+                        <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {tickets.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
-              <MessageSquare size={32} className="text-text-tertiary mb-3" />
-              <p className="text-white font-medium text-sm">No support tickets</p>
-              <p className="text-text-tertiary text-xs mt-1">Need help? Open a support ticket to start chatting.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
-              {tickets.map(ticket => (
-                <button
-                  key={ticket.id}
-                  onClick={() => {
-                    setActiveTicket(ticket);
-                    setIsCreating(false);
-                  }}
-                  className={`w-full text-left p-4 hover:bg-white/[0.03] transition-colors flex flex-col gap-1.5 ${activeTicket?.id === ticket.id && !isCreating ? 'bg-accent-blue/5 border-l-2 border-accent-blue' : ''}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`text-[10px] px-2 py-0.5 rounded border uppercase font-bold tracking-wider ${getStatusColor(ticket.status)}`}>
-                      {ticket.status === 'OPEN' ? 'Awaiting Admin' : ticket.status === 'IN_PROGRESS' ? 'Active Chat' : ticket.status}
-                    </span>
-                    <span className="text-[11px] text-text-tertiary">
-                      {new Date(ticket.updatedAt).toLocaleDateString()}
-                    </span>
+          {/* Right Side: Chat / Message Thread */}
+          <div className="lg:col-span-8 bg-[#111] border border-border-subtle rounded-xl flex flex-col min-h-[500px] max-h-[650px]">
+            {activeTicket ? (
+              <>
+                <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                      {activeTicket.subject}
+                      <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${getStatusColor(activeTicket.status)}`}>
+                        {activeTicket.status}
+                      </span>
+                    </h2>
+                    <span className="text-xs text-text-tertiary">Type: {activeTicket.type} • Ticket ID: {activeTicket.id.slice(0, 8)}...</span>
                   </div>
-                  <h3 className="text-xs sm:text-sm font-semibold text-white truncate">{ticket.subject}</h3>
-                  <p className="text-xs text-text-secondary truncate">{ticket.message}</p>
+                </div>
+
+                <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                  {/* Initial Ticket Message */}
+                  <div className="flex flex-col items-start max-w-[85%]">
+                    <div className="p-3 bg-zinc-900 border border-white/10 rounded-2xl rounded-tl-sm text-xs text-white leading-relaxed">
+                      {activeTicket.message}
+                    </div>
+                    <span className="text-[10px] text-text-tertiary mt-1 ml-1">{new Date(activeTicket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+
+                  {/* Thread Messages */}
+                  {activeTicket.messages?.map(msg => {
+                    const isClient = msg.senderRole === 'USER' || msg.senderRole === 'CLIENT';
+                    return (
+                      <div key={msg.id} className={`flex flex-col ${isClient ? 'items-end' : 'items-start'} max-w-[85%] ${isClient ? 'ml-auto' : 'mr-auto'}`}>
+                        <div className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                          isClient 
+                            ? 'bg-accent-blue text-white rounded-tr-sm' 
+                            : 'bg-zinc-800 border border-white/10 text-white rounded-tl-sm'
+                        }`}>
+                          {!isClient && <span className="text-[10px] font-bold text-sky-400 block mb-1">Automatix Support Agent</span>}
+                          {msg.content}
+                        </div>
+                        <span className="text-[10px] text-text-tertiary mt-1 mx-1">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Reply Box */}
+                {activeTicket.status !== 'CLOSED' ? (
+                  <form onSubmit={handleReply} className="p-3 border-t border-white/5 bg-white/[0.01] flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Type your message to support..."
+                      className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-accent-blue"
+                    />
+                    <button
+                      type="submit"
+                      disabled={replying || !replyText.trim()}
+                      className="p-2 bg-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 text-white rounded-lg transition-colors cursor-pointer"
+                    >
+                      {replying ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="p-3 border-t border-white/5 bg-white/[0.01] text-center text-xs text-text-tertiary">
+                    This ticket has been marked as closed.
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
+                <MessageSquare size={32} className="text-text-tertiary mb-3" />
+                <p className="text-white font-medium text-sm">Select a ticket</p>
+                <p className="text-text-tertiary text-xs mt-1">Choose a ticket from the left to view conversation history.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: MY RAISED REQUESTS */}
+      {activeMainTab === 'requests' && (
+        <div className="space-y-6">
+          {/* Subfilter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-[#111] border border-border-subtle p-3.5 rounded-xl">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mr-2">Filter Requests:</span>
+              {[
+                { id: 'ALL', label: 'All Requests' },
+                { id: 'QUOTA', label: 'Plan & Storage Upgrades' },
+                { id: 'CONCIERGE', label: 'Concierge Setups' },
+                { id: 'REFUND', label: 'Refund Requests' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setRequestFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    requestFilter === tab.id
+                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                      : 'bg-white/5 text-text-secondary hover:text-white border border-white/5'
+                  }`}
+                >
+                  {tab.label}
                 </button>
               ))}
             </div>
+
+            <button
+              onClick={fetchRaisedRequests}
+              className="p-1.5 text-text-tertiary hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+              title="Refresh requests"
+            >
+              <RefreshCw size={14} className={loadingRaised ? 'animate-spin' : ''} />
+            </button>
+          </div>
+
+          {loadingRaised ? (
+            <div className="p-12 text-center">
+              <Loader2 className="animate-spin text-purple-400 mx-auto mb-2" size={24} />
+              <p className="text-xs text-text-secondary">Loading your raised requests...</p>
+            </div>
+          ) : totalRaisedCount === 0 ? (
+            <div className="bg-[#111] border border-white/10 rounded-2xl p-12 text-center space-y-3">
+              <Inbox size={36} className="text-text-tertiary mx-auto" />
+              <h3 className="text-sm font-bold text-white">No Requests Found</h3>
+              <p className="text-xs text-text-secondary max-w-md mx-auto">
+                You haven't submitted any plan upgrade requests, storage expansions, concierge setups, or refund tickets yet.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* 1. Storage & Plan Upgrade Quota Requests */}
+              {(requestFilter === 'ALL' || requestFilter === 'QUOTA') && raisedData.quotaRequests?.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                    <Crown size={14} className="text-purple-400" />
+                    <span>Plan & Storage Quota Requests ({raisedData.quotaRequests.length})</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {raisedData.quotaRequests.map(req => (
+                      <div 
+                        key={req.id} 
+                        className="p-4 bg-[#111] border border-white/10 hover:border-purple-500/30 rounded-xl space-y-3 transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <span className="text-[10px] text-text-tertiary font-mono block">REQUEST #{req.id.slice(0, 8)}</span>
+                            <h4 className="text-sm font-bold text-white truncate">{req.requestedPlan}</h4>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider shrink-0 ${getQuotaStatusColor(req.status)}`}>
+                            {req.status}
+                          </span>
+                        </div>
+
+                        {req.message && (
+                          <p className="text-xs text-text-secondary bg-white/[0.02] p-2.5 rounded-lg border border-white/5 leading-relaxed">
+                            {req.message}
+                          </p>
+                        )}
+
+                        {req.receiptUrl && (
+                          <div className="p-2.5 bg-black/40 border border-emerald-500/20 rounded-lg flex items-center gap-3">
+                            <img
+                              src={req.receiptUrl}
+                              alt="Receipt"
+                              className="w-10 h-10 object-cover rounded-lg border border-white/10 cursor-pointer"
+                              onClick={() => setPreviewImage(req.receiptUrl)}
+                            />
+                            <div className="min-w-0 text-xs">
+                              <span className="text-[10px] font-bold text-emerald-400 block">Payment Receipt Attached</span>
+                              <button
+                                type="button"
+                                onClick={() => setPreviewImage(req.receiptUrl)}
+                                className="text-sky-400 hover:underline text-[11px] cursor-pointer"
+                              >
+                                View Receipt Image &rarr;
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-[11px] text-text-tertiary pt-2 border-t border-white/5">
+                          <span className="flex items-center gap-1">
+                            <Clock size={11} /> {new Date(req.createdAt).toLocaleDateString()} at {new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className="text-[10px] text-purple-300/80">
+                            {req.status === 'PENDING' ? '24h Review Active' : req.status === 'APPROVED' ? 'Limits Activated' : 'Review Complete'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Concierge Setup Inquiries */}
+              {(requestFilter === 'ALL' || requestFilter === 'CONCIERGE') && raisedData.conciergeRequests?.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                    <Sparkles size={14} className="text-amber-400" />
+                    <span>White-Glove Concierge Setups ({raisedData.conciergeRequests.length})</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {raisedData.conciergeRequests.map(ticket => (
+                      <div key={ticket.id} className="p-4 bg-[#111] border border-white/10 rounded-xl space-y-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <h4 className="text-sm font-bold text-white truncate">{ticket.subject}</h4>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${getStatusColor(ticket.status)}`}>
+                            {ticket.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-secondary bg-white/[0.02] p-2.5 rounded-lg border border-white/5">
+                          {ticket.message}
+                        </p>
+                        <div className="text-[11px] text-text-tertiary">
+                          Submitted on {new Date(ticket.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Refund Inquiries */}
+              {(requestFilter === 'ALL' || requestFilter === 'REFUND') && raisedData.refundRequests?.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                    <RefreshCw size={14} className="text-red-400" />
+                    <span>Refund Requests ({raisedData.refundRequests.length})</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {raisedData.refundRequests.map(ticket => (
+                      <div key={ticket.id} className="p-4 bg-[#111] border border-white/10 rounded-xl space-y-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <h4 className="text-sm font-bold text-white truncate">{ticket.subject}</h4>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${getStatusColor(ticket.status)}`}>
+                            {ticket.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-secondary bg-white/[0.02] p-2.5 rounded-lg border border-white/5">
+                          {ticket.message}
+                        </p>
+                        <div className="text-[11px] text-text-tertiary">
+                          Submitted on {new Date(ticket.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
+      )}
 
-        {/* Right Side: Conversation Window or Create Form */}
-        <div className="lg:col-span-8 bg-[#111] border border-border-subtle rounded-xl flex flex-col h-[600px] overflow-hidden shadow-2xl">
-          {isCreating ? (
-            <div className="p-6 h-full overflow-y-auto space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-white/5">
-                <div>
-                  <h2 className="text-lg font-bold text-white">Raise New Support Ticket</h2>
-                  <p className="text-xs text-text-secondary mt-0.5">Submit your request. Once accepted by an admin, real-time chat will be enabled.</p>
-                </div>
-                <button onClick={() => setIsCreating(false)} className="p-1.5 rounded-lg text-text-tertiary hover:text-white hover:bg-white/5 transition-colors">
+      {/* New Support Ticket Modal */}
+      <AnimatePresence>
+        {isCreating && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70"
+              onClick={() => setIsCreating(false)}
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-[#0e0e13] rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col z-10"
+            >
+              <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02]">
+                <h3 className="text-sm font-bold text-white">Raise Support Ticket</h3>
+                <button onClick={() => setIsCreating(false)} className="p-1 rounded text-text-tertiary hover:text-white cursor-pointer">
                   <X size={18} />
                 </button>
               </div>
 
-              <form onSubmit={handleCreate} className="space-y-4 max-w-xl">
+              <form onSubmit={handleCreate} className="p-5 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-1.5">Inquiry Category</label>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Inquiry Type</label>
                   <Select
                     value={newType}
-                    onChange={val => setNewType(val)}
+                    onChange={setNewType}
                     options={[
-                      { value: 'GENERAL', label: 'General Support & Assistance' },
-                      { value: 'BILLING', label: 'Billing, Plans & Quota Upgrades' },
-                      { value: 'TECHNICAL', label: 'Technical Issue / Bug Report' }
+                      { value: 'GENERAL', label: 'General Inquiry' },
+                      { value: 'BILLING', label: 'Billing & Plan Issue' },
+                      { value: 'TECHNICAL', label: 'Technical Automation Issue' },
+                      { value: 'CONCIERGE', label: 'Concierge Workflow Setup' },
+                      { value: 'REFUND', label: 'Refund Request' }
                     ]}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-1.5">Subject</label>
-                  <input 
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Subject</label>
+                  <input
                     type="text"
-                    value={newSubject}
-                    onChange={e => setNewSubject(e.target.value)}
-                    placeholder="e.g. Need assistance with Meta webhook trigger"
                     required
-                    className="w-full bg-background border border-border-subtle rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-accent-blue"
+                    value={newSubject}
+                    onChange={(e) => setNewSubject(e.target.value)}
+                    placeholder="Brief summary of your issue..."
+                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-accent-blue"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-1.5">Detailed Description</label>
-                  <textarea 
-                    value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
-                    placeholder="Describe what issue you are experiencing or what you need assistance with..."
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Detailed Description</label>
+                  <textarea
                     required
-                    rows={6}
-                    className="w-full bg-background border border-border-subtle rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-accent-blue resize-none"
+                    rows={4}
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Please explain the issue or what assistance you need..."
+                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-accent-blue resize-none"
                   />
                 </div>
 
-                <div className="pt-2 flex items-center gap-3">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-5 py-2.5 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors disabled:opacity-50"
-                  >
-                    {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                    Submit Support Ticket
-                  </button>
+                <div className="flex items-center justify-end gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setIsCreating(false)}
-                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-lg text-xs font-medium transition-colors"
+                    className="px-4 py-2 text-xs text-text-secondary hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-5 py-2 bg-accent-blue hover:bg-accent-blue/90 text-white text-xs font-bold rounded-lg transition-colors shadow-lg shadow-accent-blue/20 disabled:opacity-50 cursor-pointer"
+                  >
+                    {submitting ? <Loader2 size={14} className="animate-spin" /> : 'Submit Ticket'}
+                  </button>
                 </div>
               </form>
-            </div>
-          ) : activeTicket ? (
-            <>
-              {/* Active Ticket Header */}
-              <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between shrink-0">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] px-2 py-0.5 rounded border uppercase font-bold tracking-wider ${getStatusColor(activeTicket.status)}`}>
-                      {activeTicket.status === 'OPEN' ? 'Waiting for Admin Approval' : activeTicket.status === 'IN_PROGRESS' ? 'Live Chat Active' : activeTicket.status}
-                    </span>
-                    <span className="text-xs text-text-tertiary font-mono">#{activeTicket.id.slice(-6).toUpperCase()}</span>
-                  </div>
-                  <h2 className="text-sm font-semibold text-white mt-1">{activeTicket.subject}</h2>
-                </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Image Preview Modal */}
+      <AnimatePresence>
+        {previewImage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/80" onClick={() => setPreviewImage(null)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative max-w-2xl max-h-[85vh] bg-[#0e0e13] border border-white/10 rounded-2xl p-4 z-10 overflow-hidden flex flex-col space-y-3"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                <span className="text-xs font-bold text-white">Payment Receipt Image</span>
+                <button onClick={() => setPreviewImage(null)} className="text-text-tertiary hover:text-white cursor-pointer">
+                  <X size={16} />
+                </button>
               </div>
-
-              {/* Status Alert Banner */}
-              {activeTicket.status === 'OPEN' && (
-                <div className="p-3 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-400 flex items-center gap-2 shrink-0">
-                  <AlertCircle size={15} className="shrink-0" />
-                  <span>Ticket submitted. Waiting for an administrator to review and accept the chat session.</span>
-                </div>
-              )}
-
-              {activeTicket.status === 'CLOSED' && (
-                <div className="p-3 bg-white/5 border-b border-white/10 text-xs text-text-secondary flex items-center gap-2 shrink-0">
-                  <Lock size={15} className="shrink-0" />
-                  <span>This support inquiry has been closed by an administrator. To start a new conversation, please raise a new ticket.</span>
-                </div>
-              )}
-
-              {/* Message History */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-black/20">
-                {(!activeTicket.messages || activeTicket.messages.length === 0) && activeTicket.message && (
-                  <div className="ml-auto items-end max-w-[85%] flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary px-1">
-                      <span className="font-semibold text-accent-blue">You</span>
-                      <span>•</span>
-                      <span>{new Date(activeTicket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <div className="p-3.5 rounded-2xl rounded-tr-sm bg-accent-blue text-white text-xs sm:text-sm leading-relaxed whitespace-pre-wrap shadow-md">
-                      {activeTicket.message}
-                    </div>
-                  </div>
-                )}
-
-                {/* Conversation Stream */}
-                {(activeTicket.messages || []).map(msg => {
-                  const isAdmin = msg.senderId !== activeTicket.userId;
-                  return (
-                    <div 
-                      key={msg.id} 
-                      className={`flex flex-col gap-1 max-w-[85%] ${
-                        isAdmin ? 'mr-auto items-start' : 'ml-auto items-end'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary px-1">
-                        <span className={isAdmin ? 'font-semibold text-emerald-400' : 'font-semibold text-accent-blue'}>
-                          {isAdmin ? 'Administrator' : 'You'}
-                        </span>
-                        <span>•</span>
-                        <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <div className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
-                        isAdmin 
-                          ? 'bg-[#1a1a1a] border border-emerald-500/20 text-white rounded-tl-sm shadow-md' 
-                          : 'bg-accent-blue text-white rounded-tr-sm shadow-md shadow-accent-blue/10'
-                      }`}>
-                        {msg.content}
-                      </div>
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
+              <div className="overflow-auto max-h-[70vh] flex items-center justify-center">
+                <img src={previewImage} alt="Payment Receipt" className="max-w-full max-h-[65vh] object-contain rounded-lg" />
               </div>
-
-              {/* Chat Input */}
-              <div className="p-3 border-t border-white/5 bg-black/40 shrink-0">
-                {activeTicket.status === 'CLOSED' ? (
-                  <div className="p-3 rounded-lg bg-white/5 text-center text-xs text-text-secondary flex items-center justify-center gap-2">
-                    <Lock size={14} /> Conversation closed. Click "Raise Support Ticket" to start a new chat.
-                  </div>
-                ) : activeTicket.status === 'OPEN' ? (
-                  <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-center text-xs text-amber-400 flex items-center justify-center gap-2">
-                    <Clock size={14} /> Chat will be active as soon as an administrator accepts the request.
-                  </div>
-                ) : (
-                  <form onSubmit={handleReply} className="flex items-center gap-2">
-                    <input 
-                      type="text" 
-                      value={replyText}
-                      onChange={e => setReplyText(e.target.value)}
-                      placeholder="Type your reply here..."
-                      className="flex-1 bg-background border border-border-subtle rounded-lg px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-accent-blue"
-                    />
-                    <button 
-                      type="submit" 
-                      disabled={replying || !replyText.trim()}
-                      className="px-4 py-2 rounded-lg bg-accent-blue hover:bg-accent-blue/90 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 shrink-0"
-                    >
-                      {replying ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                      Send
-                    </button>
-                  </form>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
-              <MessageSquare size={32} className="text-text-tertiary mb-3" />
-              <p className="text-white font-medium text-sm">Select a ticket</p>
-              <p className="text-text-tertiary text-xs mt-1">Choose a support ticket from the list or create a new one.</p>
-            </div>
-          )}
-        </div>
-      </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

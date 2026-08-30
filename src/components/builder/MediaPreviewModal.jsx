@@ -250,7 +250,7 @@ export default function MediaPreviewModal({ isOpen, onClose, file }) {
 
               {rawUrl && (
                 <a
-                  href={drivePreviewUrl || rawStreamUrl || rawUrl}
+                  href={rawStreamUrl || rawUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium border border-white/10 transition-colors flex items-center justify-center gap-1.5"
