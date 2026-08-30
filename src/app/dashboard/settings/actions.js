@@ -25,6 +25,196 @@ export async function updateProfile({ name, phone, address }) {
   return { success: true };
 }
 
+// Helper to parse stored keys JSON safely
+function parseStoredKeys(apiKeyField, defaultProvider = 'gemini') {
+  if (!apiKeyField) return [];
+  try {
+    const parsed = JSON.parse(apiKeyField);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (e) {
+    // Plain string fallback
+  }
+  if (typeof apiKeyField === 'string' && apiKeyField.trim()) {
+    return [{
+      id: 'legacy_primary',
+      name: 'Primary Key',
+      provider: defaultProvider || 'gemini',
+      apiKey: apiKeyField.trim(),
+      isDefault: true,
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString()
+    }];
+  }
+  return [];
+}
+
+export async function getAiRadahnKeys() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { keys: [], isPaid: false, engineMode: 'native' };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { subscriptionTier: true, aiRadahnApiKey: true, aiRadahnProvider: true, aiRadahnEngineMode: true }
+  });
+
+  const isPaid = user?.subscriptionTier && user.subscriptionTier.toLowerCase() !== 'free';
+  const keys = parseStoredKeys(user?.aiRadahnApiKey, user?.aiRadahnProvider);
+
+  const safeKeys = keys.map(k => {
+    const raw = k.apiKey || '';
+    const masked = raw.length > 8 
+      ? `${raw.slice(0, 4)}••••••••••••${raw.slice(-4)}`
+      : '••••••••••••';
+    return {
+      ...k,
+      maskedKey: masked
+    };
+  });
+
+  return {
+    keys: safeKeys,
+    isPaid,
+    engineMode: user?.aiRadahnEngineMode || 'native',
+    defaultProvider: user?.aiRadahnProvider || 'gemini'
+  };
+}
+
+export async function saveAiRadahnKey({ id, name, provider = 'gemini', apiKey = '', isDefault = false }) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error('Unauthorized');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { subscriptionTier: true, aiRadahnApiKey: true, aiRadahnProvider: true }
+  });
+
+  const isPaid = user?.subscriptionTier && user.subscriptionTier.toLowerCase() !== 'free';
+  if (!isPaid) {
+    return {
+      error: 'AI Radahn Multi-Key Management is exclusively available for Paid subscribers. Please upgrade.'
+    };
+  }
+
+  if (!apiKey || !apiKey.trim()) {
+    return { error: 'Please enter a valid API key string.' };
+  }
+
+  const cleanKey = apiKey.trim();
+  const targetProvider = (provider || 'gemini').toLowerCase();
+  const existingKeys = parseStoredKeys(user?.aiRadahnApiKey, user?.aiRadahnProvider);
+
+  // Check 3-key limit per provider
+  const providerCount = existingKeys.filter(k => k.provider === targetProvider && k.id !== id).length;
+  if (providerCount >= 3) {
+    const providerLabel = targetProvider === 'gemini' ? 'Google Gemini' : targetProvider === 'openai' ? 'OpenAI' : 'Anthropic Claude';
+    return {
+      error: `Maximum 3 keys allowed for ${providerLabel}. You already have 3 keys configured. Please delete an older key first.`
+    };
+  }
+
+  // Live validate the key
+  const validation = await validateApiKey(targetProvider, cleanKey);
+  if (!validation.isValid) {
+    return {
+      error: `Key Verification Failed: ${validation.error || 'Invalid API credentials.'}`
+    };
+  }
+
+  const keyId = id || `key_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const keyName = name && name.trim() ? name.trim() : `${targetProvider.toUpperCase()} Key ${providerCount + 1}`;
+
+  let updatedKeys;
+  if (id) {
+    // Update existing key
+    updatedKeys = existingKeys.map(k => {
+      if (k.id === id) {
+        return {
+          ...k,
+          name: keyName,
+          provider: targetProvider,
+          apiKey: cleanKey,
+          status: 'ACTIVE',
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return isDefault ? { ...k, isDefault: false } : k;
+    });
+  } else {
+    // Append new key
+    if (isDefault || existingKeys.length === 0) {
+      existingKeys.forEach(k => { k.isDefault = false; });
+    }
+    const newKeyObj = {
+      id: keyId,
+      name: keyName,
+      provider: targetProvider,
+      apiKey: cleanKey,
+      isDefault: isDefault || existingKeys.length === 0,
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString()
+    };
+    updatedKeys = [...existingKeys, newKeyObj];
+  }
+
+  // Set user default provider if needed
+  const defaultKey = updatedKeys.find(k => k.isDefault) || updatedKeys[0];
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: {
+      aiRadahnApiKey: JSON.stringify(updatedKeys),
+      aiRadahnProvider: defaultKey ? defaultKey.provider : targetProvider,
+      aiRadahnEngineMode: 'byok'
+    }
+  });
+
+  revalidatePath('/dashboard/settings');
+
+  return {
+    success: true,
+    message: `API Key "${keyName}" verified and saved to AI Radahn Key Vault!`,
+    keyId
+  };
+}
+
+export async function deleteAiRadahnKey(keyId) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error('Unauthorized');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { aiRadahnApiKey: true, aiRadahnProvider: true }
+  });
+
+  const existingKeys = parseStoredKeys(user?.aiRadahnApiKey, user?.aiRadahnProvider);
+  const updatedKeys = existingKeys.filter(k => k.id !== keyId);
+
+  // If deleted key was default, assign next available
+  if (updatedKeys.length > 0 && !updatedKeys.some(k => k.isDefault)) {
+    updatedKeys[0].isDefault = true;
+  }
+
+  const defaultKey = updatedKeys.find(k => k.isDefault) || null;
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: {
+      aiRadahnApiKey: updatedKeys.length > 0 ? JSON.stringify(updatedKeys) : null,
+      aiRadahnProvider: defaultKey ? defaultKey.provider : 'gemini',
+      aiRadahnEngineMode: updatedKeys.length > 0 ? 'byok' : 'native'
+    }
+  });
+
+  revalidatePath('/dashboard/settings');
+  return { success: true, message: 'Key removed from AI Radahn Key Vault.' };
+}
+
 export async function updateAiRadahnSettings({ aiRadahnProvider = 'gemini', aiRadahnApiKey = '', aiRadahnEngineMode = 'native' }) {
   const session = await auth();
   
@@ -39,34 +229,10 @@ export async function updateAiRadahnSettings({ aiRadahnProvider = 'gemini', aiRa
 
   const isPaid = user?.subscriptionTier && user.subscriptionTier.toLowerCase() !== 'free';
 
-  // AI Radahn is strictly for Paid subscribers only
   if (!isPaid) {
     return {
       error: 'AI Radahn Engine is an exclusive feature for Paid subscribers. Please upgrade your plan to unlock AI Radahn.'
     };
-  }
-
-  // If BYOK is chosen and a new API key is provided, validate it live!
-  if (aiRadahnEngineMode === 'byok') {
-    const keyToValidate = (typeof aiRadahnApiKey === 'string' && aiRadahnApiKey.trim())
-      ? aiRadahnApiKey.trim()
-      : user.aiRadahnApiKey;
-
-    if (!keyToValidate) {
-      return {
-        error: 'Please enter a valid API key to activate True AI Brain.'
-      };
-    }
-
-    // Only test if user entered a new key string
-    if (typeof aiRadahnApiKey === 'string' && aiRadahnApiKey.trim()) {
-      const validation = await validateApiKey(aiRadahnProvider, keyToValidate);
-      if (!validation.isValid) {
-        return {
-          error: `API Key Verification Failed: ${validation.error}`
-        };
-      }
-    }
   }
 
   const updateData = {
@@ -74,9 +240,25 @@ export async function updateAiRadahnSettings({ aiRadahnProvider = 'gemini', aiRa
     aiRadahnEngineMode: aiRadahnEngineMode === 'byok' ? 'byok' : 'native'
   };
 
-  // Only update apiKey if provided (or if user intentionally cleared it)
-  if (typeof aiRadahnApiKey === 'string') {
-    updateData.aiRadahnApiKey = aiRadahnApiKey.trim() ? aiRadahnApiKey.trim() : null;
+  // If user entered a new key directly, parse or add to vault
+  if (typeof aiRadahnApiKey === 'string' && aiRadahnApiKey.trim()) {
+    const existingKeys = parseStoredKeys(user?.aiRadahnApiKey, aiRadahnProvider);
+    const validation = await validateApiKey(aiRadahnProvider, aiRadahnApiKey.trim());
+    if (!validation.isValid) {
+      return { error: `API Key Verification Failed: ${validation.error}` };
+    }
+
+    const newKeyObj = {
+      id: `key_${Date.now()}`,
+      name: `${aiRadahnProvider.toUpperCase()} Key`,
+      provider: aiRadahnProvider,
+      apiKey: aiRadahnApiKey.trim(),
+      isDefault: true,
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString()
+    };
+    existingKeys.forEach(k => { k.isDefault = false; });
+    updateData.aiRadahnApiKey = JSON.stringify([...existingKeys, newKeyObj]);
   }
 
   await prisma.user.update({
@@ -91,7 +273,7 @@ export async function updateAiRadahnSettings({ aiRadahnProvider = 'gemini', aiRa
     return {
       success: true,
       mode: 'byok',
-      message: `True AI Brain successfully activated with verified ${providerLabel} credentials.`
+      message: `True AI Brain successfully activated with ${providerLabel} credentials.`
     };
   }
 
@@ -109,9 +291,9 @@ export async function getAiConsumptionLogs(options = {}) {
     return { logs: [], summary: { totalCredits: 0, totalTokens: 0, totalEvents: 0 } };
   }
 
-  const { limit = 50, startDate, endDate } = options;
+  const { limit = 100, startDate, endDate, keyName, provider } = options;
 
-  // Strict 90-Day Retention Enforcement (Nothing older than 90 days is retained or loaded)
+  // Strict 90-Day Retention Enforcement
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
   // Background auto-cleanup of records older than 90 days
@@ -142,11 +324,24 @@ export async function getAiConsumptionLogs(options = {}) {
     createdAt: dateFilter
   };
 
+  if (provider && provider !== 'all') {
+    whereClause.provider = provider;
+  }
+
   const logs = await prisma.aiConsumptionLog.findMany({
     where: whereClause,
     orderBy: { createdAt: 'desc' },
     take: limit
   });
+
+  // Filter in-memory by keyName if provided in log metadata
+  let filteredLogs = logs;
+  if (keyName && keyName !== 'all') {
+    filteredLogs = logs.filter(l => {
+      const meta = l.metadata || {};
+      return meta.keyName === keyName || meta.keyId === keyName || l.provider === keyName;
+    });
+  }
 
   // Calculate summary metrics for the filtered period
   const aggregations = await prisma.aiConsumptionLog.aggregate({
@@ -161,14 +356,14 @@ export async function getAiConsumptionLogs(options = {}) {
   });
 
   return {
-    logs: logs.map(l => ({
+    logs: filteredLogs.map(l => ({
       ...l,
       createdAt: l.createdAt.toISOString()
     })),
     summary: {
       totalCredits: aggregations._sum.creditsUsed || 0,
       totalTokens: aggregations._sum.totalTokens || 0,
-      totalEvents: aggregations._count.id || 0
+      totalEvents: filteredLogs.length
     }
   };
 }

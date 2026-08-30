@@ -1007,7 +1007,7 @@ async function executeInstagramActionTest(config, userId) {
 
 async function executeAiMediatorTest(config) {
   const startTime = Date.now();
-  const provider = config?.provider || 'native';
+  const rawProvider = config?.provider || 'native';
   const task = config?.task || 'generate_caption';
   const tone = config?.tone || 'engaging';
   const customPrompt = config?.customPrompt ? applyTestVariables(config.customPrompt) : '';
@@ -1018,13 +1018,40 @@ async function executeAiMediatorTest(config) {
   } else if (mediaUrl.includes('{{')) {
     mediaUrl = applyTestVariables(mediaUrl);
   }
-  const apiKey = config?.apiKey?.trim();
+
+  let provider = rawProvider;
+  let apiKey = config?.apiKey?.trim();
+  let keyNameForAudit = null;
+
+  if (rawProvider.startsWith('vault_')) {
+    const vaultKeyId = rawProvider.replace('vault_', '');
+    try {
+      const session = await auth();
+      if (session?.user?.id) {
+        const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { aiRadahnApiKey: true, aiRadahnProvider: true }
+        });
+        if (user?.aiRadahnApiKey) {
+          try {
+            const parsed = JSON.parse(user.aiRadahnApiKey);
+            const found = Array.isArray(parsed) ? parsed.find(k => k.id === vaultKeyId) : null;
+            if (found && found.apiKey) {
+              provider = found.provider || 'gemini';
+              apiKey = found.apiKey;
+              keyNameForAudit = found.name;
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+  }
 
   if (provider !== 'native' && provider !== 'automatix' && !apiKey) {
     return {
       success: false,
       error: 'Missing API Key',
-      fix: `Please provide a valid ${provider.toUpperCase()} API key or switch to the free Automatix Native Engine.`
+      fix: `Please provide a valid ${provider.toUpperCase()} API key or select a verified Key from your AI Radahn Vault.`
     };
   }
 

@@ -216,6 +216,16 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
   const [aiKeyStatus, setAiKeyStatus] = useState(null);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [aiElapsedTime, setAiElapsedTime] = useState(0);
+  const [userVaultKeys, setUserVaultKeys] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/user/ai-keys')
+      .then(r => r.json())
+      .then(d => {
+        if (d?.keys && Array.isArray(d.keys)) setUserVaultKeys(d.keys);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleVerifyAiKey = async () => {
     const nodeConfig = selectedNode?.config || {};
@@ -2760,7 +2770,14 @@ function watchFolderForNewFiles() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">AI Provider</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-text-secondary">AI Provider & Key Vault</label>
+                {userVaultKeys.length > 0 && (
+                  <span className="text-[10px] text-purple-400 font-mono">
+                    {userVaultKeys.length} Vault Keys
+                  </span>
+                )}
+              </div>
               <Select 
                 value={config.provider || 'native'} 
                 onChange={(val) => {
@@ -2769,30 +2786,65 @@ function watchFolderForNewFiles() {
                 }}
                 options={[
                   { value: 'native', label: 'AI Radahn Vision Encoder (Central Key Vault)' },
-                  { value: 'gemini', label: 'Google Gemini (BYOK Direct)' },
-                  { value: 'openai', label: 'OpenAI ChatGPT (BYOK Direct)' },
-                  { value: 'claude', label: 'Anthropic Claude (BYOK Direct)' },
-                  { value: 'custom', label: 'Custom OpenAI-Compatible (BYOK)' }
+                  ...userVaultKeys.map(vk => ({
+                    value: `vault_${vk.id}`,
+                    label: `Vault: ${vk.name} (${(vk.provider || 'gemini').toUpperCase()})`
+                  })),
+                  { value: 'gemini', label: 'Google Gemini (Direct BYOK)' },
+                  { value: 'openai', label: 'OpenAI ChatGPT (Direct BYOK)' },
+                  { value: 'claude', label: 'Anthropic Claude (Direct BYOK)' },
+                  { value: 'custom', label: 'Custom OpenAI-Compatible (Direct BYOK)' }
                 ]}
               />
             </div>
 
-            {(!config.provider || config.provider === 'native') ? (
-              <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-1.5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
-                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
-                    <span>AI Radahn Vision Encoder Active</span>
+            {(() => {
+              const isVaultKey = (config.provider || '').startsWith('vault_');
+              const selectedVaultKeyId = isVaultKey ? config.provider.replace('vault_', '') : null;
+              const selectedVaultKey = userVaultKeys.find(k => k.id === selectedVaultKeyId) || null;
+
+              if (isVaultKey && selectedVaultKey) {
+                return (
+                  <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-1.5 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
+                        <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
+                        <span>Vault Key: {selectedVaultKey.name}</span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> Verified
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/70 leading-relaxed font-mono">
+                      Key: {selectedVaultKey.apiKey || '••••••••••••'} • Managed centrally via AI Radahn Settings.
+                    </p>
                   </div>
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                    Central Key Vault • Managed
-                  </span>
-                </div>
-                <p className="text-[11px] text-white/70 leading-relaxed">
-                  Multimodal vision intelligence managed centrally via your AI Radahn settings. Native execution with automated model selection and prompt synthesis.
-                </p>
-              </div>
-            ) : (
+                );
+              }
+
+              if (!config.provider || config.provider === 'native') {
+                return (
+                  <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-1.5 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
+                        <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
+                        <span>AI Radahn Vision Encoder Active</span>
+                      </div>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        Central Key Vault • Managed
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/70 leading-relaxed">
+                      Multimodal vision intelligence managed centrally via your AI Radahn settings. Native execution with automated model selection and prompt synthesis.
+                    </p>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
+
+            {Boolean(config.provider && config.provider !== 'native' && !config.provider.startsWith('vault_') && config.provider !== 'custom') && (
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-medium text-text-secondary">API Key (Bring Your Own Key)</label>
@@ -3009,7 +3061,7 @@ function watchFolderForNewFiles() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
                 <label className="block text-xs font-medium text-text-secondary">Custom Instructions & Prompt Additions</label>
                 <button
                   type="button"
@@ -3023,10 +3075,10 @@ function watchFolderForNewFiles() {
                     });
                     setAiRadahnModalOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 shadow-sm shadow-purple-500/10 transition-all cursor-pointer group"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 shadow-sm shadow-purple-500/10 transition-all cursor-pointer group whitespace-nowrap shrink-0"
                 >
-                  <Sparkles className="w-3 h-3 text-purple-400 group-hover:rotate-12 transition-transform" />
-                  <span>AI Radahn Prompt Architect</span>
+                  <Sparkles className="w-3 h-3 text-purple-400 group-hover:rotate-12 transition-transform shrink-0" />
+                  <span className="whitespace-nowrap">AI Radahn Prompt Architect</span>
                 </button>
               </div>
               <VariableInput 
@@ -3038,7 +3090,7 @@ function watchFolderForNewFiles() {
                 variables={variableGroups} 
               />
 
-              {/* Dynamic 3-4 Quick Example Pills */}
+              {/* Dynamic 3-4 Quick Example Pills with Themed Scrollbar */}
               <div className="mt-2 space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] text-text-tertiary">
                   <span className="flex items-center gap-1 font-semibold text-purple-300">
@@ -3050,7 +3102,7 @@ function watchFolderForNewFiles() {
                   </span>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5">
+                <div className="max-h-36 overflow-y-auto custom-scrollbar pr-1 flex flex-wrap gap-1.5">
                   {promptExamples.map((ex, exIdx) => (
                     <button
                       key={exIdx}
