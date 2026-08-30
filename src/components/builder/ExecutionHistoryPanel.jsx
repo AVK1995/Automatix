@@ -53,8 +53,8 @@ const DATE_RANGE_OPTIONS = [
   { value: 'today', label: 'Today' },
   { value: '7d', label: 'Last 7 Days' },
   { value: '30d', label: 'Last 30 Days' },
-  { value: '90d', label: 'Last 90 Days (Max Retention)' },
-  { value: 'custom', label: 'Custom Date Range...' }
+  { value: '90d', label: 'Last 90 Days (Max)' },
+  { value: 'custom', label: 'Custom Range...' }
 ];
 
 /**
@@ -375,20 +375,20 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
     const type = (stepNode.type || '').toLowerCase();
     const title = (stepNode.title || '').toLowerCase();
 
-    if (index === 0 || type.includes('trigger')) return <Globe size={15} />;
-    if (type.includes('sheet') || title.includes('sheet')) return <FileSpreadsheet size={15} />;
-    if (type.includes('mail') || type.includes('smtp') || title.includes('email')) return <Mail size={15} />;
-    if (type.includes('ai') || title.includes('ai') || title.includes('vision')) return <Bot size={15} />;
-    if (type.includes('delay') || title.includes('delay')) return <Timer size={15} />;
-    if (type.includes('format') || title.includes('format') || title.includes('date')) return <Calendar size={15} />;
-    return <Zap size={15} />;
+    if (index === 0 || type.includes('trigger')) return <Globe size={14} className="shrink-0" />;
+    if (type.includes('sheet') || title.includes('sheet')) return <FileSpreadsheet size={14} className="shrink-0" />;
+    if (type.includes('mail') || type.includes('smtp') || title.includes('email')) return <Mail size={14} className="shrink-0" />;
+    if (type.includes('ai') || title.includes('ai') || title.includes('vision')) return <Bot size={14} className="shrink-0" />;
+    if (type.includes('delay') || title.includes('delay')) return <Timer size={14} className="shrink-0" />;
+    if (type.includes('format') || title.includes('format') || title.includes('date')) return <Calendar size={14} className="shrink-0" />;
+    return <Zap size={14} className="shrink-0" />;
   };
 
   // Currently selected node in Telemetry Studio modal
   const currentStep = stepClassifications[selectedStepIndex] || stepClassifications[0];
   const { ingestData, emittedData, metrics } = currentStep ? getStepTelemetry(currentStep.node, selectedStepIndex) : { ingestData: {}, emittedData: {}, metrics: {} };
   
-  const activeTelemetryPayload = telemetryViewMode === 'ingest' ? ingestData : telemetryViewMode === 'emitted' ? emittedData : metrics;
+  const activeTelemetryPayload = telemetryViewMode === 'emitted' ? emittedData : telemetryViewMode === 'ingest' ? ingestData : metrics;
   
   const activeEntries = Object.entries(activeTelemetryPayload || {}).filter(([k, v]) => {
     if (!telemetrySearch.trim()) return true;
@@ -399,96 +399,133 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
   return (
     <div className="fixed inset-0 z-50 bg-[#09090d] flex flex-col overflow-hidden text-white font-sans animate-in fade-in duration-200">
       
-      {/* 1. TOP COMMAND BAR */}
-      <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-white/10 bg-[#0e0e14] flex flex-col md:flex-row md:items-center justify-between gap-3.5 shrink-0">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-text-tertiary">
-            <span>Workflows</span>
-            <span>/</span>
-            <span className="text-white font-medium truncate max-w-[200px] sm:max-w-xs">{workflowName}</span>
-            <span>/</span>
-            <span className="text-accent-blue font-semibold">Chrono-Audit Log</span>
+      {/* 1. TOP COMMAND BAR (Always pins Close button to top-right on ALL screens) */}
+      <div className="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-white/10 bg-[#0e0e14] shrink-0">
+        
+        {/* Main Title Row with Pinned Top-Right Close Button */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-text-tertiary truncate">
+              <span>Workflows</span>
+              <span>/</span>
+              <span className="text-white font-medium truncate max-w-[140px] sm:max-w-xs">{workflowName}</span>
+              <span>/</span>
+              <span className="text-accent-blue font-semibold">Chrono-Audit Log</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-1.5">
+                <HistoryIcon size={16} className="text-accent-blue shrink-0" />
+                <span className="truncate">Chrono-Audit & Task History</span>
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-white/5 text-text-secondary border border-white/10 shrink-0">
+                90-Day Retention
+              </span>
+            </div>
+
+            <p className="text-[11px] sm:text-xs text-text-secondary mt-1 hidden sm:block">
+              Immutable log of pipeline executions. 3rd-party connectors and AI deduct standard tasks; internal formatters and triggers are free.
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 mt-1">
-            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              <HistoryIcon size={16} className="text-accent-blue shrink-0" />
-              <span>Pipeline Chrono-Audit & Task History</span>
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 text-text-secondary border border-white/10">
-              90-Day Retention Active
-            </span>
-          </div>
+          {/* Action Tools & Top-Right Pinned Close Button */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Desktop Action Buttons */}
+            <button
+              type="button"
+              onClick={handleDownloadCsv}
+              className="hidden sm:flex px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Download size={13} className="text-emerald-400 shrink-0" />
+              <span>Export CSV</span>
+            </button>
 
-          <p className="text-xs text-text-secondary mt-0.5">
-            Immutable log of all pipeline executions. 3rd-party connectors and AI nodes deduct standard tasks; internal formatters and triggers are free.
-          </p>
+            <button
+              type="button"
+              onClick={fetchHistory}
+              disabled={isLoading}
+              className="hidden sm:flex px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw size={13} className={`text-accent-blue shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Live Sync</span>
+            </button>
+
+            {/* Close Button: Always easily accessible at top-right corner */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 sm:p-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-colors cursor-pointer shrink-0 shadow-sm"
+              title="Close and return to Canvas"
+              aria-label="Close"
+            >
+              <X size={18} className="shrink-0" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
-          {/* Download CSV */}
+        {/* Mobile Quick Action Buttons Row */}
+        <div className="flex sm:hidden items-center gap-2 mt-2.5 pt-2 border-t border-white/5">
           <button
             type="button"
             onClick={handleDownloadCsv}
-            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
-            <Download size={13} className="text-emerald-400 shrink-0" />
-            <span>Export CSV Audit</span>
+            <Download size={12} className="text-emerald-400 shrink-0" />
+            <span>Export CSV</span>
           </button>
 
-          {/* Refresh */}
           <button
             type="button"
             onClick={fetchHistory}
             disabled={isLoading}
-            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw size={13} className={`text-accent-blue shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw size={12} className={`text-accent-blue shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Live Sync</span>
           </button>
-
-          {/* Close Fullscreen Overlay */}
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer shrink-0"
-            title="Back to Canvas"
-          >
-            <X size={16} />
-          </button>
         </div>
+
       </div>
 
-      {/* 2. CHRONO METRIC TILES */}
-      <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-white/10 bg-[#0b0b10] shrink-0">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* 2. COMPACT METRIC STRIP (Single Row on Mobile, Balanced Cards on Desktop) */}
+      <div className="px-3 py-2 sm:px-6 sm:py-3 border-b border-white/10 bg-[#0b0b10] shrink-0">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           
-          <div className="p-3.5 rounded-xl bg-[#121218] border border-white/10 flex items-center justify-between">
+          {/* Tile 1: Runs */}
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-[#121218] border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-[11px] text-text-secondary font-medium uppercase tracking-wider">Total Pipeline Runs</div>
-              <div className="text-xl font-bold text-white mt-0.5">{totalExecutions}</div>
+              <div className="text-[9px] sm:text-[11px] text-text-secondary font-medium uppercase tracking-wider truncate">
+                Total Runs
+              </div>
+              <div className="text-base sm:text-xl font-bold text-white mt-0.5 font-mono">{totalExecutions}</div>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
+            <div className="hidden sm:flex w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 items-center justify-center shrink-0">
               <CheckCircle2 size={16} />
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#121218] border border-white/10 flex items-center justify-between">
+          {/* Tile 2: Paid Tasks */}
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-[#121218] border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-[11px] text-text-secondary font-medium uppercase tracking-wider">Tasks Consumed (Paid)</div>
-              <div className="text-xl font-bold text-accent-blue mt-0.5">{totalTasksConsumed}</div>
+              <div className="text-[9px] sm:text-[11px] text-text-secondary font-medium uppercase tracking-wider truncate">
+                Paid Tasks
+              </div>
+              <div className="text-base sm:text-xl font-bold text-accent-blue mt-0.5 font-mono">{totalTasksConsumed}</div>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-accent-blue/10 text-accent-blue border border-accent-blue/20 flex items-center justify-center shrink-0">
+            <div className="hidden sm:flex w-8 h-8 rounded-lg bg-accent-blue/10 text-accent-blue border border-accent-blue/20 items-center justify-center shrink-0">
               <Zap size={16} />
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#121218] border border-white/10 flex items-center justify-between">
+          {/* Tile 3: Free Utilities */}
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-[#121218] border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-[11px] text-text-secondary font-medium uppercase tracking-wider">Free Automatix Utilities</div>
-              <div className="text-xl font-bold text-emerald-400 mt-0.5">{totalFreeTasks}</div>
+              <div className="text-[9px] sm:text-[11px] text-text-secondary font-medium uppercase tracking-wider truncate">
+                Free Utilities
+              </div>
+              <div className="text-base sm:text-xl font-bold text-emerald-400 mt-0.5 font-mono">{totalFreeTasks}</div>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-mono font-bold text-xs shrink-0">
+            <div className="hidden sm:flex w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 items-center justify-center font-mono font-bold text-xs shrink-0">
               FREE
             </div>
           </div>
@@ -496,15 +533,15 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
         </div>
       </div>
 
-      {/* 3. FILTERS & SEARCH (Using custom themed Select dropdown) */}
-      <div className="px-4 py-3 sm:px-6 border-b border-white/10 bg-[#0d0d12] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+      {/* 3. FILTERS & SEARCH (Responsive on Mobile & Desktop) */}
+      <div className="px-3 py-2.5 sm:px-6 sm:py-3 border-b border-white/10 bg-[#0d0d12] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
         
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
+        {/* Search Input */}
+        <div className="relative flex-1 w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary" />
           <input
             type="text"
-            placeholder="Search by Trace ID or resolution state..."
+            placeholder="Search by Trace ID or state..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue font-mono"
@@ -512,8 +549,8 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
         </div>
 
         {/* Custom Headless UI Dropdown for Date Range */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="w-48">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="w-full sm:w-48">
             <Select
               value={dateRange}
               onChange={setDateRange}
@@ -523,19 +560,19 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
           </div>
 
           {dateRange === 'custom' && (
-            <div className="flex items-center gap-1.5 text-xs">
+            <div className="flex items-center gap-1.5 text-xs w-full sm:w-auto">
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:border-accent-blue focus:outline-none"
+                className="flex-1 sm:flex-none bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:border-accent-blue focus:outline-none"
               />
               <span className="text-text-tertiary text-xs">to</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:border-accent-blue focus:outline-none"
+                className="flex-1 sm:flex-none bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:border-accent-blue focus:outline-none"
               />
             </div>
           )}
@@ -543,8 +580,8 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
 
       </div>
 
-      {/* 4. EXECUTION AUDIT TABLE */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 flex flex-col">
+      {/* 4. EXECUTION AUDIT: DESKTOP TABLE & NATIVE MOBILE CARDS */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 flex flex-col">
         <div className="bg-[#111116] border border-white/10 rounded-2xl overflow-hidden shadow-xl flex-1 flex flex-col min-h-[300px]">
           {isLoading ? (
             <div className="py-24 flex flex-col items-center justify-center text-text-tertiary gap-2 my-auto">
@@ -552,7 +589,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
               <span className="text-xs">Scanning Chrono-Audit Records...</span>
             </div>
           ) : filteredLogs.length === 0 ? (
-            <div className="py-24 px-4 text-center text-text-tertiary text-xs space-y-2 my-auto">
+            <div className="py-20 px-4 text-center text-text-tertiary text-xs space-y-2 my-auto">
               <Database size={32} className="mx-auto opacity-40 mb-2 text-accent-blue" />
               <p className="text-sm font-bold text-white">No Chrono-Audit Records Found</p>
               <p className="max-w-md mx-auto">
@@ -560,120 +597,204 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto w-full">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-white/5 border-b border-white/10 text-text-secondary font-semibold">
-                  <tr>
-                    <th className="p-3.5">Execution State / Timestamp</th>
-                    <th className="p-3.5">Pipeline Stage Sequence</th>
-                    <th className="p-3.5">Workflow Definition</th>
-                    <th className="p-3.5">Chrono Trace ID</th>
-                    <th className="p-3.5 text-right">Task Consumption Breakdown</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {filteredLogs.map((log) => {
-                    const execDate = new Date(log.createdAt);
+            <>
+              {/* DESKTOP DATA TABLE (Visible on >= 768px screens) */}
+              <div className="hidden md:block overflow-x-auto w-full">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-white/5 border-b border-white/10 text-text-secondary font-semibold">
+                    <tr>
+                      <th className="p-3.5">Execution State / Timestamp</th>
+                      <th className="p-3.5">Pipeline Stage Sequence</th>
+                      <th className="p-3.5">Workflow Definition</th>
+                      <th className="p-3.5">Chrono Trace ID</th>
+                      <th className="p-3.5 text-right">Task Consumption Breakdown</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredLogs.map((log) => {
+                      const execDate = new Date(log.createdAt);
 
-                    return (
-                      <tr
-                        key={log.id}
-                        onClick={() => {
-                          setSelectedExecution(log);
-                          setSelectedStepIndex(0);
-                          setTelemetryViewMode('emitted');
-                        }}
-                        className="hover:bg-white/[0.04] transition-colors cursor-pointer group"
-                      >
-                        {/* State & Date */}
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-2">
-                            {log.status === 'FAILED' ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
-                                <XCircle size={11} className="shrink-0" /> FAULT
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                                <CheckCircle2 size={11} className="shrink-0" /> RESOLVED
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-text-secondary mt-1 font-mono">
-                            {execDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {execDate.toLocaleTimeString()}
-                          </div>
-                        </td>
+                      return (
+                        <tr
+                          key={log.id}
+                          onClick={() => {
+                            setSelectedExecution(log);
+                            setSelectedStepIndex(0);
+                            setTelemetryViewMode('emitted');
+                          }}
+                          className="hover:bg-white/[0.04] transition-colors cursor-pointer group"
+                        >
+                          {/* State & Date */}
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-2">
+                              {log.status === 'FAILED' ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
+                                  <XCircle size={11} className="shrink-0" /> FAULT
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                  <CheckCircle2 size={11} className="shrink-0" /> RESOLVED
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-text-secondary mt-1 font-mono">
+                              {execDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {execDate.toLocaleTimeString()}
+                            </div>
+                          </td>
 
-                        {/* Stage Sequence Badges */}
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {stepClassifications.slice(0, 5).map((s, idx) => (
-                              <div 
-                                key={idx} 
-                                className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 ${
-                                  s.classification.isAi
-                                    ? 'bg-purple-500/20 border-purple-500/30 text-purple-300'
-                                    : s.classification.isPaid 
-                                      ? 'bg-accent-blue/20 border-accent-blue/30 text-accent-blue' 
-                                      : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
-                                }`} 
-                                title={s.node.title || s.node.type}
+                          {/* Stage Sequence Badges */}
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {stepClassifications.slice(0, 5).map((s, idx) => (
+                                <div 
+                                  key={idx} 
+                                  className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 ${
+                                    s.classification.isAi
+                                      ? 'bg-purple-500/20 border-purple-500/30 text-purple-300'
+                                      : s.classification.isPaid 
+                                        ? 'bg-accent-blue/20 border-accent-blue/30 text-accent-blue' 
+                                        : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+                                  }`} 
+                                  title={s.node.title || s.node.type}
+                                >
+                                  {getStepIcon(s.node, idx)}
+                                </div>
+                              ))}
+                              {stepClassifications.length > 5 && (
+                                <span className="text-[10px] text-text-tertiary font-mono">
+                                  +{stepClassifications.length - 5}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Workflow Name */}
+                          <td className="p-3.5">
+                            <div className="font-semibold text-white group-hover:text-accent-blue transition-colors">
+                              {workflowName}
+                            </div>
+                            <div className="text-[11px] text-text-tertiary">
+                              Automated Event Trigger
+                            </div>
+                          </td>
+
+                          {/* Trace ID */}
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-1.5 font-mono text-[11px] text-accent-blue">
+                              <span>{log.id.slice(0, 18)}...</span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopyId(log.id, e)}
+                                className="p-1 rounded hover:bg-white/10 text-text-tertiary hover:text-white transition-colors shrink-0"
+                                title="Copy Trace ID"
                               >
-                                {getStepIcon(s.node, idx)}
-                              </div>
-                            ))}
-                            {stepClassifications.length > 5 && (
-                              <span className="text-[10px] text-text-tertiary font-mono">
-                                +{stepClassifications.length - 5}
-                              </span>
-                            )}
-                          </div>
-                        </td>
+                                {copiedId === log.id ? <Check size={12} className="text-emerald-400 shrink-0" /> : <Copy size={12} className="shrink-0" />}
+                              </button>
+                            </div>
+                          </td>
 
-                        {/* Workflow Name */}
-                        <td className="p-3.5">
-                          <div className="font-semibold text-white group-hover:text-accent-blue transition-colors">
-                            {workflowName}
-                          </div>
-                          <div className="text-[11px] text-text-tertiary">
-                            Automated Event Trigger
-                          </div>
-                        </td>
+                          {/* Consumption */}
+                          <td className="p-3.5 text-right">
+                            <div className="font-semibold text-white text-xs">
+                              {activeNodes.length} Stage Pipeline
+                            </div>
+                            <div className="text-[11px] text-text-secondary mt-0.5 font-mono">
+                              <span className="text-accent-blue font-semibold">{paidStepsPerRun} Paid Tasks</span> · <span className="text-emerald-400">{freeStepsPerRun} Free Utilities</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-                        {/* Trace ID */}
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-1.5 font-mono text-[11px] text-accent-blue">
-                            <span>{log.id.slice(0, 18)}...</span>
-                            <button
-                              type="button"
-                              onClick={(e) => handleCopyId(log.id, e)}
-                              className="p-1 rounded hover:bg-white/10 text-text-tertiary hover:text-white transition-colors shrink-0"
-                              title="Copy Trace ID"
-                            >
-                              {copiedId === log.id ? <Check size={12} className="text-emerald-400 shrink-0" /> : <Copy size={12} className="shrink-0" />}
-                            </button>
-                          </div>
-                        </td>
+              {/* NATIVE MOBILE INTERACTIVE CARDS (Visible on < 768px screens) */}
+              <div className="md:hidden divide-y divide-white/5">
+                {filteredLogs.map((log) => {
+                  const execDate = new Date(log.createdAt);
 
-                        {/* Consumption */}
-                        <td className="p-3.5 text-right">
-                          <div className="font-semibold text-white text-xs">
-                            {activeNodes.length} Stage Pipeline
+                  return (
+                    <div
+                      key={log.id}
+                      onClick={() => {
+                        setSelectedExecution(log);
+                        setSelectedStepIndex(0);
+                        setTelemetryViewMode('emitted');
+                      }}
+                      className="p-3.5 hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors cursor-pointer space-y-2.5"
+                    >
+                      {/* Top Row: Status & Timestamp */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {log.status === 'FAILED' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1 shrink-0">
+                              <XCircle size={10} className="shrink-0" /> FAULT
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 shrink-0">
+                              <CheckCircle2 size={10} className="shrink-0" /> RESOLVED
+                            </span>
+                          )}
+                          <span className="text-[11px] text-text-secondary font-mono">
+                            {execDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {execDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 font-mono text-[10px] text-accent-blue">
+                          <span>{log.id.slice(0, 8)}...</span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopyId(log.id, e)}
+                            className="p-1 rounded hover:bg-white/10 text-text-tertiary shrink-0"
+                          >
+                            {copiedId === log.id ? <Check size={11} className="text-emerald-400 shrink-0" /> : <Copy size={11} className="shrink-0" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Middle Row: Stage Sequence Icons */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {stepClassifications.slice(0, 6).map((s, idx) => (
+                          <div 
+                            key={idx} 
+                            className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 ${
+                              s.classification.isAi
+                                ? 'bg-purple-500/20 border-purple-500/30 text-purple-300'
+                                : s.classification.isPaid 
+                                  ? 'bg-accent-blue/20 border-accent-blue/30 text-accent-blue' 
+                                  : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+                            }`} 
+                          >
+                            {getStepIcon(s.node, idx)}
                           </div>
-                          <div className="text-[11px] text-text-secondary mt-0.5 font-mono">
-                            <span className="text-accent-blue font-semibold">{paidStepsPerRun} Paid Tasks</span> · <span className="text-emerald-400">{freeStepsPerRun} Free Utilities</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        ))}
+                        {stepClassifications.length > 6 && (
+                          <span className="text-[10px] text-text-tertiary font-mono">
+                            +{stepClassifications.length - 6}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Bottom Row: Breakdown and Tap CTA */}
+                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/5 font-mono">
+                        <span className="text-text-secondary">
+                          <strong className="text-accent-blue">{paidStepsPerRun} Paid</strong> · <strong className="text-emerald-400">{freeStepsPerRun} Free</strong>
+                        </span>
+                        <span className="text-accent-blue flex items-center gap-1 font-sans font-semibold text-xs">
+                          Telemetry <ChevronRight size={13} className="shrink-0" />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* 5. RESPONSIVE DUAL-PANE CHRONO-AUDIT TELEMETRY STUDIO (Mobile/Tablet/Desktop Optimized) */}
+      {/* 5. RESPONSIVE CHRONO-AUDIT TELEMETRY STUDIO MODAL */}
       {selectedExecution && (
         <div 
           className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
@@ -686,7 +807,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             
             {/* Modal Command Header */}
             <div className="p-3.5 sm:p-4 border-b border-white/10 bg-[#13131a] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">{workflowName}</h3>
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
@@ -694,10 +815,10 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                   </span>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-2.5 mt-1 font-mono text-xs text-text-secondary">
+                <div className="flex flex-wrap items-center gap-2 mt-1 font-mono text-xs text-text-secondary">
                   <div className="flex items-center gap-1.5">
                     <span className="text-text-tertiary">Trace:</span>
-                    <span className="text-accent-blue select-all">{selectedExecution.id}</span>
+                    <span className="text-accent-blue select-all truncate max-w-[180px] sm:max-w-none">{selectedExecution.id}</span>
                     <button
                       type="button"
                       onClick={(e) => handleCopyId(selectedExecution.id, e)}
@@ -710,7 +831,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                   <span className="text-white/20 hidden sm:inline">|</span>
                   <div className="flex items-center gap-1 text-text-tertiary text-[11px]">
                     <Clock size={11} className="shrink-0" />
-                    <span>{new Date(selectedExecution.createdAt).toLocaleString()} (IST)</span>
+                    <span>{new Date(selectedExecution.createdAt).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -722,33 +843,31 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                   className="px-3 py-1.5 rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                 >
                   <RotateCcw size={12} className="shrink-0" />
-                  <span>Re-run Trace</span>
+                  <span>Re-run</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setSelectedExecution(null)}
-                  className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-text-secondary hover:text-white transition-colors cursor-pointer shrink-0"
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer shrink-0"
                 >
                   <X size={16} />
                 </button>
               </div>
             </div>
 
-            {/* DUAL-PANE BODY (Stacked on Mobile, Side-by-Side on Tablet/Desktop) */}
+            {/* DUAL-PANE BODY */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
               
-              {/* Chrono-Rail: Horizontal Carousel on Mobile (<768px), Vertical Rail on Tablet/Desktop (>=768px) */}
+              {/* Chrono-Rail: Horizontal Swipe Carousel on Mobile, Vertical on Desktop */}
               <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-white/10 bg-[#0a0a0f] p-3 sm:p-4 overflow-x-auto md:overflow-y-auto custom-scrollbar shrink-0">
                 
-                <div className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2.5 flex items-center justify-between">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2 flex items-center justify-between">
                   <span>Pipeline Stages</span>
                   <span className="font-mono text-accent-blue">{activeNodes.length} Stages</span>
                 </div>
 
-                {/* Mobile: Horizontal flex pills / Desktop: Vertical cards */}
-                <div className="flex md:flex-col gap-2 relative">
-                  
+                <div className="flex md:flex-col gap-2">
                   {stepClassifications.map(({ node: step, classification }, idx) => {
                     const isSelected = selectedStepIndex === idx;
 
@@ -756,13 +875,12 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                       <div
                         key={step.id || idx}
                         onClick={() => setSelectedStepIndex(idx)}
-                        className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center md:items-start gap-2.5 select-none shrink-0 min-w-[200px] md:min-w-0 ${
+                        className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center md:items-start gap-2.5 select-none shrink-0 min-w-[190px] md:min-w-0 ${
                           isSelected 
                             ? 'bg-[#15151f] border-accent-blue/50 shadow-md ring-1 ring-accent-blue/30' 
                             : 'bg-black/30 border-white/5 hover:border-white/15 hover:bg-white/[0.02]'
                         }`}
                       >
-                        {/* Node Bead Icon */}
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${
                           isSelected 
                             ? 'bg-accent-blue text-white shadow-sm' 
@@ -775,7 +893,6 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                           {getStepIcon(step, idx)}
                         </div>
 
-                        {/* Node Details */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
                             <span className="text-[9px] font-mono font-bold text-text-tertiary uppercase">
@@ -787,7 +904,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                               </span>
                             ) : classification.isPaid ? (
                               <span className="text-[8px] font-bold font-mono px-1.5 py-0.2 rounded bg-accent-blue/15 text-accent-blue border border-accent-blue/30">
-                                PAID TASK
+                                PAID
                               </span>
                             ) : (
                               <span className="text-[8px] font-bold font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
@@ -817,9 +934,9 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
               <div className="flex-1 flex flex-col bg-[#101017] overflow-hidden min-h-0">
                 
                 {/* Console Navigation Header */}
-                <div className="p-3.5 sm:p-4 border-b border-white/10 bg-[#14141c] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                <div className="p-3 sm:p-4 border-b border-white/10 bg-[#14141c] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
                   <div className="flex items-center gap-2.5">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${
                       currentStep?.classification.isAi
                         ? 'bg-purple-500/20 border border-purple-500/30 text-purple-300'
                         : currentStep?.classification.isPaid
@@ -835,7 +952,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                         </h4>
                         {currentStep?.classification.isAi ? (
                           <span className="text-[9px] font-bold font-mono px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
-                            AI Radahn Engine
+                            AI Radahn
                           </span>
                         ) : currentStep?.classification.isPaid ? (
                           <span className="text-[9px] font-bold font-mono px-2 py-0.2 rounded-full bg-accent-blue/15 text-accent-blue border border-accent-blue/30 shrink-0">
@@ -843,106 +960,104 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                           </span>
                         ) : (
                           <span className="text-[9px] font-bold font-mono px-2 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
-                            Free Automatix Utility
+                            Free Utility
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] sm:text-[11px] text-text-tertiary font-mono mt-0.5">
-                        Latency: {metrics.latencyMs}ms · Runtime: {metrics.runtimeEnv}
+                      <p className="text-[10px] text-text-tertiary font-mono mt-0.5">
+                        Latency: {metrics.latencyMs}ms · {metrics.runtimeEnv}
                       </p>
                     </div>
                   </div>
 
                   {/* Telemetry Tab Switcher */}
-                  <div className="flex items-center bg-black/60 border border-white/10 rounded-xl p-1 text-xs self-start sm:self-auto font-medium shrink-0">
+                  <div className="flex items-center bg-black/60 border border-white/10 rounded-xl p-0.5 sm:p-1 text-xs self-start sm:self-auto font-medium shrink-0">
                     <button
                       type="button"
                       onClick={() => setTelemetryViewMode('emitted')}
-                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs ${
+                      className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs ${
                         telemetryViewMode === 'emitted'
                           ? 'bg-accent-blue text-white font-semibold shadow-sm'
                           : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      <Activity size={12} className="shrink-0" />
-                      <span>Emitted Telemetry</span>
+                      <Activity size={11} className="shrink-0" />
+                      <span>Emitted</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setTelemetryViewMode('ingest')}
-                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs ${
+                      className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs ${
                         telemetryViewMode === 'ingest'
                           ? 'bg-accent-blue text-white font-semibold shadow-sm'
                           : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      <Database size={12} className="shrink-0" />
-                      <span>Ingest Parameters</span>
+                      <Database size={11} className="shrink-0" />
+                      <span>Ingest</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setTelemetryViewMode('metrics')}
-                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs ${
+                      className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs ${
                         telemetryViewMode === 'metrics'
                           ? 'bg-accent-blue text-white font-semibold shadow-sm'
                           : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      <Gauge size={12} className="shrink-0" />
+                      <Gauge size={11} className="shrink-0" />
                       <span>Metrics</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Filter & View Mode Controls */}
-                <div className="px-3.5 py-2 sm:px-4 sm:py-2.5 border-b border-white/10 bg-[#0e0e14] flex items-center justify-between gap-3 text-xs shrink-0">
+                <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-white/10 bg-[#0e0e14] flex items-center justify-between gap-2 text-xs shrink-0">
                   <div className="relative flex-1 max-w-xs sm:max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-text-tertiary" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-text-tertiary" />
                     <input
                       type="text"
-                      placeholder="Filter telemetry keys or values..."
+                      placeholder="Filter parameters..."
                       value={telemetrySearch}
                       onChange={(e) => setTelemetrySearch(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue font-mono"
+                      className="w-full bg-black/50 border border-white/10 rounded-lg pl-7 pr-2.5 py-1 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue font-mono"
                     />
                   </div>
 
-                  <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
-                    <span className="text-[10px] text-text-tertiary hidden sm:inline">View:</span>
+                  <div className="flex items-center gap-1 font-mono text-xs shrink-0">
                     <button
                       type="button"
                       onClick={() => setDataViewFormat('matrix')}
-                      className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[11px] transition-colors cursor-pointer ${
+                      className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] transition-colors cursor-pointer ${
                         dataViewFormat === 'matrix' ? 'bg-white/10 text-white font-semibold' : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      Matrix Grid
+                      Matrix
                     </button>
                     <button
                       type="button"
                       onClick={() => setDataViewFormat('raw_stream')}
-                      className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[11px] transition-colors cursor-pointer ${
+                      className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] transition-colors cursor-pointer ${
                         dataViewFormat === 'raw_stream' ? 'bg-white/10 text-white font-semibold' : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      Raw JSON
+                      JSON
                     </button>
                   </div>
                 </div>
 
                 {/* Console Main Content Area */}
-                <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto custom-scrollbar min-h-0">
+                <div className="flex-1 p-3 sm:p-4 overflow-y-auto custom-scrollbar min-h-0">
                   
-                  {/* Verified Notification Callout */}
-                  <div className="mb-3.5 p-2.5 sm:p-3 rounded-xl bg-accent-blue/10 border border-accent-blue/25 flex items-center justify-between text-xs text-blue-200 font-mono">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={15} className="text-accent-blue shrink-0" />
-                      <span>Stage telemetry validated with 0 runtime exceptions.</span>
+                  <div className="mb-3 p-2.5 rounded-xl bg-accent-blue/10 border border-accent-blue/25 flex items-center justify-between text-xs text-blue-200 font-mono">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck size={14} className="text-accent-blue shrink-0" />
+                      <span className="truncate">Stage telemetry validated.</span>
                     </div>
                     <span className="text-[10px] text-accent-blue font-bold uppercase shrink-0">
-                      Code 200 Resolved
+                      Code 200
                     </span>
                   </div>
 
@@ -952,13 +1067,13 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                         No telemetry parameters match your filter.
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {activeEntries.map(([k, v]) => (
                           <div
                             key={k}
-                            className="p-3 rounded-xl bg-black/40 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
+                            className="p-2.5 sm:p-3 rounded-xl bg-black/40 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
                           >
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <div className="flex items-center justify-between gap-2 mb-1">
                               <span className="font-mono text-xs font-semibold text-accent-blue truncate" title={k}>
                                 {k}
                               </span>
@@ -975,7 +1090,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                       </div>
                     )
                   ) : (
-                    <div className="bg-black/60 border border-white/10 rounded-xl p-3.5 font-mono text-xs text-emerald-400 overflow-x-auto custom-scrollbar">
+                    <div className="bg-black/60 border border-white/10 rounded-xl p-3 font-mono text-xs text-emerald-400 overflow-x-auto custom-scrollbar">
                       <pre>{JSON.stringify(activeTelemetryPayload, null, 2)}</pre>
                     </div>
                   )}
@@ -987,17 +1102,17 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             </div>
 
             {/* Modal Bottom Telemetry Summary Footer */}
-            <div className="p-3 sm:p-3.5 border-t border-white/10 bg-[#121218] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-text-secondary shrink-0 font-mono">
-              <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
-                <span>Free Utilities: <strong className="text-emerald-400">{freeStepsPerRun}</strong></span>
-                <span>Paid Tasks: <strong className="text-accent-blue">{paidStepsPerRun}</strong></span>
-                <span className="hidden md:inline">Trace Health: <strong className="text-emerald-400">100% Passed</strong></span>
+            <div className="p-3 border-t border-white/10 bg-[#121218] flex items-center justify-between gap-2 text-xs text-text-secondary shrink-0 font-mono">
+              <div className="flex items-center gap-3 sm:gap-6 flex-wrap text-[11px] sm:text-xs">
+                <span>Free: <strong className="text-emerald-400">{freeStepsPerRun}</strong></span>
+                <span>Paid: <strong className="text-accent-blue">{paidStepsPerRun}</strong></span>
+                <span className="hidden sm:inline">Trace Health: <strong className="text-emerald-400">100% Passed</strong></span>
               </div>
 
               <button
                 type="button"
                 onClick={() => setSelectedExecution(null)}
-                className="px-3.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white font-sans text-xs transition-colors cursor-pointer self-end sm:self-auto"
+                className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white font-sans text-xs transition-colors cursor-pointer shrink-0"
               >
                 Close Inspector
               </button>
