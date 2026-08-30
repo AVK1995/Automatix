@@ -144,6 +144,12 @@ export async function executeAiRadahnInference({
   try {
     if (mode === 'TRANSACTIONAL_TEMPLATE' || mode === 'TEMPLATE') {
       const res = executeTemplateArchitect({ instruction, tone, currentTemplate });
+      
+      // Async non-blocking memory update
+      if (instruction?.trim().length > 3) {
+        recordLearnedKnowledge(instruction).catch(() => {});
+      }
+
       return {
         success: true,
         template: res.template,
@@ -399,3 +405,40 @@ function extractStructuredOutput(rawText = '') {
     subject: 'Automatix Notification'
   };
 }
+
+/**
+ * Lightweight Self-Learning Knowledge Indexer
+ * Distills keywords and usage frequency into Postgres (<1 KB per record)
+ */
+async function recordLearnedKnowledge(instruction = '') {
+  try {
+    const rawKey = instruction.toLowerCase().trim().slice(0, 40);
+    const entityKey = rawKey.replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!entityKey || entityKey.length < 3) return;
+
+    await prisma.aiRadahnKnowledge.upsert({
+      where: { entityKey },
+      create: {
+        entityKey,
+        keywords: instruction.toLowerCase().split(/\s+/).slice(0, 10),
+        primaryColor: '#8B5CF6',
+        secondaryColor: '#6366F1',
+        accentColor: '#A78BFA',
+        gradientBg: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
+        cardBg: '#09090b',
+        cardBorder: 'rgba(139, 92, 246, 0.25)',
+        buttonShadow: '0 8px 24px rgba(139, 92, 246, 0.35)',
+        badgeText: 'AUTOMATIX SYSTEM GUARD',
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        usageCount: 1,
+        successScore: 1
+      },
+      update: {
+        usageCount: { increment: 1 }
+      }
+    });
+  } catch (e) {
+    // Non-blocking catch
+  }
+}
+

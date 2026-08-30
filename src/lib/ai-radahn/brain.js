@@ -5,6 +5,8 @@
  * and high-converting B2B copywriting across workflows and transactional templates.
  */
 
+import { compileCopyFramework, discoverDesignTokens } from './webDiscovery';
+
 // ==========================================
 // 1. DESIGN THEME & PALETTE ONTOLOGY MATRIX
 // ==========================================
@@ -557,6 +559,8 @@ export function executeTemplateArchitect({ instruction = '', tone = 'modern_dark
   }
 
   const theme = resolveDesignTheme(instruction, tone);
+  const isPasswordReset = promptLower.includes('reset') || promptLower.includes('password') || !promptLower.includes('setup');
+  const copyData = compileCopyFramework({ prompt: instruction, isPasswordReset, themeTokens: theme });
 
   // Negative element removals
   const hasNoEyebrow = promptLower.includes('remove eyebrow') || 
@@ -572,8 +576,8 @@ export function executeTemplateArchitect({ instruction = '', tone = 'modern_dark
   const hasNoExpiry = promptLower.includes('remove expiry') || promptLower.includes('no expiry') || promptLower.includes('remove security notice') || promptLower.includes('no security notice') || promptLower.includes('without security notice') || promptLower.includes('no disclaimer');
   const hasNoFooter = promptLower.includes('remove footer') || promptLower.includes('no footer');
 
-  // Dynamic Eyebrow Override if requested in prompt
-  let badgeText = theme.badgeText;
+  // Dynamic Eyebrow Badge Text
+  let badgeText = copyData.badgeLabel || theme.badgeText;
   if (!hasNoEyebrow && (promptLower.includes('eyebrow') || promptLower.includes('badge'))) {
     if (promptLower.includes('system') || promptLower.includes('other relevant text') || promptLower.includes('workflow') || promptLower.includes('cloud')) {
       badgeText = 'AUTOMATIX SYSTEM IDENTITY GUARD';
@@ -585,22 +589,18 @@ export function executeTemplateArchitect({ instruction = '', tone = 'modern_dark
   }
 
   // Dynamic User Name Detection
-  const hasUserName = promptLower.includes('user name') || promptLower.includes('username') || promptLower.includes('name variable') || promptLower.includes('salutation') || promptLower.includes('greeting');
-  const isPasswordReset = promptLower.includes('reset') || promptLower.includes('password') || !promptLower.includes('setup');
+  const hasUserName = promptLower.includes('user name') || promptLower.includes('username') || promptLower.includes('name variable') || promptLower.includes('salutation') || promptLower.includes('greeting') || promptLower.includes('cute') || promptLower.includes('gorgeous');
   const is24h = promptLower.includes('24') || promptLower.includes('hour') || promptLower.includes('expir') || promptLower.includes('urgent') || promptLower.includes('disclaimer');
 
-  const headline = isPasswordReset ? 'Reset Your Password' : 'Set Up Your Automatix Account';
-  const buttonLabel = isPasswordReset ? 'Reset Password' : 'Set Up Password & Access';
+  const headline = copyData.headline;
+  const buttonLabel = copyData.buttonLabel;
 
   const salutationHtml = hasUserName 
-    ? `<div style="font-size: 15px; font-weight: 600; color: #ffffff; margin-bottom: 8px; text-align: left;">Hello {{USER_NAME}},</div>`
+    ? `<div style="font-size: 15px; font-weight: 600; color: #ffffff; margin-bottom: 8px; text-align: left;">${copyData.salutation}</div>`
     : '';
 
   const textAlignBody = hasUserName ? 'text-align: left;' : 'text-align: center;';
-
-  const introText = isPasswordReset 
-    ? `We received a request to configure or reset the password for your Automatix account associated with <strong>{{USER_EMAIL}}</strong>.<br/><br/>Click the secure action button below to proceed with your authentication update.` 
-    : `Your Automatix tenant account has been successfully provisioned for <strong>{{USER_EMAIL}}</strong>.<br/><br/>Click the button below to initialize your credentials and access your workflow dashboard.`;
+  const introText = copyData.bodyIntro;
 
   const expiryBox = (hasNoExpiry || (!is24h && !isPasswordReset))
     ? ''
@@ -687,7 +687,7 @@ export function executeTemplateArchitect({ instruction = '', tone = 'modern_dark
       color: ${theme.textColorOnBtn} !important;
       text-decoration: none;
       padding: 14px 34px;
-      border-radius: 10px;
+      border-radius: ${copyData.buttonRadius || '10px'};
       font-weight: 700;
       font-size: 14px;
       letter-spacing: -0.01em;
@@ -713,14 +713,6 @@ export function executeTemplateArchitect({ instruction = '', tone = 'modern_dark
       font-size: 11px;
       color: #52525b;
       line-height: 1.5;
-    }
-    .footer-links {
-      margin-top: 8px;
-    }
-    .footer-links a {
-      color: #71717a;
-      text-decoration: none;
-      margin: 0 6px;
     }
   </style>
 </head>

@@ -209,83 +209,83 @@ export default function AiRadahnSettingsForm({ user }) {
         </div>
       </div>
 
-      {/* BYOK Configuration Section (Shown when BYOK mode is selected or if Paid) */}
-      <div className={`space-y-4 pt-4 border-t border-white/10 ${engineMode !== 'byok' && !isPaid ? 'opacity-50 pointer-events-none' : ''}`}>
-        
-        <div className="flex items-center justify-between">
-          <div>
-            <h4 className="text-sm font-semibold text-white">BYOK Provider & Credentials</h4>
-            <p className="text-xs text-text-secondary mt-0.5">
-              Your API key is stored securely in your private workspace and used strictly for your AI Radahn requests.
-            </p>
-          </div>
-          {hasExistingKey && (
-            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold flex items-center gap-1">
-              <ShieldCheck size={13} /> Key Configured
-            </span>
-          )}
-        </div>
-
-        {/* Provider Select */}
-        <div>
-          <label className="block text-xs font-semibold text-text-secondary mb-1.5">
-            Select AI Engine Provider
-          </label>
-          <Select
-            value={provider}
-            onChange={setProvider}
-            options={PROVIDER_OPTIONS}
-            className="w-full"
-            disabled={!isPaid}
-          />
-        </div>
-
-        {/* API Key Input */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-semibold text-text-secondary">
-              {provider === 'gemini' ? 'Google Gemini API Key' : provider === 'openai' ? 'OpenAI API Key' : 'Anthropic API Key'}
-            </label>
+      {/* BYOK Configuration Section (Rendered ONLY when True AI Brain BYOK is selected) */}
+      {engineMode === 'byok' && isPaid && (
+        <div className="space-y-4 pt-4 border-t border-white/10 animate-in fade-in duration-200">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 className="text-sm font-semibold text-white">BYOK Provider & Credentials</h4>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Your API key is stored securely in your private workspace and used strictly for your True AI requests.
+              </p>
+            </div>
             {hasExistingKey && (
-              <button
-                type="button"
-                onClick={handleClearKey}
-                disabled={isSaving}
-                className="text-[11px] text-rose-400 hover:text-rose-300 font-medium cursor-pointer transition-colors"
-              >
-                Remove Saved Key
-              </button>
+              <span className="self-start sm:self-auto px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold flex items-center gap-1">
+                <ShieldCheck size={13} /> Key Configured
+              </span>
             )}
           </div>
-          
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-tertiary">
-              <KeyRound size={15} />
-            </div>
-            <input
-              type={showKey ? 'text' : 'password'}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder={hasExistingKey ? '•••••••••••••••••••••••••••••••• (Leave blank to keep existing key)' : 'Enter your API key (e.g. AIzaSy... or sk-...)'}
-              disabled={!isPaid}
-              className="w-full bg-black/60 border border-white/10 rounded-xl pl-10 pr-11 py-2.5 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-purple-500 transition-colors disabled:opacity-50"
+
+          {/* Provider Select */}
+          <div>
+            <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+              Select AI Engine Provider
+            </label>
+            <Select
+              value={provider}
+              onChange={setProvider}
+              options={PROVIDER_OPTIONS}
+              className="w-full"
             />
-            <button
-              type="button"
-              onClick={() => setShowKey(!showKey)}
-              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-text-tertiary hover:text-white transition-colors cursor-pointer"
-            >
-              {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
           </div>
 
-          <p className="text-[11px] text-text-tertiary mt-1.5 flex items-center gap-1">
-            <Info size={12} className="shrink-0" />
-            Strict output rules and token limits (1,200 max tokens) ensure minimal token consumption on your provider account.
-          </p>
-        </div>
+          {/* API Key Input */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-text-secondary">
+                {provider === 'gemini' ? 'Google Gemini API Key' : provider === 'openai' ? 'OpenAI API Key' : 'Anthropic API Key'}
+              </label>
+              {hasExistingKey && (
+                <button
+                  type="button"
+                  onClick={handleClearKey}
+                  disabled={isSaving}
+                  className="text-[11px] text-rose-400 hover:text-rose-300 font-medium cursor-pointer transition-colors"
+                >
+                  Remove Saved Key
+                </button>
+              )}
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-tertiary">
+                <KeyRound size={15} />
+              </div>
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={hasExistingKey ? '•••••••••••••••••••••••••••••••• (Leave blank to keep existing key)' : 'Enter your API key (e.g. AIzaSy... or sk-...)'}
+                className="w-full bg-black/60 border border-white/10 rounded-xl pl-10 pr-11 py-2.5 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-purple-500 transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-text-tertiary hover:text-white transition-colors cursor-pointer"
+              >
+                {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
 
-      </div>
+            <p className="text-[11px] text-text-tertiary mt-1.5 flex items-center gap-1">
+              <Info size={12} className="shrink-0" />
+              Strict output rules and token limits (1,200 max tokens) ensure minimal token consumption on your provider account.
+            </p>
+          </div>
+
+        </div>
+      )}
 
       {/* Submit Button */}
       <div className="flex justify-end pt-2">
