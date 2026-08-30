@@ -43,7 +43,6 @@ export default function AdminSidebar({ isMobile, onClose }) {
     { name: 'Dashboard', href: '/admin', icon: <LayoutDashboard size={16} /> },
     { name: 'Users & Tenants', href: '/admin/users', icon: <Users size={16} /> },
     { name: 'Email & Notifications', href: '/admin/notifications', icon: <Mail size={16} /> },
-    { name: 'Live Support & Client Chat', href: '/admin/support', icon: <MessageSquare size={16} /> },
     { name: 'Global Storage', href: '/admin/storage', icon: <Database size={16} /> },
     { name: 'Global Connections', href: '/admin/connections', icon: <LinkIcon size={16} /> },
     { name: 'Global Supports & Requests', href: '/admin/requests', icon: <Globe size={16} /> },

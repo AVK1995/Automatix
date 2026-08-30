@@ -33,6 +33,7 @@ export default function GlobalSupportTicketsClient() {
   const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // New Direct Chat Modal State
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
@@ -154,6 +155,21 @@ export default function GlobalSupportTicketsClient() {
       toast.error('Error sending reply: ' + err.message);
     } finally {
       setReplying(false);
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    setIsManualRefreshing(true);
+    try {
+      await Promise.all([
+        mutate(),
+        mutateActiveTicket ? mutateActiveTicket() : Promise.resolve()
+      ]);
+      toast.success('Live chats & ticket list refreshed!');
+    } catch (e) {
+      toast.error('Failed to refresh chats');
+    } finally {
+      setTimeout(() => setIsManualRefreshing(false), 500);
     }
   };
 
@@ -327,11 +343,14 @@ export default function GlobalSupportTicketsClient() {
               Incoming Inquiries ({tickets.length})
             </span>
             <button 
-              onClick={() => mutate()} 
-              className="text-text-tertiary hover:text-white p-1 rounded-md transition-colors"
-              title="Refresh tickets"
+              type="button"
+              onClick={handleManualRefresh} 
+              disabled={isManualRefreshing || isLoading}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-text-tertiary hover:text-white hover:bg-white/10 rounded-lg border border-white/5 transition-all cursor-pointer disabled:opacity-50"
+              title="Refresh live chats and tickets"
             >
-              <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+              <RefreshCw size={13} className={isManualRefreshing || isLoading ? 'animate-spin text-accent-blue' : ''} />
+              <span className="text-[11px] font-medium hidden sm:inline">Refresh</span>
             </button>
           </div>
 

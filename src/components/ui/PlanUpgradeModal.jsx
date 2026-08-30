@@ -24,10 +24,10 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
 
 export default function PlanUpgradeModal() {
-  const { data: session } = useSession();
+  const [session, setSession] = useState(null);
+  const [loadingSession, setLoadingSession] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pro'); // 'pro' | 'enterprise' | 'storage' | 'ai'
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +51,23 @@ export default function PlanUpgradeModal() {
   const [entMessage, setEntMessage] = useState('');
 
   const upiId = 'billing@automatix.local';
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingSession(true);
+      fetch('/api/auth/session')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.user) {
+            setSession(data);
+          } else {
+            setSession(null);
+          }
+        })
+        .catch(() => setSession(null))
+        .finally(() => setLoadingSession(false));
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleOpen = (e) => {
