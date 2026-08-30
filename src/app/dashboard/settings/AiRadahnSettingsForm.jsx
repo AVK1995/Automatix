@@ -331,6 +331,19 @@ export default function AiRadahnSettingsForm({ user }) {
             </div>
           </div>
 
+          {/* Active Workflow Notice when switching to Native */}
+          {engineMode === 'native' && hasExistingKey && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-200 animate-in fade-in duration-200">
+              <ShieldAlert size={16} className="text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-amber-300">Active Workflow Notice:</span>
+                <p className="mt-0.5 text-amber-200/90 text-[11px] leading-relaxed">
+                  Switching to Native Core Brain will pause external BYOK key execution. Workflows configured to use the Central Key Vault will operate via the AI Radahn Vision Encoder instead.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* BYOK Configuration Section (Rendered ONLY when True AI Brain BYOK is selected) */}
           {engineMode === 'byok' && (
             <div className="space-y-4 pt-4 border-t border-white/10 animate-in fade-in duration-200">

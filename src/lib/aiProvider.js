@@ -214,7 +214,7 @@ export function parseStructuredAiResponse(rawText, task = 'generate_caption', to
 }
 
 /**
- * Automatix AI Engine (Rule-based Multimodal Context Synthesizer)
+ * AI Radahn Vision Encoder (Multimodal Context & Intelligence Synthesizer)
  * Zero external API key required. High-performance, deterministic, structured generation.
  */
 function generateNativeAiContent({ task = 'generate_caption', tone = 'engaging', customPrompt = '', fileDetails = null, mediaUrl = '' }) {

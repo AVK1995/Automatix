@@ -18,7 +18,8 @@ import {
   RotateCcw,
   Eraser,
   SendHorizontal,
-  Play
+  Play,
+  Lightbulb
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AiCreditUpgradeModal from '@/components/ui/AiCreditUpgradeModal';
@@ -26,7 +27,8 @@ import {
   executeBrandOptimizer, 
   executeSmtpEmailDrafter, 
   executeSocialDrafter, 
-  executeVisionPromptDrafter 
+  executeVisionPromptDrafter,
+  getPromptExamples
 } from '@/lib/ai-radahn/brain';
 
 export default function AiRadahnPromptModal({
@@ -48,10 +50,8 @@ export default function AiRadahnPromptModal({
   const [isRefining, setIsRefining] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [generatedOutput, setGeneratedOutput] = useState(null);
-  const [activeTab, setActiveTab] = useState('preview'); // 'preview' | 'code'
   const [userCredits, setUserCredits] = useState(null);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const previewRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -89,7 +89,7 @@ export default function AiRadahnPromptModal({
       } else if (type === 'vision_prompt' || type === 'ai_prompt') {
         const res = executeVisionPromptDrafter({
           brandTone: tone,
-          mediaType: mergedContext.mediaType || 'media',
+          mediaType: mergedContext.mediaType || 'video',
           taskOperation: mergedContext.task || 'generate_caption',
           userPrompt: promptToUse
         });
@@ -102,12 +102,12 @@ export default function AiRadahnPromptModal({
         });
         setGeneratedOutput(res);
       } else {
-        // Fallback generic synthesizer
         const res = executeBrandOptimizer({
           rawText: promptToUse || 'Synthesize high impact workflow copy and instructions.',
           tone
         });
-        setGeneratedOutput({ body: res.optimizedCopy || res, customPrompt: res.optimizedCopy || res });
+        const outStr = res.optimizedCopy || (typeof res === 'string' ? res : JSON.stringify(res));
+        setGeneratedOutput({ body: outStr, customPrompt: outStr, generatedInstruction: outStr });
       }
       toast.success('AI Radahn synthesized output successfully!');
     } catch (err) {
@@ -145,7 +145,7 @@ export default function AiRadahnPromptModal({
       } else {
         const res = executeVisionPromptDrafter({
           brandTone: tone,
-          mediaType: mergedContext.mediaType || 'media',
+          mediaType: mergedContext.mediaType || 'video',
           taskOperation: mergedContext.task || 'generate_caption',
           userPrompt: combinedPrompt
         });
@@ -196,8 +196,16 @@ export default function AiRadahnPromptModal({
         throw new Error(data.error || 'Failed to process AI credits');
       }
 
+      const outputText = generatedOutput.customPrompt || generatedOutput.generatedInstruction || generatedOutput.prompt || generatedOutput.body || generatedOutput.message || (typeof generatedOutput === 'string' ? generatedOutput : '');
+
       // Apply output
-      onApply(generatedOutput);
+      onApply({
+        ...generatedOutput,
+        customPrompt: outputText,
+        generatedInstruction: outputText,
+        prompt: outputText,
+        body: outputText
+      });
       toast.success(`AI Radahn Content Applied! (${data.creditsRemaining} credits remaining)`);
       onClose();
     } catch (e) {
@@ -208,6 +216,16 @@ export default function AiRadahnPromptModal({
   };
 
   if (!isOpen) return null;
+
+  const examplePills = getPromptExamples({
+    category: mergedContext.mediaType || 'video',
+    task: mergedContext.task || 'generate_caption',
+    tone: tone
+  });
+
+  const displayOutput = generatedOutput
+    ? (generatedOutput.customPrompt || generatedOutput.generatedInstruction || generatedOutput.prompt || generatedOutput.body || generatedOutput.message || (typeof generatedOutput === 'string' ? generatedOutput : JSON.stringify(generatedOutput, null, 2)))
+    : '';
 
   return (
     <>
@@ -273,7 +291,7 @@ export default function AiRadahnPromptModal({
                   )}
                   <button
                     type="button"
-                    onClick={() => runBrainGeneration()}
+                    onClick={() => runBrainGeneration(userPrompt)}
                     disabled={isGenerating}
                     className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
                   >
@@ -286,9 +304,30 @@ export default function AiRadahnPromptModal({
                 type="text"
                 value={userPrompt}
                 onChange={e => setUserPrompt(e.target.value)}
-                placeholder="e.g. Tactical camo green CTA, remove eyebrow, include discount..."
+                placeholder="e.g. Highlight key action items or draft a viral caption for our upcoming product launch."
                 className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-purple-500 font-sans"
               />
+
+              {/* Dynamic 3-4 Example Pills Based on Selected Media, Tone & Task */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                <span className="text-[10px] font-semibold text-purple-300 flex items-center gap-1 shrink-0">
+                  <Sparkles size={11} /> Quick Examples:
+                </span>
+                {examplePills.map((ex, exIdx) => (
+                  <button
+                    key={exIdx}
+                    type="button"
+                    onClick={() => {
+                      setUserPrompt(ex.prompt);
+                      runBrainGeneration(ex.prompt);
+                    }}
+                    className="px-2.5 py-0.5 rounded-full bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 hover:text-white border border-purple-500/30 text-[10px] transition-colors cursor-pointer truncate max-w-[240px]"
+                    title={ex.prompt}
+                  >
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Generated Output Review Pane */}
@@ -339,16 +378,16 @@ export default function AiRadahnPromptModal({
                   </div>
                 )}
 
-                {/* Generated Content Body */}
+                {/* Generated Content Body - Plain Text Ready */}
                 <div className="border border-white/10 rounded-xl overflow-hidden bg-black/50">
                   <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-white/[0.02]">
                     <span className="text-[11px] font-mono font-semibold text-purple-300 flex items-center gap-1.5">
-                      <Sparkles size={11} /> Synthesized AI Radahn Content
+                      <Sparkles size={11} /> Synthesized AI Radahn Content (Plain Text Ready)
                     </span>
                   </div>
 
-                  <div className="p-3.5 max-h-60 overflow-y-auto custom-scrollbar font-mono text-xs text-white/90 whitespace-pre-wrap leading-relaxed">
-                    {generatedOutput.customPrompt || generatedOutput.prompt || generatedOutput.body || generatedOutput.message || (typeof generatedOutput === 'string' ? generatedOutput : JSON.stringify(generatedOutput, null, 2))}
+                  <div className="p-3.5 max-h-64 overflow-y-auto custom-scrollbar font-sans text-xs text-white/90 whitespace-pre-wrap leading-relaxed">
+                    {displayOutput}
                   </div>
                 </div>
 

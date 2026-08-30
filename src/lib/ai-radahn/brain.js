@@ -525,20 +525,101 @@ export function executeSocialDrafter({ platform = 'INSTAGRAM_DM', context = {}, 
 // ==========================================
 // 6. VISION & CONTENT ENGINE PROMPT DRAFTER
 // ==========================================
-export function executeVisionPromptDrafter({ brandTone = 'executive', mediaType = 'video', taskOperation = 'caption' }) {
-  let prompt = '';
-  if (taskOperation === 'caption') {
-    prompt = `Analyze this ${mediaType} and generate 3 viral high-conversion captions with tailored call-to-actions matching a ${brandTone} brand tone. Highlight key visual hooks and timestamps.`;
-  } else if (taskOperation === 'transcription') {
-    prompt = `Transcribe the spoken audio with exact speaker labeling, clean punctuation, and output an executive summary of key action items.`;
-  } else if (taskOperation === 'summary') {
-    prompt = `Perform multimodal semantic analysis on this document/media. Output a 3-bullet executive summary and structured JSON metrics.`;
-  } else {
-    prompt = `Process input ${mediaType} in a ${brandTone} tone. Deliver structured downstream workflow variables.`;
+export function getPromptExamples({ category = 'video', task = 'generate_caption', tone = 'engaging' }) {
+  const cat = (category || 'video').toLowerCase();
+  const t = (task || 'generate_caption').toLowerCase();
+  const b = (tone || 'engaging').toLowerCase();
+
+  // Video examples
+  if (cat.includes('video')) {
+    if (t.includes('caption') || t.includes('hashtag') || t.includes('social')) {
+      return [
+        { label: 'Viral Reel Hook + 15 Hashtags', prompt: 'Analyze this video and generate 3 viral opening hooks, an engaging 3-sentence caption with emojis, and 15 targeted hashtags for Instagram and TikTok.' },
+        { label: 'Story CTA + Link in Bio', prompt: 'Create an engaging Instagram Story caption highlighting the core takeaway from this video, ending with a strong call-to-action to check the link in bio.' },
+        { label: 'Timestamp Highlights & Key Insights', prompt: 'Watch this video and extract the 3 most impactful moments with approximate timestamps and punchy summaries for our audience.' },
+        { label: 'Shorts & Reels Conversion Hook', prompt: 'Draft a catchy click-worthy title (under 50 chars) and an energetic first 3-second hook for YouTube Shorts based on this video.' }
+      ];
+    } else if (t.includes('summary') || t.includes('key_points')) {
+      return [
+        { label: 'Executive 3-Bullet Summary', prompt: 'Summarize the core message of this video into 3 crisp, executive-level bullet points.' },
+        { label: 'Action Items & Takeaways', prompt: 'Extract actionable checklist items from this video that our team or audience can execute immediately.' },
+        { label: 'Q&A Discussion Starters', prompt: 'Generate 3 thought-provoking questions based on this video to drive comments and community engagement.' },
+        { label: 'B2B Case Study Snippet', prompt: 'Format this video summary into a professional B2B customer success narrative.' }
+      ];
+    }
   }
 
+  // Audio examples
+  if (cat.includes('audio')) {
+    return [
+      { label: 'Speaker-Labeled Clean Transcript', prompt: 'Transcribe this audio with exact speaker labeling, timestamps, and remove filler words (ums, uhs).' },
+      { label: 'Podcast Show Notes & Chapters', prompt: 'Generate comprehensive podcast show notes including episode title, 1-paragraph overview, and timestamped chapter markers.' },
+      { label: 'Key Quotes & Soundbites', prompt: 'Extract the top 3 most memorable, shareable quotes from this audio file.' },
+      { label: 'Meeting Action Items & Next Steps', prompt: 'Extract all decisions made and assigned action items from this meeting recording.' }
+    ];
+  }
+
+  // Image examples
+  if (cat.includes('image')) {
+    return [
+      { label: 'Social Media Post Copy + CTA', prompt: 'Describe the visual elements in this image and write an engaging social media post with a compelling CTA.' },
+      { label: 'Product Feature Breakdown', prompt: 'Identify the product shown in this image and list its key visual selling points, materials, and benefits.' },
+      { label: 'SEO Alt Text & Description', prompt: 'Generate an accessible, keyword-rich SEO Alt Text (under 125 chars) and a 1-sentence photo description.' },
+      { label: 'Ad Copy Variant with Emoji Hook', prompt: 'Write 2 high-converting ad copy variations based on this graphic matching our brand tone.' }
+    ];
+  }
+
+  // Document / PDF / CSV examples
+  if (cat.includes('document') || cat.includes('pdf') || cat.includes('spreadsheet') || cat.includes('csv')) {
+    return [
+      { label: 'Structured JSON Data Extraction', prompt: 'Extract key entities (names, dates, amounts, invoice numbers, line items) from this document into clean structured JSON.' },
+      { label: 'Executive Summary & Risk Analysis', prompt: 'Provide a concise 1-page executive summary highlighting key findings, metrics, and critical risk flags.' },
+      { label: 'Table to Insights Synthesis', prompt: 'Analyze this spreadsheet data and generate 4 high-level strategic takeaways and trend observations.' },
+      { label: 'Action Item Matrix with Deadlines', prompt: 'Parse this document and list all deliverables, owners, and expected due dates in a clean table.' }
+    ];
+  }
+
+  // Generic Fallback
+  return [
+    { label: 'High-Impact Copy & Hooks', prompt: `Analyze the provided media and synthesize high-converting copy matching a ${tone} brand voice.` },
+    { label: 'Key Highlights & Takeaways', prompt: 'Extract the top 3 critical takeaways and structure them into clear, actionable bullet points.' },
+    { label: 'Engagement Hook with Hashtags', prompt: 'Generate 3 viral opening lines and 10 relevant hashtags to maximize reach and retention.' },
+    { label: 'Structured Downstream Summary', prompt: 'Deliver a clean structured summary ready to pass directly to downstream workflow actions.' }
+  ];
+}
+
+export function executeVisionPromptDrafter({ brandTone = 'engaging', mediaType = 'video', taskOperation = 'generate_caption', userPrompt = '' }) {
+  let baseIntent = '';
+  
+  if (userPrompt && userPrompt.trim()) {
+    baseIntent = userPrompt.trim();
+  } else if (taskOperation.includes('caption') || taskOperation.includes('hashtag')) {
+    baseIntent = `Generate 3 viral high-converting captions, emotional hooks, and 15 targeted hashtags for social media.`;
+  } else if (taskOperation.includes('transcription')) {
+    baseIntent = `Transcribe the audio stream with clean punctuation, timestamps, and speaker identification.`;
+  } else if (taskOperation.includes('summary')) {
+    baseIntent = `Perform multimodal semantic analysis and output a 3-bullet executive summary and key takeaways.`;
+  } else {
+    baseIntent = `Process the input ${mediaType} and deliver structured downstream workflow variables.`;
+  }
+
+  const synthesizedPrompt = `You are the AI Radahn Vision & Multimodal Encoder.
+Target Media Asset: [${mediaType.toUpperCase()}]
+Brand Persona & Tone: [${brandTone.toUpperCase()}]
+
+Objective & Custom Instructions:
+${baseIntent}
+
+Execution Directives:
+1. Examine the visual, textual, or auditory elements in the input media asset carefully.
+2. Structure the output clearly with high-impact readability, engaging formatting, and relevant emojis where appropriate.
+3. Ensure the response is directly usable by downstream workflow actions (e.g. Google Sheets, Instagram DM, Email, Slack).`;
+
   return {
-    generatedInstruction: prompt,
+    generatedInstruction: synthesizedPrompt,
+    customPrompt: synthesizedPrompt,
+    prompt: synthesizedPrompt,
+    body: synthesizedPrompt,
     suggestedTemperature: 0.2,
     suggestedModel: 'gemini-1.5-flash'
   };

@@ -17,6 +17,7 @@ import WebhookGuideModal from '@/components/builder/WebhookGuideModal';
 import AiLatencyBenchmarkModal from './AiLatencyBenchmarkModal';
 import AiRadahnPromptModal from './AiRadahnPromptModal';
 import AiRadahnReplicaModal from './AiRadahnReplicaModal';
+import { getPromptExamples } from '@/lib/ai-radahn/brain';
 import { testNodeAction, verifyAiKeyAction } from '@/actions/testNode';
 import { getWebhookPayloadHistory, simulateInstagramDM, simulateStorageUpload } from '@/actions/workflows';
 import { getRecentBookings } from '@/actions/bookings';
@@ -2732,28 +2733,28 @@ function watchFolderForNewFiles() {
                   setAiKeyStatus(null);
                 }}
                 options={[
-                  { value: 'native', label: 'Automatix AI Engine (Built-in • Default)' },
-                  { value: 'gemini', label: 'Google Gemini (BYOK)' },
-                  { value: 'openai', label: 'OpenAI ChatGPT (BYOK)' },
-                  { value: 'claude', label: 'Anthropic Claude (BYOK)' },
+                  { value: 'native', label: 'AI Radahn Vision Encoder (Central Key Vault)' },
+                  { value: 'gemini', label: 'Google Gemini (BYOK Direct)' },
+                  { value: 'openai', label: 'OpenAI ChatGPT (BYOK Direct)' },
+                  { value: 'claude', label: 'Anthropic Claude (BYOK Direct)' },
                   { value: 'custom', label: 'Custom OpenAI-Compatible (BYOK)' }
                 ]}
               />
             </div>
 
             {(!config.provider || config.provider === 'native') ? (
-              <div className="p-3 bg-gradient-to-r from-accent-blue/15 to-purple-500/10 border border-accent-blue/30 rounded-lg space-y-1.5">
+              <div className="p-3 bg-gradient-to-r from-purple-950/40 via-blue-950/20 to-black border border-purple-500/30 rounded-lg space-y-1.5 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-accent-blue">
-                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>Automatix AI Engine Active</span>
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
+                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
+                    <span>AI Radahn Vision Encoder Active</span>
                   </div>
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Built-in • No API Key Needed
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    Central Key Vault • Managed
                   </span>
                 </div>
                 <p className="text-[11px] text-white/70 leading-relaxed">
-                  Automated multimodal analysis and social copy synthesis built directly into Automatix. Test generations and preview steps are free and unlimited.
+                  Multimodal vision intelligence managed centrally via your AI Radahn settings. Native execution with automated model selection and prompt synthesis.
                 </p>
               </div>
             ) : (
@@ -3017,7 +3018,8 @@ function watchFolderForNewFiles() {
                     setAiRadahnContext({ 
                       task: config.task || '', 
                       tone: config.tone || '', 
-                      initialPrompt: config.customPrompt || '' 
+                      initialPrompt: config.customPrompt || '',
+                      mediaType: detectedCategory || 'video'
                     });
                     setAiRadahnModalOpen(true);
                   }}
@@ -3035,15 +3037,46 @@ function watchFolderForNewFiles() {
                 onChange={(val) => handleChange('customPrompt', sanitizeAndInspectPrompt(val))} 
                 variables={variableGroups} 
               />
-              <div className="mt-1.5 flex items-center justify-between text-[11px] text-text-tertiary gap-2" title="Provide any custom goals, campaign guidelines, or audience focus for the AI">
-                <span className="truncate pr-2 flex items-center gap-1.5 min-w-0" title="Provide any custom goals, campaign guidelines, or audience focus for the AI">
-                  <Lightbulb className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                  <span className="truncate">Provide any custom goals, campaign guidelines, or audience focus</span>
-                </span>
-                <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1 flex-shrink-0" title="Model accepts plain English text instructions and variables">
-                  <CheckCircle2 className="w-2.5 h-2.5 flex-shrink-0 text-emerald-400" /> Plain Text Ready
-                </span>
-              </div>
+
+              {/* Dynamic 3-4 Quick Example Pills */}
+              {(() => {
+                const examples = getPromptExamples({
+                  category: detectedCategory,
+                  task: config.task || 'generate_caption',
+                  tone: config.tone || 'engaging'
+                });
+
+                return (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] text-text-tertiary">
+                      <span className="flex items-center gap-1 font-semibold text-purple-300">
+                        <Sparkles className="w-3 h-3 text-purple-400" />
+                        <span>Example Prompts ({detectedCategory.toUpperCase()}):</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> Plain Text Ready
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {examples.map((ex, exIdx) => (
+                        <button
+                          key={exIdx}
+                          type="button"
+                          onClick={() => {
+                            handleChange('customPrompt', ex.prompt);
+                            toast.success(`Applied "${ex.label}" template`);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-zinc-900/90 hover:bg-purple-950/40 text-text-secondary hover:text-purple-200 border border-white/10 hover:border-purple-500/30 text-[11px] transition-all cursor-pointer truncate max-w-[260px] text-left"
+                          title={ex.prompt}
+                        >
+                          {ex.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Interactive Live AI Preview & Test Generator */}
@@ -5674,8 +5707,8 @@ function watchFolderForNewFiles() {
               if (result.htmlBody || (result.body && (result.body.includes('<div') || result.body.includes('<p>')))) {
                 updates.bodyType = 'html';
               }
-            } else if (aiRadahnModalType === 'ai_prompt') {
-              updates.customPrompt = result.customPrompt || result.prompt || result.body || '';
+            } else if (aiRadahnModalType === 'ai_prompt' || aiRadahnModalType === 'vision_prompt') {
+              updates.customPrompt = result.customPrompt || result.generatedInstruction || result.prompt || result.body || (typeof result === 'string' ? result : '');
             } else if (aiRadahnModalType === 'code_js') {
               updates.code = result.code || result.body || '';
               if (result.inputData && !currentConfig.inputData) updates.inputData = result.inputData;
