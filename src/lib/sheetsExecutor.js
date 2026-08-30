@@ -41,11 +41,47 @@ export async function executeGoogleSheetsAction({ config, accessToken, resolveVa
     }
   }
 
+  // Auto-extend Google Sheet Headers if new custom fields were added in Automatix configuration!
+  if (['WRITE', 'UPDATE'].includes(actionType) && Array.isArray(config.rowDataMapping) && config.rowDataMapping.length > 0) {
+    const missingHeaders = [];
+    config.rowDataMapping.forEach(m => {
+      const fieldName = (m.key || '').trim();
+      if (fieldName && !headers.some(h => (h || '').trim().toLowerCase() === fieldName.toLowerCase())) {
+        missingHeaders.push(fieldName);
+      }
+    });
+
+    if (missingHeaders.length > 0) {
+      const newHeaders = [...headers, ...missingHeaders];
+      // Update Row 1 in Google Sheets with the extended headers right after the last column
+      try {
+        const updateHeaderRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(targetSheetName)}!1:1?valueInputOption=USER_ENTERED`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            range: `${targetSheetName}!1:1`,
+            majorDimension: 'ROWS',
+            values: [newHeaders]
+          })
+        });
+
+        if (updateHeaderRes.ok) {
+          headers = newHeaders;
+        }
+      } catch (err) {
+        console.warn('Could not auto-append headers to Google Sheets:', err);
+      }
+    }
+  }
+
   // 2. Build rowToInsert from rowDataMapping or rowValues
   const rowToInsert = new Array(headers.length).fill('');
   if (Array.isArray(config.rowDataMapping) && config.rowDataMapping.length > 0) {
     config.rowDataMapping.forEach(m => {
-      const hIndex = headers.findIndex(h => h.trim() === m.key?.trim());
+      const hIndex = headers.findIndex(h => (h || '').trim().toLowerCase() === (m.key || '').trim().toLowerCase());
       if (hIndex !== -1) {
         const resolvedVal = resolveVars(m.value !== undefined && m.value !== null ? m.value : '');
         rowToInsert[hIndex] = cleanValueForSheets(resolvedVal, parseValues);

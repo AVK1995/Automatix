@@ -4484,6 +4484,17 @@ function watchFolderForNewFiles() {
                     </div>
                   ))}
                   
+                  {config.rowDataMapping && config.rowDataMapping.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleAddMapping}
+                      className="w-full py-2 rounded-lg bg-accent-blue/10 hover:bg-accent-blue/20 border border-dashed border-accent-blue/30 text-accent-blue text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer mt-2"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Column / Field (Appends to Sheet)</span>
+                    </button>
+                  )}
+                  
                   {(!config.rowDataMapping || config.rowDataMapping.length === 0) && (
                     <div className="text-[11px] text-text-tertiary text-center p-4 border border-dashed border-white/10 rounded-md space-y-2">
                       <p>No columns mapped yet. Select a Worksheet Tab or click below:</p>

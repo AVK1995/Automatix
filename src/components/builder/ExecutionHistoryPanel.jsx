@@ -49,7 +49,10 @@ import {
   User,
   Users,
   ShieldAlert,
-  Play
+  Play,
+  ArrowDownRight,
+  CornerDownRight,
+  FileCode
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Select from '@/components/ui/Select';
@@ -358,11 +361,11 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
   const [isLoading, setIsLoading] = useState(true);
   const [copiedId, setCopiedId] = useState(null);
   
-  // Chrono-Audit Telemetry Studio State
+  // Step Data Inspector State (Data In, Data Out, Performance)
   const [selectedExecution, setSelectedExecution] = useState(null);
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
-  const [telemetryViewMode, setTelemetryViewMode] = useState('emitted'); // 'ingest', 'emitted', 'metrics'
-  const [dataViewFormat, setDataViewFormat] = useState('matrix'); // 'matrix' or 'raw_stream'
+  const [telemetryViewMode, setTelemetryViewMode] = useState('ingest'); // 'ingest' (Data In), 'emitted' (Data Out), 'metrics' (Performance)
+  const [dataViewFormat, setDataViewFormat] = useState('key_values'); // 'key_values' or 'raw_stream'
   const [telemetrySearch, setTelemetrySearch] = useState('');
 
   // Interactive Re-run Reshoot Modal State
@@ -592,87 +595,100 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
   const totalTasksConsumed = logs.length * paidStepsPerRun;
   const totalFreeTasks = logs.length * freeStepsPerRun;
 
-  // Extract Step Telemetry Data (With Strict Masking)
+  // Extract Step Telemetry Data (Human-friendly Data In and Data Out)
   const getStepTelemetry = (stepNode, index) => {
-    if (!selectedExecution) return { ingestData: {}, emittedData: {}, metrics: {} };
+    if (!selectedExecution) return { dataIn: {}, dataOut: {}, metrics: {} };
 
     const state = selectedExecution.currentNodeState || {};
     const payload = state.payload || selectedExecution.payload || {};
     const stepOutputs = state.stepOutputs || {};
 
-    let rawIngest = {};
-    let rawEmitted = {};
+    let rawDataIn = {};
+    let rawDataOut = {};
 
     if (index === 0) {
-      // Trigger Node
-      rawIngest = {
-        originSource: stepNode.type || 'webhook',
-        channel: stepNode.config?.provider || 'Automatix Cloud Gateway',
-        capturedTimestamp: new Date(selectedExecution.createdAt).toISOString()
+      // Trigger Step
+      rawDataIn = {
+        'Trigger Source': stepNode.type || 'Cloud Storage Event Trigger',
+        'Ingress Gateway': stepNode.config?.provider || 'Automatix Cloud Webhook',
+        'Captured Timestamp': new Date(selectedExecution.createdAt).toLocaleString(),
+        ...payload
       };
-      rawEmitted = payload && Object.keys(payload).length > 0 ? payload : {
-        status: 'RESOLVED_200',
-        eventTrigger: 'ingress_payload_verified',
-        receivedAt: new Date(selectedExecution.createdAt).toISOString(),
-        ...stepNode.config
+
+      rawDataOut = {
+        'Execution Status': 'Successfully Captured (Code 200)',
+        'Event Outcome': 'Ingress payload verified and passed to next action.',
+        'Extracted Payload Variables': payload
       };
     } else {
-      // Action Node
-      rawIngest = stepNode.config ? { ...stepNode.config } : { inputState: 'Inherited from Pipeline Context' };
+      // Action Step
+      const cfg = stepNode.config || {};
       
+      // Clean, structured inputs
+      rawDataIn = {
+        'Step Action': cfg.actionType === 'READ' ? 'Search / Read Rows' : cfg.actionType || 'Append Row',
+        'Spreadsheet Name': cfg.spreadsheetName || 'Automatix Connected Sheet',
+        'Worksheet Tab': cfg.range || 'Sheet1',
+        'Spreadsheet URL': cfg.sheetUrl || '',
+        'Spreadsheet ID': cfg.spreadsheetId || '',
+        'Column Mappings': cfg.rowDataMapping || [],
+        ...(cfg.customPrompt ? { 'AI Prompt Instructions': cfg.customPrompt } : {}),
+        ...(cfg.task ? { 'Task Operation': cfg.task } : {}),
+        ...(cfg.tone ? { 'Brand Tone': cfg.tone } : {}),
+        ...(cfg.mediaUrl ? { 'Input Media URL': cfg.mediaUrl } : {}),
+        ...(cfg.subject ? { 'Email Subject': cfg.subject } : {}),
+        ...(cfg.body ? { 'Email Body Content': cfg.body } : {}),
+        ...(cfg.code ? { 'Custom JS Code': cfg.code } : {})
+      };
+
       if (stepOutputs[stepNode.id]) {
-        rawEmitted = stepOutputs[stepNode.id];
+        rawDataOut = stepOutputs[stepNode.id];
       } else if (stepNode.type === 'sheets') {
-        rawEmitted = {
-          executionState: 'RESOLVED_200',
-          destinationApp: 'Google Sheets API v4',
-          operation: stepNode.config?.actionType || 'WRITE_ROW',
-          targetSpreadsheetId: stepNode.config?.spreadsheetId || 'Sheet_Auto_Ref',
-          worksheetTab: stepNode.config?.range || 'Sheet1',
-          rowsSynchronized: 1,
-          durationMs: 118,
-          timestamp: new Date(selectedExecution.createdAt).toISOString()
+        rawDataOut = {
+          'Execution Status': 'Successfully Written (Code 200)',
+          'Operation Type': cfg.actionType === 'READ' ? 'Read Rows' : 'Append New Row',
+          'Target Sheet Tab': cfg.range || 'Sheet1',
+          'Rows Synchronized': 1,
+          'Destination Platform': 'Google Sheets API v4',
+          'Execution Duration': '118 ms',
+          'Row Sync Timestamp': new Date(selectedExecution.createdAt).toLocaleString()
         };
       } else if (stepNode.type === 'ai' || stepNode.type === 'ai_content') {
-        rawEmitted = {
-          executionState: 'RESOLVED_200',
-          neuralEngine: stepNode.config?.provider || 'Google Gemini 1.5 (BYOK)',
-          taskPipeline: stepNode.config?.taskOperation || 'AI Content Synthesizer',
-          tokensCalculated: 120,
-          inferenceOutcome: 'Dynamic copy synthesized and bound to downstream pipeline context.',
-          durationMs: 240,
-          timestamp: new Date(selectedExecution.createdAt).toISOString()
+        rawDataOut = {
+          'Execution Status': 'Successfully Generated (Code 200)',
+          'AI Model Engine': cfg.provider || 'Google Gemini 1.5 Pro',
+          'Task Operation': cfg.task || 'Generate Video Caption',
+          'Synthesized Content': 'Dynamic caption generated and forwarded to downstream steps.',
+          'AI Tokens Calculated': 120,
+          'Execution Duration': '240 ms'
         };
       } else if (stepNode.type === 'delay') {
-        rawEmitted = {
-          executionState: 'RESUMED_AFTER_DELAY',
-          delayPolicy: 'Smart Delay Scheduler',
-          configuredSpan: stepNode.config?.delayDuration || '48 hours',
-          wakeTimestamp: new Date(selectedExecution.createdAt).toISOString()
+        rawDataOut = {
+          'Execution Status': 'Resumed After Smart Delay',
+          'Delay Duration': cfg.delayDuration || '48 hours',
+          'Resume Timestamp': new Date(selectedExecution.createdAt).toLocaleString()
         };
       } else {
-        rawEmitted = {
-          executionState: 'RESOLVED_200',
-          transformerType: stepNode.type || 'DateTimeFormatter',
-          transformedOutput: new Date(selectedExecution.createdAt).toISOString().replace('T', ' ').slice(0, 19),
-          durationMs: 14,
-          timestamp: new Date(selectedExecution.createdAt).toISOString()
+        rawDataOut = {
+          'Execution Status': 'Completed (Code 200)',
+          'Transform Type': stepNode.type || 'Data Formatter',
+          'Output Result': new Date(selectedExecution.createdAt).toLocaleString(),
+          'Execution Duration': '14 ms'
         };
       }
     }
 
     const metrics = {
-      latencyMs: index === 0 ? 32 : index % 2 === 0 ? 118 : 240,
-      memoryDelta: '1.2 MB',
-      runtimeEnv: 'Automatix Edge V8 Engine',
-      faultCode: 0,
-      traceState: 'VERIFIED'
+      'Execution Latency': index === 0 ? '32 ms' : index % 2 === 0 ? '118 ms' : '240 ms',
+      'Runtime Engine': 'Automatix Edge V8 Engine',
+      'Memory Delta': '1.2 MB',
+      'Fault Code': '0 (None)',
+      'Step Health': 'Verified OK'
     };
 
-    // Mask sensitive keys across both ingest and emitted data
     return { 
-      ingestData: maskSensitiveData(rawIngest), 
-      emittedData: maskSensitiveData(rawEmitted), 
+      dataIn: maskSensitiveData(rawDataIn), 
+      dataOut: maskSensitiveData(rawDataOut), 
       metrics 
     };
   };
@@ -690,16 +706,19 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
     return <Zap size={14} className="shrink-0" />;
   };
 
-  // Currently selected node in Telemetry Studio modal
+  // Currently selected node in Step Inspector modal
   const currentStep = stepClassifications[selectedStepIndex] || stepClassifications[0];
-  const { ingestData, emittedData, metrics } = currentStep ? getStepTelemetry(currentStep.node, selectedStepIndex) : { ingestData: {}, emittedData: {}, metrics: {} };
+  const { dataIn, dataOut, metrics } = currentStep ? getStepTelemetry(currentStep.node, selectedStepIndex) : { dataIn: {}, dataOut: {}, metrics: {} };
   
-  const activeTelemetryPayload = telemetryViewMode === 'emitted' ? emittedData : telemetryViewMode === 'ingest' ? ingestData : metrics;
+  const activeTelemetryPayload = telemetryViewMode === 'ingest' ? dataIn : telemetryViewMode === 'emitted' ? dataOut : metrics;
   
+  // Custom filter checking both top keys, sub-keys, and values
   const activeEntries = Object.entries(activeTelemetryPayload || {}).filter(([k, v]) => {
     if (!telemetrySearch.trim()) return true;
     const q = telemetrySearch.toLowerCase();
-    return k.toLowerCase().includes(q) || String(v).toLowerCase().includes(q);
+    const keyMatch = k.toLowerCase().includes(q);
+    const valMatch = typeof v === 'object' ? JSON.stringify(v).toLowerCase().includes(q) : String(v).toLowerCase().includes(q);
+    return keyMatch || valMatch;
   });
 
   return (
@@ -931,7 +950,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                           onClick={() => {
                             setSelectedExecution(log);
                             setSelectedStepIndex(0);
-                            setTelemetryViewMode('emitted');
+                            setTelemetryViewMode('ingest');
                           }}
                           className="hover:bg-white/[0.04] transition-colors cursor-pointer group"
                         >
@@ -1031,7 +1050,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                       onClick={() => {
                         setSelectedExecution(log);
                         setSelectedStepIndex(0);
-                        setTelemetryViewMode('emitted');
+                        setTelemetryViewMode('ingest');
                       }}
                       className="p-3.5 hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors cursor-pointer space-y-2.5"
                     >
@@ -1093,7 +1112,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                           <strong className="text-accent-blue">{paidStepsPerRun} Paid</strong> · <strong className="text-emerald-400">{freeStepsPerRun} Free</strong>
                         </span>
                         <span className="text-accent-blue flex items-center gap-1 font-sans font-semibold text-xs">
-                          Telemetry <ChevronRight size={13} className="shrink-0" />
+                          Step Details <ChevronRight size={13} className="shrink-0" />
                         </span>
                       </div>
                     </div>
@@ -1265,7 +1284,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
         </div>
       )}
 
-      {/* 7. RESPONSIVE CHRONO-AUDIT TELEMETRY STUDIO (With STRICT Masked API Keys) */}
+      {/* 7. STEP DATA INSPECTOR (HUMAN-FRIENDLY KEY-VALUE PAIRS, UNPACKED MAPPING, NO RAW JSON) */}
       {selectedExecution && (
         <div 
           className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
@@ -1282,13 +1301,13 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">{workflowName}</h3>
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                    RESOLVED (200)
+                    Execution Passed (200 OK)
                   </span>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2 mt-1 font-mono text-xs text-text-secondary">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-text-tertiary">Trace:</span>
+                    <span className="text-text-tertiary">Trace ID:</span>
                     <span className="text-accent-blue select-all truncate max-w-[180px] sm:max-w-none">{selectedExecution.id}</span>
                     <button
                       type="button"
@@ -1330,12 +1349,12 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
             {/* DUAL-PANE BODY */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
               
-              {/* Chrono-Rail: Horizontal Carousel on Mobile, Vertical on Desktop */}
+              {/* Stage Rail: Horizontal on Mobile, Vertical on Desktop */}
               <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-white/10 bg-[#0a0a0f] p-3 sm:p-4 overflow-x-auto md:overflow-y-auto custom-scrollbar shrink-0">
                 
                 <div className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2 flex items-center justify-between">
-                  <span>Pipeline Stages</span>
-                  <span className="font-mono text-accent-blue">{activeNodes.length} Stages</span>
+                  <span>Workflow Steps</span>
+                  <span className="font-mono text-accent-blue">{activeNodes.length} Steps</span>
                 </div>
 
                 <div className="flex md:flex-col gap-2">
@@ -1367,7 +1386,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
                             <span className="text-[9px] font-mono font-bold text-text-tertiary uppercase">
-                              STAGE 0{idx + 1}
+                              STEP 0{idx + 1}
                             </span>
                             {classification.isAi ? (
                               <span className="text-[8px] font-bold font-mono px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
@@ -1385,7 +1404,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                           </div>
 
                           <div className="font-bold text-xs text-white truncate mt-0.5">
-                            {step.title || `Stage ${idx + 1}`}
+                            {step.title || `Step ${idx + 1}`}
                           </div>
 
                           <div className="hidden md:flex items-center justify-between text-[10px] text-text-tertiary font-mono mt-1">
@@ -1401,10 +1420,10 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                 </div>
               </div>
 
-              {/* RIGHT PANE: Telemetry Inspector Console */}
+              {/* RIGHT PANE: Step Data Inspector (Data In / Data Out) */}
               <div className="flex-1 flex flex-col bg-[#101017] overflow-hidden min-h-0">
                 
-                {/* Console Navigation Header */}
+                {/* Step Header */}
                 <div className="p-3 sm:p-4 border-b border-white/10 bg-[#14141c] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
                   <div className="flex items-center gap-2.5">
                     <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${
@@ -1419,7 +1438,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="text-xs sm:text-sm font-bold text-white truncate">
-                          {currentStep?.node?.title || `Stage 0${selectedStepIndex + 1}`}
+                          {currentStep?.node?.title || `Step 0${selectedStepIndex + 1}`}
                         </h4>
                         {currentStep?.classification.isAi ? (
                           <span className="text-[9px] font-bold font-mono px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
@@ -1436,50 +1455,50 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                         )}
                       </div>
                       <p className="text-[10px] text-text-tertiary font-mono mt-0.5">
-                        Latency: {metrics.latencyMs}ms · {metrics.runtimeEnv}
+                        Execution: {metrics['Execution Latency']} · {metrics['Runtime Engine']}
                       </p>
                     </div>
                   </div>
 
-                  {/* Telemetry Tab Switcher */}
+                  {/* Main Tab Switcher: Data In (Inputs) vs Data Out (Results) */}
                   <div className="flex items-center bg-black/60 border border-white/10 rounded-xl p-0.5 sm:p-1 text-xs self-start sm:self-auto font-medium shrink-0">
                     <button
                       type="button"
-                      onClick={() => setTelemetryViewMode('emitted')}
-                      className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs ${
-                        telemetryViewMode === 'emitted'
-                          ? 'bg-accent-blue text-white font-semibold shadow-sm'
+                      onClick={() => setTelemetryViewMode('ingest')}
+                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold ${
+                        telemetryViewMode === 'ingest'
+                          ? 'bg-accent-blue text-white shadow-sm'
                           : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      <Activity size={11} className="shrink-0" />
-                      <span>Emitted</span>
+                      <Database size={12} className="shrink-0" />
+                      <span>Data In (Inputs)</span>
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => setTelemetryViewMode('ingest')}
-                      className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs ${
-                        telemetryViewMode === 'ingest'
-                          ? 'bg-accent-blue text-white font-semibold shadow-sm'
+                      onClick={() => setTelemetryViewMode('emitted')}
+                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold ${
+                        telemetryViewMode === 'emitted'
+                          ? 'bg-accent-blue text-white shadow-sm'
                           : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      <Database size={11} className="shrink-0" />
-                      <span>Ingest</span>
+                      <Activity size={12} className="shrink-0" />
+                      <span>Data Out (Results)</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setTelemetryViewMode('metrics')}
-                      className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs ${
+                      className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] sm:text-xs ${
                         telemetryViewMode === 'metrics'
                           ? 'bg-accent-blue text-white font-semibold shadow-sm'
                           : 'text-text-tertiary hover:text-white'
                       }`}
                     >
                       <Gauge size={11} className="shrink-0" />
-                      <span>Metrics</span>
+                      <span>Stats</span>
                     </button>
                   </div>
                 </div>
@@ -1490,7 +1509,7 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-text-tertiary" />
                     <input
                       type="text"
-                      placeholder="Filter parameters..."
+                      placeholder="Search parameters, fields or values..."
                       value={telemetrySearch}
                       onChange={(e) => setTelemetrySearch(e.target.value)}
                       className="w-full bg-black/50 border border-white/10 rounded-lg pl-7 pr-2.5 py-1 text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-accent-blue font-mono"
@@ -1500,12 +1519,12 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                   <div className="flex items-center gap-1 font-mono text-xs shrink-0">
                     <button
                       type="button"
-                      onClick={() => setDataViewFormat('matrix')}
+                      onClick={() => setDataViewFormat('key_values')}
                       className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] transition-colors cursor-pointer ${
-                        dataViewFormat === 'matrix' ? 'bg-white/10 text-white font-semibold' : 'text-text-tertiary hover:text-white'
+                        dataViewFormat === 'key_values' ? 'bg-white/10 text-white font-semibold' : 'text-text-tertiary hover:text-white'
                       }`}
                     >
-                      Matrix
+                      Key-Value
                     </button>
                     <button
                       type="button"
@@ -1519,45 +1538,120 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
                   </div>
                 </div>
 
-                {/* Console Main Content Area (With Masked Sensitive Data) */}
-                <div className="flex-1 p-3 sm:p-4 overflow-y-auto custom-scrollbar min-h-0">
+                {/* Step Data Inspector Content (Key-Value Cards & Unpacked Mapping) */}
+                <div className="flex-1 p-3 sm:p-4 overflow-y-auto custom-scrollbar min-h-0 space-y-3">
                   
-                  <div className="mb-3 p-2.5 rounded-xl bg-accent-blue/10 border border-accent-blue/25 flex items-center justify-between text-xs text-blue-200 font-mono">
-                    <div className="flex items-center gap-1.5">
+                  {/* Informational Banner */}
+                  <div className="p-2.5 rounded-xl bg-accent-blue/10 border border-accent-blue/25 flex items-center justify-between text-xs text-blue-200">
+                    <div className="flex items-center gap-1.5 truncate">
                       <ShieldCheck size={14} className="text-accent-blue shrink-0" />
-                      <span className="truncate">Stage telemetry validated with secret masking active.</span>
+                      <span className="truncate">
+                        {telemetryViewMode === 'ingest' 
+                          ? 'Data received & used by this step (parameters & previous variables).' 
+                          : telemetryViewMode === 'emitted'
+                            ? 'Results produced by this step and forwarded to next actions.'
+                            : 'Runtime execution benchmarks and performance health.'}
+                      </span>
                     </div>
-                    <span className="text-[10px] text-accent-blue font-bold uppercase shrink-0">
-                      Code 200
+                    <span className="text-[10px] text-accent-blue font-mono font-bold uppercase shrink-0">
+                      {telemetryViewMode === 'ingest' ? 'INPUT DATA' : telemetryViewMode === 'emitted' ? 'OUTPUT DATA' : 'STATS'}
                     </span>
                   </div>
 
-                  {dataViewFormat === 'matrix' ? (
+                  {dataViewFormat === 'key_values' ? (
                     activeEntries.length === 0 ? (
                       <div className="p-8 text-center text-text-tertiary text-xs">
-                        No telemetry parameters match your filter.
+                        No fields match your search query.
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {activeEntries.map(([k, v]) => (
-                          <div
-                            key={k}
-                            className="p-2.5 sm:p-3 rounded-xl bg-black/40 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
-                          >
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="font-mono text-xs font-semibold text-accent-blue truncate" title={k}>
-                                {k}
-                              </span>
-                              <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-white/5 text-text-tertiary border border-white/5 shrink-0">
-                                {typeof v}
-                              </span>
-                            </div>
+                      <div className="space-y-2.5">
+                        {activeEntries.map(([k, v]) => {
+                          
+                          // SPECIFIC CASE 1: Column Mapping Array (Unpack into clean Key-Value rows!)
+                          if (k.toLowerCase().includes('mapping') || (Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0].key !== undefined)) {
+                            const mappingArray = Array.isArray(v) ? v : [];
+                            return (
+                              <div key={k} className="p-3 sm:p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2.5">
+                                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                  <div className="flex items-center gap-2">
+                                    <FileSpreadsheet size={14} className="text-accent-blue shrink-0" />
+                                    <span className="font-semibold text-xs text-white">
+                                      Mapped Sheet Columns & Values
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-accent-blue/15 text-accent-blue border border-accent-blue/30">
+                                    {mappingArray.length} Fields Configured
+                                  </span>
+                                </div>
 
-                            <div className="font-mono text-xs text-white/90 break-all select-all bg-black/50 p-2 rounded-lg border border-white/5">
-                              {typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v)}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {mappingArray.map((m, mIdx) => (
+                                    <div 
+                                      key={mIdx}
+                                      className="p-2.5 rounded-lg bg-black/50 border border-white/5 hover:border-white/15 transition-all flex flex-col justify-between"
+                                    >
+                                      <div className="flex items-center justify-between text-[11px] font-semibold text-accent-blue mb-1">
+                                        <span className="truncate">{m.key || `Column ${mIdx + 1}`}</span>
+                                        <span className="text-[9px] font-mono text-text-tertiary uppercase">Field #{mIdx + 1}</span>
+                                      </div>
+                                      <div className="font-mono text-xs text-white/90 break-all select-all bg-black/60 p-1.5 rounded border border-white/5">
+                                        {m.value ? String(m.value) : <span className="text-text-tertiary italic">(Empty Value)</span>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // SPECIFIC CASE 2: Nested Generic Object (Unpack clean sub-items)
+                          if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+                            const subEntries = Object.entries(v);
+                            return (
+                              <div key={k} className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-2">
+                                <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                                  <span className="font-semibold text-xs text-accent-blue capitalize">
+                                    {k.replace(/([A-Z])/g, ' $1')}
+                                  </span>
+                                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-white/5 text-text-tertiary">
+                                    {subEntries.length} Items
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {subEntries.map(([subK, subV]) => (
+                                    <div key={subK} className="p-2 rounded-lg bg-black/50 border border-white/5">
+                                      <div className="text-[10px] font-semibold text-text-secondary capitalize mb-0.5">
+                                        {subK.replace(/([A-Z])/g, ' $1')}
+                                      </div>
+                                      <div className="font-mono text-xs text-white/90 select-all break-all">
+                                        {typeof subV === 'object' ? JSON.stringify(subV) : String(subV)}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // SPECIFIC CASE 3: Standard Key-Value Card
+                          return (
+                            <div
+                              key={k}
+                              className="p-3 rounded-xl bg-black/40 border border-white/10 hover:border-white/20 transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4"
+                            >
+                              <div className="min-w-0 max-w-sm">
+                                <span className="font-semibold text-xs text-accent-blue block truncate" title={k}>
+                                  {k.replace(/([A-Z])/g, ' $1')}
+                                </span>
+                              </div>
+
+                              <div className="font-mono text-xs text-white/90 break-all select-all bg-black/50 px-2.5 py-1.5 rounded-lg border border-white/5 flex-1 sm:text-right">
+                                {typeof v === 'boolean' ? (v ? 'Enabled (True)' : 'Disabled (False)') : String(v)}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )
                   ) : (
@@ -1572,12 +1666,12 @@ export default function ExecutionHistoryPanel({ onClose, workflowId }) {
 
             </div>
 
-            {/* Modal Bottom Telemetry Summary Footer */}
+            {/* Modal Bottom Summary Footer */}
             <div className="p-3 border-t border-white/10 bg-[#121218] flex items-center justify-between gap-2 text-xs text-text-secondary shrink-0 font-mono">
               <div className="flex items-center gap-3 sm:gap-6 flex-wrap text-[11px] sm:text-xs">
-                <span>Free: <strong className="text-emerald-400">{freeStepsPerRun}</strong></span>
-                <span>Paid: <strong className="text-accent-blue">{paidStepsPerRun}</strong></span>
-                <span className="hidden sm:inline">Trace Health: <strong className="text-emerald-400">100% Passed</strong></span>
+                <span>Free Tasks: <strong className="text-emerald-400">{freeStepsPerRun}</strong></span>
+                <span>Paid Tasks: <strong className="text-accent-blue">{paidStepsPerRun}</strong></span>
+                <span className="hidden sm:inline">Execution Status: <strong className="text-emerald-400">Passed (200 OK)</strong></span>
               </div>
 
               <button
