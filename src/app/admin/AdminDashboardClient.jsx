@@ -562,7 +562,7 @@ export default function AdminDashboardClient({
                       className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-colors flex items-center gap-1.5"
                     >
                       {processingId === req.id ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                      Approve & Apply
+                      Grant Access & Activate Plan
                     </button>
                   </div>
                 </div>

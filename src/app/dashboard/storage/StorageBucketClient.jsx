@@ -23,7 +23,7 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
   const docUsedMB = files.filter(f => f.type === 'DOCUMENT').reduce((sum, f) => sum + f.sizeMB, 0);
   const totalUsedMB = videoUsedMB + imageUsedMB + docUsedMB;
 
-  const storagePercentage = Math.min((totalUsedMB / (user.maxStorageMB || 50)) * 100, 100);
+  const storagePercentage = Math.min((totalUsedMB / (user?.maxStorageMB || 50)) * 100, 100);
 
   const filteredFiles = files.filter(f => {
     if (activeFilter === 'ALL') return true;
@@ -75,233 +75,212 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-6 w-full">
-        
-        {/* Left Side: Files List */}
-        <div className="flex-1 bg-[#111] border border-border-subtle rounded-xl p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
-            <div>
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <HardDrive size={18} className="text-accent-blue" />
-                Bucket Assets
-              </h2>
-              <span className="text-xs text-text-secondary">{files.length} Total Items</span>
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/5 text-xs">
-              <button
-                onClick={() => setActiveFilter('ALL')}
-                className={`px-3 py-1 rounded-md transition-colors ${
-                  activeFilter === 'ALL' ? 'bg-accent-blue text-white font-medium' : 'text-text-secondary hover:text-white'
-                }`}
-              >
-                All ({files.length})
-              </button>
-              <button
-                onClick={() => setActiveFilter('IMAGE')}
-                className={`px-3 py-1 rounded-md transition-colors ${
-                  activeFilter === 'IMAGE' ? 'bg-accent-blue text-white font-medium' : 'text-text-secondary hover:text-white'
-                }`}
-              >
-                Images ({imageCount})
-              </button>
-              <button
-                onClick={() => setActiveFilter('VIDEO')}
-                className={`px-3 py-1 rounded-md transition-colors ${
-                  activeFilter === 'VIDEO' ? 'bg-accent-blue text-white font-medium' : 'text-text-secondary hover:text-white'
-                }`}
-              >
-                Videos ({videoCount})
-              </button>
-              <button
-                onClick={() => setActiveFilter('DOCUMENT')}
-                className={`px-3 py-1 rounded-md transition-colors ${
-                  activeFilter === 'DOCUMENT' ? 'bg-accent-blue text-white font-medium' : 'text-text-secondary hover:text-white'
-                }`}
-              >
-                Docs ({docCount})
-              </button>
-            </div>
-          </div>
-
-          {filteredFiles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-white/5 rounded-xl">
-              <Database size={32} className="text-text-tertiary mb-3" />
-              <p className="text-sm text-text-secondary">No files in this category.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-border-subtle">
-                    <th className="py-3 px-4 text-[10px] uppercase font-semibold text-text-secondary">Asset Name</th>
-                    <th className="py-3 px-4 text-[10px] uppercase font-semibold text-text-secondary">Type</th>
-                    <th className="py-3 px-4 text-[10px] uppercase font-semibold text-text-secondary">Size</th>
-                    <th className="py-3 px-4 text-[10px] uppercase font-semibold text-text-secondary">Uploaded</th>
-                    <th className="py-3 px-4 text-[10px] uppercase font-semibold text-text-secondary text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {filteredFiles.map(file => {
-                    const rawName = file.fileName || file.url.split('/').pop() || 'Asset File';
-                    const isWorkflowLocked = !!(file.nodeId && file.nodeId.startsWith('wf_trigger_'));
-
-                    return (
-                      <tr key={file.id} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center shrink-0">
-                              {getFileIcon(file.type)}
-                            </div>
-                            <div className="min-w-0 max-w-[200px] sm:max-w-xs">
-                              <a 
-                                href={file.url} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                className="text-sm text-white font-medium hover:underline hover:text-accent-blue truncate block"
-                              >
-                                {decodeURIComponent(rawName)}
-                              </a>
-                              {isWorkflowLocked && (
-                                <span className="inline-flex items-center gap-1 text-[9px] font-mono text-purple-400 font-semibold mt-0.5">
-                                  <Lock size={9} className="shrink-0" />
-                                  <span>Workflow Locked Trigger</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/5 text-text-secondary border border-white/10">
-                              {file.type}
-                            </span>
-                            {isWorkflowLocked && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-purple-500/15 text-purple-300 border border-purple-500/30 flex items-center gap-1">
-                                <Lock size={8} /> LOCKED
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-xs text-text-secondary">
-                          {file.sizeMB < 1 ? (file.sizeMB * 1024).toFixed(0) + ' KB' : file.sizeMB.toFixed(1) + ' MB'}
-                        </td>
-                        <td className="py-3 px-4 text-xs text-text-secondary">
-                          {new Date(file.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {isWorkflowLocked ? (
-                            <button
-                              type="button"
-                              disabled
-                              title="Locked by active workflow trigger. Updates automatically on new uploads."
-                              className="p-1.5 text-purple-400/60 bg-purple-500/10 rounded cursor-not-allowed border border-purple-500/20"
-                            >
-                              <Lock size={14} />
-                            </button>
-                          ) : (
-                            <button 
-                              onClick={() => promptDelete(file)}
-                              disabled={deletingId === file.id}
-                              className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-red-400/10 rounded transition-colors disabled:opacity-50 cursor-pointer"
-                            >
-                              {deletingId === file.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Right Side: Storage Usage & Limits Breakdown */}
-        <div className="w-full lg:w-80 flex flex-col gap-6">
-          
-          <div className="bg-[#111] border border-border-subtle rounded-xl p-6 relative overflow-hidden">
-            <h3 className="text-sm font-semibold text-white mb-6">Storage Allocation</h3>
-            
-            <div className="flex justify-center mb-6">
-              <div className="relative w-40 h-40 flex items-center justify-center">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="12" />
-                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#3B82F6" strokeWidth="12"
-                    strokeDasharray="251.2"
-                    strokeDashoffset={251.2 - (251.2 * storagePercentage) / 100}
-                    strokeLinecap="round"
-                    className="transition-all duration-1000 ease-out"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <Database size={18} className="text-text-secondary mb-1" />
-                  <span className="text-[10px] font-bold text-white">{totalUsedMB > 1000 ? (totalUsedMB/1024).toFixed(1) + ' GB' : totalUsedMB.toFixed(1) + ' MB'}</span>
-                  <span className="text-[9px] text-text-tertiary">of {user.maxStorageMB > 1000 ? (user.maxStorageMB/1024).toFixed(1) + ' GB' : (user.maxStorageMB || 50) + ' MB'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {/* Images */}
-              <div className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/[0.02]">
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 rounded-md bg-emerald-500/20 text-emerald-400"><ImageIcon size={14} /></div>
-                  <div>
-                    <div className="text-xs font-medium text-white">Images</div>
-                    <div className="text-[10px] text-text-tertiary">{imageCount} of {user.maxImages || 10} ({user.maxImageMB || 2}MB max)</div>
-                  </div>
-                </div>
-                <div className="text-xs text-text-secondary font-medium">{imageUsedMB.toFixed(1)} MB</div>
-              </div>
-
-              {/* Videos */}
-              <div className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/[0.02]">
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 rounded-md bg-accent-blue/20 text-accent-blue"><Film size={14} /></div>
-                  <div>
-                    <div className="text-xs font-medium text-white">Videos</div>
-                    <div className="text-[10px] text-text-tertiary">{videoCount} of {user.maxVideos || 1} ({user.maxVideoMB || 25}MB max)</div>
-                  </div>
-                </div>
-                <div className="text-xs text-text-secondary font-medium">{videoUsedMB.toFixed(1)} MB</div>
-              </div>
-
-              {/* Documents */}
-              <div className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/[0.02]">
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 rounded-md bg-amber-500/20 text-amber-400"><FileText size={14} /></div>
-                  <div>
-                    <div className="text-xs font-medium text-white">Documents</div>
-                    <div className="text-[10px] text-text-tertiary">{docCount} of {user.maxDocs || 10} ({user.maxDocMB || 10}MB max)</div>
-                  </div>
-                </div>
-                <div className="text-xs text-text-secondary font-medium">{docUsedMB.toFixed(1)} MB</div>
-              </div>
-            </div>
-          </div>
-
+      {/* Row 1: Storage Allocation & Category Cards */}
+      <div className="bg-[#111] border border-border-subtle rounded-xl p-5 space-y-4 shadow-lg w-full">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <Database size={16} className="text-accent-blue" />
+            Storage Allocation
+          </h3>
           {!isAdminView && (
-            <div className="bg-gradient-to-br from-accent-blue/20 via-black to-accent-violet/20 border border-white/10 rounded-xl p-6 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform">
-                 <Database size={80} className="text-white" />
-              </div>
-              <h3 className="text-base font-bold text-white mb-2 relative z-10">Expand Storage</h3>
-              <p className="text-xs text-text-secondary mb-5 relative z-10">Upgrade your bucket to instantly unlock more storage and higher upload limits.</p>
-              
-              <button 
-                onClick={() => window.dispatchEvent(new CustomEvent('open-quota-modal'))}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-white text-black text-xs font-bold hover:bg-white/90 transition-colors relative z-10"
-              >
-                Upgrade Storage Quota <ArrowUpRight size={14} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-plan-modal', { detail: { tab: 'storage' } }))}
+              className="text-xs text-accent-blue hover:text-sky-300 font-semibold flex items-center gap-1 cursor-pointer"
+            >
+              Expand Storage <ArrowUpRight size={13} />
+            </button>
           )}
-
         </div>
 
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          {/* Donut Chart */}
+          <div className="relative w-32 h-32 shrink-0 flex items-center justify-center">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="38" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+              <circle 
+                cx="50" 
+                cy="50" 
+                r="38" 
+                fill="transparent" 
+                stroke="#3B82F6" 
+                strokeWidth="10"
+                strokeDasharray="238.7"
+                strokeDashoffset={238.7 - (238.7 * storagePercentage) / 100}
+                strokeLinecap="round"
+                className="transition-all duration-1000 ease-out"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1">
+              <HardDrive size={15} className="text-accent-blue mb-0.5" />
+              <span className="text-[11px] font-bold text-white leading-none">
+                {totalUsedMB > 1000 ? (totalUsedMB/1024).toFixed(1) + ' GB' : totalUsedMB.toFixed(1) + ' MB'}
+              </span>
+              <span className="text-[9px] text-text-tertiary mt-0.5">
+                of {user?.maxStorageMB > 1000 ? (user.maxStorageMB/1024).toFixed(1) + ' GB' : (user?.maxStorageMB || 50) + ' MB'}
+              </span>
+            </div>
+          </div>
+
+          {/* 3 Horizontally Aligned Category Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 w-full">
+            {/* Images */}
+            <div className="p-3 rounded-xl border border-white/5 bg-white/[0.02] flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0">
+                  <ImageIcon size={15} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white truncate">Images</div>
+                  <div className="text-[10px] text-text-tertiary truncate">{imageCount} of {user?.maxImages || 10} ({user?.maxImageMB || 2}MB max)</div>
+                </div>
+              </div>
+              <div className="text-xs font-semibold text-white font-mono shrink-0">{imageUsedMB.toFixed(1)} MB</div>
+            </div>
+
+            {/* Videos */}
+            <div className="p-3 rounded-xl border border-white/5 bg-white/[0.02] flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-lg bg-accent-blue/20 text-accent-blue shrink-0">
+                  <Film size={15} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white truncate">Videos</div>
+                  <div className="text-[10px] text-text-tertiary truncate">{videoCount} of {user?.maxVideos || 1} ({user?.maxVideoMB || 25}MB max)</div>
+                </div>
+              </div>
+              <div className="text-xs font-semibold text-white font-mono shrink-0">{videoUsedMB.toFixed(1)} MB</div>
+            </div>
+
+            {/* Documents */}
+            <div className="p-3 rounded-xl border border-white/5 bg-white/[0.02] flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
+                  <FileText size={15} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white truncate">Documents</div>
+                  <div className="text-[10px] text-text-tertiary truncate">{docCount} of {user?.maxDocs || 10} ({user?.maxDocMB || 10}MB max)</div>
+                </div>
+              </div>
+              <div className="text-xs font-semibold text-white font-mono shrink-0">{docUsedMB.toFixed(1)} MB</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: Full-Width Bucket Assets Table */}
+      <div className="bg-[#111] border border-border-subtle rounded-xl p-5 space-y-4 shadow-lg w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
+          <div>
+            <h2 className="text-base font-semibold text-white flex items-center gap-2">
+              <HardDrive size={17} className="text-accent-blue" />
+              Bucket Assets
+            </h2>
+            <span className="text-xs text-text-secondary">{files.length} Total Items</span>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/5 text-xs">
+            <button
+              onClick={() => setActiveFilter('ALL')}
+              className={`px-3 py-1 rounded-md transition-colors font-medium cursor-pointer ${
+                activeFilter === 'ALL' ? 'bg-accent-blue text-white' : 'text-text-secondary hover:text-white'
+              }`}
+            >
+              All ({files.length})
+            </button>
+            <button
+              onClick={() => setActiveFilter('IMAGE')}
+              className={`px-3 py-1 rounded-md transition-colors font-medium cursor-pointer ${
+                activeFilter === 'IMAGE' ? 'bg-accent-blue text-white' : 'text-text-secondary hover:text-white'
+              }`}
+            >
+              Images ({imageCount})
+            </button>
+            <button
+              onClick={() => setActiveFilter('VIDEO')}
+              className={`px-3 py-1 rounded-md transition-colors font-medium cursor-pointer ${
+                activeFilter === 'VIDEO' ? 'bg-accent-blue text-white' : 'text-text-secondary hover:text-white'
+              }`}
+            >
+              Videos ({videoCount})
+            </button>
+            <button
+              onClick={() => setActiveFilter('DOCUMENT')}
+              className={`px-3 py-1 rounded-md transition-colors font-medium cursor-pointer ${
+                activeFilter === 'DOCUMENT' ? 'bg-accent-blue text-white' : 'text-text-secondary hover:text-white'
+              }`}
+            >
+              Docs ({docCount})
+            </button>
+          </div>
+        </div>
+
+        {filteredFiles.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-white/5 rounded-xl text-center space-y-2">
+            <Database size={32} className="text-text-tertiary opacity-40" />
+            <p className="text-xs text-text-secondary">No files uploaded in this category.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border-subtle text-[10px] uppercase text-text-secondary font-semibold bg-white/[0.01]">
+                  <th className="py-3 px-4 w-[40%]">Asset Name</th>
+                  <th className="py-3 px-4 w-[15%]">Type</th>
+                  <th className="py-3 px-4 w-[15%]">Size</th>
+                  <th className="py-3 px-4 w-[15%]">Uploaded</th>
+                  <th className="py-3 px-4 w-[15%] text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredFiles.map(file => {
+                  const rawName = file.fileName || file.url.split('/').pop() || 'Asset File';
+                  const isWorkflowLocked = !!(file.nodeId && file.nodeId.startsWith('wf_trigger_'));
+
+                  return (
+                    <tr key={file.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {getFileIcon(file.type)}
+                          <span className="font-medium text-white truncate max-w-[220px] sm:max-w-xs">{rawName}</span>
+                          {isWorkflowLocked && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-sky-500/10 text-sky-400 border border-sky-500/20 shrink-0 flex items-center gap-1">
+                              <Lock size={9} /> Workflow Trigger Locked
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-[10px] uppercase font-bold text-text-tertiary bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                          {file.type}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-text-secondary font-mono">
+                        {file.sizeMB.toFixed(2)} MB
+                      </td>
+                      <td className="py-3 px-4 text-text-tertiary">
+                        {new Date(file.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => promptDelete(file)}
+                          disabled={deletingId === file.id}
+                          className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center justify-center"
+                          title="Delete File"
+                        >
+                          {deletingId === file.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <ConfirmModal

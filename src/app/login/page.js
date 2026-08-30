@@ -218,6 +218,16 @@ export default function LoginPage() {
                     {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                     {loading ? 'Authenticating...' : 'Sign In'}
                   </button>
+
+                  <div className="mt-5 text-center text-xs text-text-secondary border-t border-white/5 pt-4">
+                    Don't have an account?{' '}
+                    <Link 
+                      href="/register" 
+                      className="text-white hover:text-accent-blue font-semibold transition-colors inline-block"
+                    >
+                      Get Started for Free &bull; Create Free Account
+                    </Link>
+                  </div>
                 </form>
               )}
             </div>

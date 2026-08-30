@@ -4,10 +4,28 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(req) {
   try {
-    const { name, email, password } = await req.json();
+    const { name, email, password, otp } = await req.json();
 
-    if (!name || !email || !password) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    if (!name || !email || !password || !otp) {
+      return NextResponse.json({ error: 'All fields including the 6-digit verification code are required' }, { status: 400 });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Verify OTP
+    const tokenRecord = await prisma.verificationToken.findFirst({
+      where: {
+        identifier: cleanEmail,
+        token: otp.trim()
+      }
+    });
+
+    if (!tokenRecord) {
+      return NextResponse.json({ error: 'Invalid verification code. Please check your email or request a new code.' }, { status: 400 });
+    }
+
+    if (new Date() > new Date(tokenRecord.expires)) {
+      return NextResponse.json({ error: 'Verification code has expired. Please request a new code.' }, { status: 400 });
     }
 
     const settings = await prisma.platformSettings.findFirst() || { maxUsers: 10, starterPlanEnabled: true };
@@ -20,9 +38,9 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Maximum capacity reached. Please try again later.' }, { status: 403 });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existingUser) {
-      return NextResponse.json({ error: 'User already exists.' }, { status: 400 });
+      return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 400 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -30,10 +48,16 @@ export async function POST(req) {
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: cleanEmail,
         password: hashedPassword,
         role: 'CLIENT',
+        emailVerified: new Date()
       }
+    });
+
+    // Clean up used token
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: cleanEmail }
     });
 
     return NextResponse.json({ success: true, user: { id: user.id, email: user.email } });

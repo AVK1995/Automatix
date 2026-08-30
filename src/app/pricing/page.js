@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Footer from '@/components/ui/Footer';
 import PublicHeader from '@/components/ui/PublicHeader';
 import { prisma } from '@/lib/prisma';
@@ -22,7 +23,13 @@ export default async function PricingPage() {
 
       {/* Main Container stretched to full width */}
       <main className="w-full flex-1 flex flex-col items-center">
-        <PricingClient session={session} settings={settings} />
+        <Suspense fallback={
+          <div className="py-20 text-center text-text-secondary text-xs">
+            Loading pricing tiers...
+          </div>
+        }>
+          <PricingClient session={session} settings={settings} />
+        </Suspense>
       </main>
 
       <div className="w-full border-t border-white/10 bg-black">

@@ -36,6 +36,10 @@ export default function BillingClient({ initialUser }) {
   const storagePercentage = Math.min((user.totalStorageUsedMB / user.maxStorageMB) * 100, 100);
   const isGracePeriod = user.storageStatus === 'GRACE_PERIOD';
 
+  const now = new Date();
+  const subExpiry = user.subscriptionExpiresAt ? new Date(user.subscriptionExpiresAt) : null;
+  const isExpiringSoon = subExpiry && (subExpiry.getTime() - now.getTime()) <= (5 * 24 * 60 * 60 * 1000) && (subExpiry.getTime() - now.getTime()) > 0;
+
   const handleToggleAutoPay = async () => {
     setIsUpdatingAutoPay(true);
     const newStatus = !user.autoPayEnabled;
@@ -56,7 +60,19 @@ export default function BillingClient({ initialUser }) {
   };
 
   const openQuotaModal = () => {
-    window.dispatchEvent(new CustomEvent('open-quota-modal'));
+    window.dispatchEvent(new CustomEvent('open-plan-modal', { detail: { step: 2 } }));
+  };
+
+  const openRenewalModal = () => {
+    const rawTier = (user.subscriptionTier || 'pro').toLowerCase();
+    const planKey = rawTier.includes('ent') ? 'enterprise' : 'pro';
+    window.dispatchEvent(new CustomEvent('open-plan-modal', {
+      detail: {
+        plan: planKey,
+        cycle: user.subscriptionCycle || 'monthly',
+        step: 4
+      }
+    }));
   };
 
   const getSubPrice = () => {
@@ -77,35 +93,70 @@ export default function BillingClient({ initialUser }) {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {(isExpiringSoon || isGracePeriod) && (
+            <button
+              onClick={openRenewalModal}
+              className="px-4 py-2.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-amber-500/20"
+            >
+              <RefreshCw size={14} />
+              Renew / Resend Payment Status
+            </button>
+          )}
           <button
-            onClick={openQuotaModal}
-            className="px-4 py-2.5 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-all shadow-lg shadow-accent-blue/20 flex items-center gap-2"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-plan-modal', { detail: { step: 1 } }))}
+            className="px-4 py-2.5 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-accent-blue/90 text-white transition-all shadow-lg shadow-accent-blue/20 flex items-center gap-2 cursor-pointer"
           >
             <Sparkles size={14} />
-            Upgrade Storage Pack
+            Upgrade Plan & Addons
           </button>
         </div>
       </div>
 
       {/* Grace Period Alert Banner */}
       {isGracePeriod && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-4 shadow-lg shadow-amber-500/5">
-          <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
-            <AlertTriangle size={20} />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold text-amber-400">Payment Overdue — 5-Day Grace Period Active</h3>
-            <p className="text-xs text-text-secondary mt-1 leading-relaxed">
-              Your storage subscription payment is past due. Your storage bucket has been placed in a 5-day grace period. 
-              If payment is not completed before <strong>{user.storageGraceExpiresAt ? new Date(user.storageGraceExpiresAt).toLocaleDateString() : '5 days'}</strong>, 
-              your account will revert to the 50 MB free tier and excess files will be permanently purged.
-            </p>
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-amber-500/5">
+          <div className="flex items-start gap-4">
+            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-amber-400">Payment Overdue — 5-Day Grace Period Active</h3>
+              <p className="text-xs text-text-secondary mt-1 leading-relaxed">
+                Your subscription payment is past due. Your storage bucket has been placed in a 5-day grace period. 
+                If payment is not completed before <strong>{user.storageGraceExpiresAt ? new Date(user.storageGraceExpiresAt).toLocaleDateString() : '5 days'}</strong>, 
+                your account will revert to the 50 MB free tier.
+              </p>
+            </div>
           </div>
           <button
-            onClick={openQuotaModal}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg transition-all shrink-0"
+            onClick={openRenewalModal}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg transition-all shrink-0 cursor-pointer"
           >
             Renew Plan Now
+          </button>
+        </div>
+      )}
+
+      {/* Expiring Soon Alert Banner */}
+      {isExpiringSoon && !isGracePeriod && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-amber-500/5">
+          <div className="flex items-start gap-4">
+            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+              <Clock size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-amber-400">Subscription Renewal Due Soon</h3>
+              <p className="text-xs text-text-secondary mt-1 leading-relaxed">
+                Your <strong>{user.subscriptionTier || 'Professional'}</strong> plan expires on <strong>{subExpiry ? subExpiry.toLocaleDateString() : 'soon'}</strong>. 
+                Click below to complete renewal transfer and resend your payment status.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={openRenewalModal}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg transition-all shrink-0 cursor-pointer"
+          >
+            Renew / Resend Payment
           </button>
         </div>
       )}
@@ -136,15 +187,25 @@ export default function BillingClient({ initialUser }) {
                 {user.subscriptionExpiresAt ? new Date(user.subscriptionExpiresAt).toLocaleDateString() : 'Free Forever'}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('open-plan-modal', { detail: { tab: 'pro' } }));
-              }}
-              className="w-full block text-center py-2 px-3 rounded-lg text-xs font-medium bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10 cursor-pointer"
-            >
-              Change Subscription Plan
-            </button>
+            {(isExpiringSoon || isGracePeriod) ? (
+              <button
+                type="button"
+                onClick={openRenewalModal}
+                className="w-full block text-center py-2 px-3 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all cursor-pointer shadow-sm"
+              >
+                Renew / Resend Payment Status
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-plan-modal', { detail: { step: 1 } }));
+                }}
+                className="w-full block text-center py-2 px-3 rounded-lg text-xs font-medium bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10 cursor-pointer"
+              >
+                Change Subscription Plan
+              </button>
+            )}
           </div>
         </div>
 

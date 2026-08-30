@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -20,37 +20,65 @@ import {
   Copy, 
   Check, 
   LogIn, 
-  UserPlus
+  UserPlus,
+  ArrowRight,
+  ArrowLeft,
+  ChevronRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+
+const BILLING_CYCLES = [
+  { id: 'monthly', label: 'Monthly', months: 1, multiplier: 1 },
+  { id: 'quarterly', label: 'Quarterly (3 Mo)', months: 3, multiplier: 3 },
+  { id: 'yearly', label: 'Yearly (12 Mo)', months: 12, multiplier: 12 },
+];
+
+const STORAGE_ADDONS = [
+  { id: 'none', name: 'No Storage Add-on', mb: 0, price: 0, desc: 'Continue with plan default storage' },
+  { id: 'starter_100', name: 'Starter Pack (+100 MB)', mb: 100, price: 99, desc: '15 Images, 2 Videos (25MB max), 20 Docs' },
+  { id: 'growth_250', name: 'Growth Pack (+250 MB)', mb: 250, price: 199, desc: '40 Images, 5 Videos (35MB max), 50 Docs' },
+  { id: 'power_500', name: 'Power Pack (+500 MB)', mb: 500, price: 349, desc: '80 Images, 8 Videos (50MB max), 100 Docs' },
+];
+
+const AI_ADDONS = [
+  { id: 'none', name: 'No AI Top-Up', credits: 0, price: 0, desc: 'Continue with plan standard AI credit quota' },
+  { id: 'ai_50', name: 'Starter AI (+50 Credits)', credits: 50, price: 99, desc: 'Ideal for occasional copywriting & template drafts' },
+  { id: 'ai_150', name: 'Pro AI (+150 Credits)', credits: 150, price: 249, desc: 'Great for weekly multi-node automation prompts' },
+  { id: 'ai_500', name: 'Ultra AI (+500 Credits)', credits: 500, price: 599, desc: 'Heavy production volume & AI Radahn tasks' },
+];
 
 export default function PlanUpgradeModal() {
   const [session, setSession] = useState(null);
   const [loadingSession, setLoadingSession] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('pro'); // 'pro' | 'enterprise' | 'storage' | 'ai'
+  const [currentStep, setCurrentStep] = useState(1); // 1: Plan & Cycle, 2: Storage, 3: AI Credits, 4: Summary & Payment
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Storage pack selection
-  const [selectedStoragePack, setSelectedStoragePack] = useState('Growth Pack (+250 MB)');
-  const [selectedAiPack, setSelectedAiPack] = useState('Pro AI Booster (+200 Credits)');
 
-  // Pro Upgrade Payment state
+  // Selections
+  const [selectedPlan, setSelectedPlan] = useState('pro'); // 'pro' | 'enterprise'
+  const [selectedCycle, setSelectedCycle] = useState('monthly'); // 'monthly' | 'quarterly' | 'yearly'
+  const [selectedStorage, setSelectedStorage] = useState('none');
+  const [selectedAi, setSelectedAi] = useState('none');
+
+  // Payment state
   const [receiptScreenshot, setReceiptScreenshot] = useState(null);
   const [receiptFileName, setReceiptFileName] = useState('');
   const [proNotes, setProNotes] = useState('');
   const [copiedUpi, setCopiedUpi] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Enterprise Custom Inquiry state
-  const [entWorkflows, setEntWorkflows] = useState('Custom (100+)');
-  const [entExecutions, setEntExecutions] = useState('Custom (25k+)');
-  const [entStorage, setEntStorage] = useState('1000');
-  const [entAiCredits, setEntAiCredits] = useState('500');
-  const [entMessage, setEntMessage] = useState('');
-
   const upiId = 'billing@automatix.local';
+
+  // Base plan prices
+  const baseMonthlyPrice = selectedPlan === 'pro' ? 499 : 1499;
+  const cycleObj = BILLING_CYCLES.find(c => c.id === selectedCycle) || BILLING_CYCLES[0];
+  const planTotal = baseMonthlyPrice * cycleObj.multiplier;
+
+  const storageObj = STORAGE_ADDONS.find(s => s.id === selectedStorage) || STORAGE_ADDONS[0];
+  const aiObj = AI_ADDONS.find(a => a.id === selectedAi) || AI_ADDONS[0];
+
+  const totalPayable = planTotal + storageObj.price + aiObj.price;
 
   useEffect(() => {
     if (isOpen) {
@@ -71,14 +99,29 @@ export default function PlanUpgradeModal() {
 
   useEffect(() => {
     const handleOpen = (e) => {
-      if (e.detail?.tab) {
-        setActiveTab(e.detail.tab);
+      if (e.detail?.plan) {
+        setSelectedPlan(e.detail.plan);
+      }
+      if (e.detail?.cycle) {
+        setSelectedCycle(e.detail.cycle);
+      }
+      if (e.detail?.storage) {
+        setSelectedStorage(e.detail.storage);
+      }
+      if (e.detail?.ai) {
+        setSelectedAi(e.detail.ai);
+      }
+      if (e.detail?.step) {
+        setCurrentStep(Number(e.detail.step));
+      } else {
+        setCurrentStep(1);
       }
       setIsOpen(true);
     };
 
     const handleQuotaOpen = () => {
-      setActiveTab('storage');
+      setSelectedPlan('pro');
+      setCurrentStep(2); // Jump directly to Storage Addon step
       setIsOpen(true);
     };
 
@@ -100,7 +143,7 @@ export default function PlanUpgradeModal() {
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be under 5MB');
+      toast.error('File size exceeds 5MB limit');
       return;
     }
 
@@ -108,74 +151,59 @@ export default function PlanUpgradeModal() {
     const reader = new FileReader();
     reader.onload = (event) => {
       setReceiptScreenshot(event.target.result);
-      toast.success('Payment receipt attached!');
+      toast.success('Screenshot attached successfully');
     };
     reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
     if (!session?.user) {
-      toast.error('Please sign in or create an account first.');
+      toast.error('Please sign in or create an account to proceed');
+      return;
+    }
+
+    if (!receiptScreenshot) {
+      toast.error('Please attach your payment screenshot to verify transfer');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      let payload = {};
+      const planName = selectedPlan === 'pro' ? 'Professional' : 'Enterprise';
+      const cycleLabel = cycleObj.label;
+      const fullPlanTitle = `${planName} (${cycleLabel})`;
 
-      if (activeTab === 'pro') {
-        if (!receiptScreenshot) {
-          toast.error('Please attach your payment complete screenshot to proceed.');
-          setIsSubmitting(false);
-          return;
-        }
-        payload = {
-          plan: 'Professional Plan (₹499/mo)',
-          receiptScreenshot,
-          message: proNotes ? `Notes: ${proNotes}` : 'Professional Plan Upgrade Request'
-        };
-      } else if (activeTab === 'enterprise') {
-        payload = {
-          plan: 'Enterprise Custom Plan',
-          message: `Workflows: ${entWorkflows} | Executions: ${entExecutions} | Storage: ${entStorage}MB | AI Credits: ${entAiCredits} | Details: ${entMessage || 'N/A'}`
-        };
-      } else if (activeTab === 'storage') {
-        payload = {
-          plan: selectedStoragePack,
-          message: `Storage Expansion Pack: ${selectedStoragePack}`
-        };
-      } else if (activeTab === 'ai') {
-        payload = {
-          plan: selectedAiPack,
-          message: `AI Credit Booster Pack: ${selectedAiPack}`
-        };
-      }
+      const detailedMessage = `Selected Plan: ${planName} [${cycleLabel} - ₹${planTotal}] | Storage Addon: ${storageObj.name} (₹${storageObj.price}) | AI Addon: ${aiObj.name} (₹${aiObj.price}) | Total Paid: ₹${totalPayable} | UTR/Notes: ${proNotes || 'None'}`;
 
       const res = await fetch('/api/media/quota-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          plan: fullPlanTitle,
+          billingCycle: selectedCycle,
+          mainPlan: planName,
+          storageAddon: storageObj.name,
+          aiAddon: aiObj.name,
+          totalAmount: totalPayable,
+          receiptScreenshot,
+          message: detailedMessage
+        })
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.error || 'Failed to submit request');
       }
 
-      toast.success(
-        activeTab === 'pro' 
-          ? '🎉 Professional Plan upgrade submitted! Our team will activate your account shortly.'
-          : activeTab === 'enterprise'
-          ? '🏢 Enterprise inquiry sent! Our concierge team will reach out within 24 hours.'
-          : 'Upgrade request submitted successfully!'
-      );
+      toast.success('Upgrade request submitted successfully! Your account will be activated upon verification.');
       setIsOpen(false);
+      // Reset state
+      setCurrentStep(1);
       setReceiptScreenshot(null);
       setReceiptFileName('');
       setProNotes('');
-    } catch (e) {
-      toast.error(e.message || 'Failed to submit request. Please try again.');
+    } catch (err) {
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -185,38 +213,39 @@ export default function PlanUpgradeModal() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
-        {/* Strictly dark dimming overlay (NO backdrop blur) */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/70"
-          onClick={() => setIsOpen(false)}
-        />
-        
-        {/* Solid Dark Modal Container */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 15 }}
+      <div 
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 overflow-y-auto"
+        onClick={() => setIsOpen(false)}
+      >
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 15 }}
-          className="relative w-full max-w-xl bg-[#0d0d11] rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] z-10"
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="relative w-full max-w-xl bg-[#0e0e13] border border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 flex flex-col max-h-[90vh]"
+          onClick={e => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 bg-white/[0.02] shrink-0">
+          <div className="p-5 border-b border-white/10 bg-gradient-to-b from-white/[0.03] to-transparent flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center text-accent-blue">
-                <Crown size={18} />
+              <div className="w-10 h-10 rounded-xl bg-accent-blue/10 border border-accent-blue/30 flex items-center justify-center text-accent-blue shadow-md">
+                <Crown size={20} />
               </div>
               <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  Plan Upgrades & Quota Add-ons
+                <h2 className="text-base font-bold text-white tracking-tight">
+                  Plan Upgrades & Add-ons
                 </h2>
                 <p className="text-xs text-text-tertiary">
-                  Upgrade your tier, expand storage capacity, or top up AI credits.
+                  Step {currentStep} of 4: {
+                    currentStep === 1 ? 'Choose Tier & Billing Cycle' :
+                    currentStep === 2 ? 'Select Storage Capacity' :
+                    currentStep === 3 ? 'Choose AI Credits Booster' :
+                    'Review & Submit Payment'
+                  }
                 </p>
               </div>
             </div>
+
             <button 
               onClick={() => setIsOpen(false)}
               className="p-1.5 rounded-lg text-text-tertiary hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
@@ -225,447 +254,480 @@ export default function PlanUpgradeModal() {
             </button>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex border-b border-white/10 bg-black/40 px-3 sm:px-5 pt-2.5 gap-2 sm:gap-4 overflow-x-auto shrink-0 scrollbar-none">
-            <button
-              onClick={() => setActiveTab('pro')}
-              className={`pb-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                activeTab === 'pro'
-                  ? 'border-accent-blue text-white'
-                  : 'border-transparent text-text-tertiary hover:text-white'
-              }`}
-            >
-              <Zap size={14} className="text-accent-blue" />
-              <span>Professional (₹499)</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('enterprise')}
-              className={`pb-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                activeTab === 'enterprise'
-                  ? 'border-amber-400 text-amber-300'
-                  : 'border-transparent text-text-tertiary hover:text-white'
-              }`}
-            >
-              <Crown size={14} className="text-amber-400" />
-              <span>Contact for Enterprise</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('storage')}
-              className={`pb-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                activeTab === 'storage'
-                  ? 'border-sky-400 text-sky-300'
-                  : 'border-transparent text-text-tertiary hover:text-white'
-              }`}
-            >
-              <HardDrive size={14} className="text-sky-400" />
-              <span>Storage Packs</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('ai')}
-              className={`pb-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                activeTab === 'ai'
-                  ? 'border-emerald-400 text-emerald-300'
-                  : 'border-transparent text-text-tertiary hover:text-white'
-              }`}
-            >
-              <Coins size={14} className="text-emerald-400" />
-              <span>AI Credits</span>
-            </button>
+          {/* Step Progress Indicators */}
+          <div className="px-5 py-3 border-b border-white/5 bg-black/40 grid grid-cols-4 gap-2 text-center text-[10px] font-bold uppercase tracking-wider shrink-0">
+            {[
+              { num: 1, label: '1. Plan' },
+              { num: 2, label: '2. Storage' },
+              { num: 3, label: '3. AI Booster' },
+              { num: 4, label: '4. Checkout' }
+            ].map(s => (
+              <div 
+                key={s.num}
+                onClick={() => {
+                  if (s.num < currentStep) setCurrentStep(s.num);
+                }}
+                className={`py-1.5 rounded-md transition-all flex items-center justify-center gap-1 ${
+                  s.num === currentStep 
+                    ? 'bg-accent-blue text-white shadow-sm' 
+                    : s.num < currentStep 
+                    ? 'bg-white/10 text-white cursor-pointer hover:bg-white/15' 
+                    : 'text-text-tertiary bg-white/[0.02]'
+                }`}
+              >
+                <span>{s.label}</span>
+              </div>
+            ))}
           </div>
 
-          {/* Tab Content */}
-          <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
-            {/* 1. PROFESSIONAL PLAN TAB */}
-            {activeTab === 'pro' && (
-              <div className="space-y-4">
-                {/* Logged in state check */}
-                {!session?.user ? (
-                  <div className="p-4 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-center space-y-3">
-                    <AlertTriangle className="w-8 h-8 text-accent-blue mx-auto" />
-                    <div>
-                      <h3 className="text-sm font-bold text-white">Create an Account First</h3>
-                      <p className="text-xs text-text-secondary mt-1">
-                        You must have an active Automatix account so we can link your Professional license and quota limits.
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-center gap-3 pt-1">
-                      <Link
-                        href="/register"
-                        onClick={() => setIsOpen(false)}
-                        className="px-4 py-2 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-accent-blue/20"
-                      >
-                        <UserPlus size={14} /> Create Free Account
-                      </Link>
-                      <Link
-                        href="/login"
-                        onClick={() => setIsOpen(false)}
-                        className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border border-white/10"
-                      >
-                        <LogIn size={14} /> Sign In
-                      </Link>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {/* User info prefill pill */}
-                    <div className="p-3 bg-zinc-900/90 border border-white/10 rounded-xl flex items-center justify-between gap-3 text-xs">
-                      <div className="min-w-0">
-                        <span className="text-[10px] text-text-tertiary uppercase font-semibold">Account Verified</span>
-                        <p className="font-bold text-white truncate">{session.user.name || 'Automatix User'}</p>
-                        <p className="text-[11px] text-text-secondary truncate font-mono">{session.user.email}</p>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1 shrink-0">
-                        <CheckCircle2 size={12} /> Ready to Link
-                      </span>
-                    </div>
-
-                    {/* Plan features summary */}
-                    <div className="p-3.5 bg-white/[0.02] border border-accent-blue/30 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Zap className="w-4 h-4 text-accent-blue" />
-                          <span className="text-sm font-bold text-white">Professional Tier Upgrade</span>
-                        </div>
-                        <span className="text-base font-extrabold text-white font-mono">₹499<span className="text-xs text-text-tertiary font-normal">/mo</span></span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-text-secondary pt-1 border-t border-white/5">
-                        <span className="flex items-center gap-1.5"><Check size={12} className="text-accent-blue" /> 100 Workflows</span>
-                        <span className="flex items-center gap-1.5"><Check size={12} className="text-accent-blue" /> 5,000 Executions / mo</span>
-                        <span className="flex items-center gap-1.5"><Check size={12} className="text-accent-blue" /> 100 AI Credits / mo</span>
-                        <span className="flex items-center gap-1.5"><Check size={12} className="text-accent-blue" /> 200 MB Cloud Storage</span>
-                      </div>
-                    </div>
-
-                    {/* Payment Transfer Instructions */}
-                    <div className="p-3.5 bg-zinc-900/60 border border-white/10 rounded-xl space-y-2.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-white flex items-center gap-1.5">
-                          <QrCode className="w-4 h-4 text-sky-400" /> Step 1: Complete UPI Transfer (₹499)
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(upiId);
-                            setCopiedUpi(true);
-                            toast.success('UPI ID copied!');
-                            setTimeout(() => setCopiedUpi(false), 2000);
-                          }}
-                          className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1 font-mono cursor-pointer"
-                        >
-                          {copiedUpi ? <Check size={12} /> : <Copy size={12} />}
-                          <span>{copiedUpi ? 'Copied' : 'Copy UPI'}</span>
-                        </button>
-                      </div>
-                      <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg font-mono text-center text-white text-xs select-all">
-                        {upiId}
-                      </div>
-                      <p className="text-[11px] text-text-tertiary leading-relaxed">
-                        Transfer <strong>₹499</strong> via GPay, PhonePe, Paytm, or any BHIM UPI app. Take a screenshot of the completed payment.
-                      </p>
-                    </div>
-
-                    {/* Payment Screenshot Upload */}
-                    <div className="p-3.5 bg-zinc-900/60 border border-white/10 rounded-xl space-y-2.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-white flex items-center gap-1.5">
-                          <ImageIcon className="w-4 h-4 text-sky-400" /> Step 2: Attach Payment Screenshot
-                        </span>
-                        <span className="text-[10px] text-sky-400 font-normal">* Required for verification</span>
-                      </div>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        ref={fileInputRef} 
-                        onChange={handleFileUpload} 
-                        className="hidden" 
-                      />
-
-                      {receiptScreenshot ? (
-                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <img src={receiptScreenshot} alt="Receipt preview" className="w-10 h-10 object-cover rounded-lg border border-emerald-500/40 shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-white truncate">{receiptFileName || 'payment_receipt.jpg'}</p>
-                              <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
-                                <CheckCircle2 size={10} /> Screenshot Attached
-                              </span>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReceiptScreenshot(null);
-                              setReceiptFileName('');
-                            }}
-                            className="text-xs text-text-tertiary hover:text-red-400 transition-colors p-1 cursor-pointer"
-                          >
-                            Change
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full p-4 border-2 border-dashed border-white/20 hover:border-accent-blue/50 rounded-xl bg-black/40 hover:bg-accent-blue/5 transition-all text-center space-y-1 cursor-pointer group"
-                        >
-                          <Upload className="w-5 h-5 text-text-tertiary group-hover:text-accent-blue mx-auto transition-colors" />
-                          <p className="text-xs font-medium text-white">Click or drag payment screenshot here</p>
-                          <p className="text-[10px] text-text-tertiary">PNG, JPG, WEBP up to 5MB</p>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Additional Notes (Optional) */}
-                    <div>
-                      <label className="block text-[11px] font-medium text-text-secondary mb-1">
-                        Additional Notes / Transaction UTR (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={proNotes}
-                        onChange={(e) => setProNotes(e.target.value)}
-                        placeholder="e.g. UTR / Ref No. 423984729384"
-                        className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-text-tertiary focus:outline-none focus:border-accent-blue"
-                      />
-                    </div>
-
-                    <div className="p-2.5 bg-black/40 border border-white/5 rounded-lg flex items-center gap-2 text-[11px] text-text-tertiary">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>24-Hour Review Guarantee: Once submitted, your tier will activate immediately upon verification.</span>
-                    </div>
-                  </>
-                )}
+          {/* Modal Scrollable Body */}
+          <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1">
+            
+            {/* Account Status Pill */}
+            {session?.user ? (
+              <div className="p-3 bg-black/40 border border-white/5 rounded-xl flex items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider block">Account Authenticated</span>
+                  <p className="text-white font-bold truncate mt-0.5">{session.user.email}</p>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 flex items-center gap-1">
+                  <CheckCircle2 size={11} /> Ready to Upgrade
+                </span>
+              </div>
+            ) : (
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="space-y-0.5">
+                  <p className="text-amber-200 font-bold flex items-center gap-1.5">
+                    <AlertTriangle size={14} className="text-amber-400 shrink-0" /> Sign In Required to Finalize
+                  </p>
+                  <p className="text-amber-200/70 text-[11px]">
+                    Create a free account or login to link this upgrade directly to your tenant.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link 
+                    href="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold text-xs border border-amber-500/30 transition-all flex items-center gap-1"
+                  >
+                    <LogIn size={12} /> Sign In
+                  </Link>
+                  <Link 
+                    href="/register"
+                    onClick={() => setIsOpen(false)}
+                    className="px-3 py-1.5 rounded-lg bg-accent-blue text-white font-semibold text-xs transition-all flex items-center gap-1"
+                  >
+                    <UserPlus size={12} /> Register
+                  </Link>
+                </div>
               </div>
             )}
 
-            {/* 2. ENTERPRISE TAB */}
-            {activeTab === 'enterprise' && (
-              <div className="space-y-3.5">
-                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-200 leading-relaxed">
-                  <div className="flex items-center gap-1.5 text-amber-300 font-bold mb-1">
-                    <Crown size={14} /> Custom Agency & Enterprise Capacity
-                  </div>
-                  Tell us your monthly throughput, storage, and AI processing volume. Our concierge engineers will customize limits for your tenant.
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5 text-xs">
-                  <div>
-                    <label className="block text-text-secondary font-medium mb-1">Workflows Needed</label>
-                    <input
-                      type="text"
-                      value={entWorkflows}
-                      onChange={(e) => setEntWorkflows(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-text-secondary font-medium mb-1">Monthly Executions</label>
-                    <input
-                      type="text"
-                      value={entExecutions}
-                      onChange={(e) => setEntExecutions(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-text-secondary font-medium mb-1">Storage (MB)</label>
-                    <input
-                      type="number"
-                      value={entStorage}
-                      onChange={(e) => setEntStorage(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-text-secondary font-medium mb-1">AI Credits / Month</label>
-                    <input
-                      type="number"
-                      value={entAiCredits}
-                      onChange={(e) => setEntAiCredits(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1">
-                    Organization & Use Case Details
+            {/* STEP 1: Main Plan & Billing Cycle Selection */}
+            {currentStep === 1 && (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                {/* Plan Selection Cards */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-white uppercase tracking-wider">
+                    Select Plan Tier:
                   </label>
-                  <textarea
-                    rows={3}
-                    value={entMessage}
-                    onChange={(e) => setEntMessage(e.target.value)}
-                    placeholder="Describe your team size, custom CRM integrations, or dedicated SLA needs..."
-                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-text-tertiary focus:outline-none focus:border-amber-500 resize-none"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Professional Plan Card */}
+                    <div 
+                      onClick={() => setSelectedPlan('pro')}
+                      className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                        selectedPlan === 'pro'
+                          ? 'bg-accent-blue/10 border-accent-blue text-white shadow-md'
+                          : 'bg-[#111] border-white/10 hover:border-white/20 text-text-secondary'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                            <Zap size={15} className="text-accent-blue" /> Professional
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-accent-blue/20 text-accent-blue">
+                            POPULAR
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-tertiary">
+                          100 Workflows &bull; 5,000 Executions &bull; 100 AI Credits &bull; 200 MB Storage
+                        </p>
+                      </div>
+                      <div className="text-lg font-extrabold text-white font-mono">
+                        ₹499 <span className="text-xs font-normal text-text-tertiary font-sans">/ month</span>
+                      </div>
+                    </div>
+
+                    {/* Enterprise Plan Card */}
+                    <div 
+                      onClick={() => setSelectedPlan('enterprise')}
+                      className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                        selectedPlan === 'enterprise'
+                          ? 'bg-amber-500/10 border-amber-500/60 text-white shadow-md'
+                          : 'bg-[#111] border-white/10 hover:border-white/20 text-text-secondary'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                            <Crown size={15} className="text-amber-400" /> Enterprise
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                            CUSTOM SCALE
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-tertiary">
+                          Custom Workflows &bull; 25k+ Runs &bull; 500 AI Credits &bull; 500 MB Storage
+                        </p>
+                      </div>
+                      <div className="text-lg font-extrabold text-white font-mono">
+                        ₹1,499 <span className="text-xs font-normal text-text-tertiary font-sans">/ month</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Billing Cycle Selection */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-white uppercase tracking-wider">
+                    Select Billing Duration (Strictly Multiples &bull; No Discounts):
+                  </label>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {BILLING_CYCLES.map(cycle => {
+                      const cost = (selectedPlan === 'pro' ? 499 : 1499) * cycle.multiplier;
+                      const isSelected = selectedCycle === cycle.id;
+
+                      return (
+                        <div
+                          key={cycle.id}
+                          onClick={() => setSelectedCycle(cycle.id)}
+                          className={`p-3 rounded-xl border text-center transition-all cursor-pointer space-y-1 ${
+                            isSelected
+                              ? 'bg-accent-blue/15 border-accent-blue text-white shadow-sm'
+                              : 'bg-black/40 border-white/10 hover:border-white/20 text-text-secondary'
+                          }`}
+                        >
+                          <span className="text-xs font-bold block">{cycle.label}</span>
+                          <div className="text-sm font-extrabold text-white font-mono">
+                            ₹{cost.toLocaleString('en-IN')}
+                          </div>
+                          <span className="text-[10px] text-text-tertiary block">
+                            ₹{baseMonthlyPrice} × {cycle.multiplier}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: Storage Add-on Selection */}
+            {currentStep === 2 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <HardDrive size={16} className="text-accent-blue" />
+                    Expand Cloud Storage Buffer (Optional)
+                  </h3>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    Add dedicated high-capacity storage for your workflow input files, media, and video assets.
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  {STORAGE_ADDONS.map(addon => {
+                    const isSelected = selectedStorage === addon.id;
+                    return (
+                      <div
+                        key={addon.id}
+                        onClick={() => setSelectedStorage(addon.id)}
+                        className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                          isSelected
+                            ? 'bg-accent-blue/10 border-accent-blue text-white'
+                            : 'bg-[#111] border-white/10 hover:border-white/20 text-text-secondary'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                            isSelected ? 'border-accent-blue bg-accent-blue text-white' : 'border-white/20 bg-black/40'
+                          }`}>
+                            {isSelected && <Check size={10} />}
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold text-white block">{addon.name}</span>
+                            <span className="text-[11px] text-text-tertiary block">{addon.desc}</span>
+                          </div>
+                        </div>
+
+                        <span className="text-xs font-bold text-white font-mono shrink-0">
+                          {addon.price === 0 ? 'Free / Included' : `+₹${addon.price}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: AI Credit Add-on Selection */}
+            {currentStep === 3 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Coins size={16} className="text-accent-blue" />
+                    Top-Up AI Credits Booster (Optional)
+                  </h3>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    Empower your workflow nodes with instant generative AI copywriting, vision analysis, and image generation credits.
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  {AI_ADDONS.map(addon => {
+                    const isSelected = selectedAi === addon.id;
+                    return (
+                      <div
+                        key={addon.id}
+                        onClick={() => setSelectedAi(addon.id)}
+                        className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                          isSelected
+                            ? 'bg-accent-blue/10 border-accent-blue text-white'
+                            : 'bg-[#111] border-white/10 hover:border-white/20 text-text-secondary'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                            isSelected ? 'border-accent-blue bg-accent-blue text-white' : 'border-white/20 bg-black/40'
+                          }`}>
+                            {isSelected && <Check size={10} />}
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold text-white block">{addon.name}</span>
+                            <span className="text-[11px] text-text-tertiary block">{addon.desc}</span>
+                          </div>
+                        </div>
+
+                        <span className="text-xs font-bold text-white font-mono shrink-0">
+                          {addon.price === 0 ? 'Free / Included' : `+₹${addon.price}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: Final Summary & UPI Payment Submission */}
+            {currentStep === 4 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                {/* 1. Selected Package Summary Cards */}
+                <div className="p-4 bg-zinc-900/60 border border-white/10 rounded-xl space-y-3 text-xs">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                    <span className="text-[11px] font-bold text-text-tertiary uppercase tracking-wider">
+                      Selected Package Breakdown
+                    </span>
+                    <span className="text-accent-blue font-semibold cursor-pointer" onClick={() => setCurrentStep(1)}>
+                      Edit Selection
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* Main Plan */}
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-white font-medium">
+                        <Zap size={14} className="text-accent-blue shrink-0" />
+                        <span>{selectedPlan === 'pro' ? 'Professional Tier' : 'Enterprise Tier'} ({cycleObj.label})</span>
+                      </div>
+                      <span className="font-mono font-bold text-white">₹{planTotal.toLocaleString('en-IN')}</span>
+                    </div>
+
+                    {/* Storage Addon */}
+                    {storageObj.price > 0 && (
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 text-white font-medium">
+                          <HardDrive size={14} className="text-sky-400 shrink-0" />
+                          <span>{storageObj.name}</span>
+                        </div>
+                        <span className="font-mono font-bold text-white">+₹{storageObj.price}</span>
+                      </div>
+                    )}
+
+                    {/* AI Addon */}
+                    {aiObj.price > 0 && (
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 text-white font-medium">
+                          <Coins size={14} className="text-emerald-400 shrink-0" />
+                          <span>{aiObj.name}</span>
+                        </div>
+                        <span className="font-mono font-bold text-white">+₹{aiObj.price}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Total Payable Line */}
+                  <div className="pt-2 border-t border-white/10 flex items-center justify-between text-sm">
+                    <span className="font-bold text-white">Total Amount to Pay:</span>
+                    <span className="font-mono font-extrabold text-accent-blue text-base">
+                      ₹{totalPayable.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. Step 1: Complete UPI Transfer */}
+                <div className="p-3.5 bg-zinc-900/60 border border-white/10 rounded-xl space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white flex items-center gap-1.5">
+                      <QrCode className="w-4 h-4 text-sky-400" /> Step 1: Complete UPI Transfer (₹{totalPayable.toLocaleString('en-IN')})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(upiId);
+                        setCopiedUpi(true);
+                        toast.success('UPI ID copied!');
+                        setTimeout(() => setCopiedUpi(false), 2000);
+                      }}
+                      className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1 font-mono cursor-pointer"
+                    >
+                      {copiedUpi ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{copiedUpi ? 'Copied' : 'Copy UPI'}</span>
+                    </button>
+                  </div>
+                  <div className="p-2.5 bg-black/60 border border-white/5 rounded-lg font-mono text-center text-white text-xs select-all">
+                    {upiId}
+                  </div>
+                  <p className="text-[11px] text-text-tertiary leading-relaxed">
+                    Transfer exactly <strong>₹{totalPayable.toLocaleString('en-IN')}</strong> via GPay, PhonePe, Paytm, or any BHIM UPI app. Take a screenshot of the completed payment.
+                  </p>
+                </div>
+
+                {/* 3. Step 2: Attach Payment Screenshot */}
+                <div className="p-3.5 bg-zinc-900/60 border border-white/10 rounded-xl space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white flex items-center gap-1.5">
+                      <ImageIcon className="w-4 h-4 text-sky-400" /> Step 2: Attach Payment Screenshot
+                    </span>
+                    <span className="text-[10px] text-sky-400 font-normal">* Required for verification</span>
+                  </div>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    ref={fileInputRef} 
+                    onChange={handleFileUpload} 
+                    className="hidden" 
+                  />
+
+                  {receiptScreenshot ? (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img src={receiptScreenshot} alt="Receipt preview" className="w-10 h-10 object-cover rounded-lg border border-emerald-500/40 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate">{receiptFileName || 'payment_receipt.jpg'}</p>
+                          <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
+                            <CheckCircle2 size={10} /> Screenshot Attached
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReceiptScreenshot(null);
+                          setReceiptFileName('');
+                        }}
+                        className="text-xs text-text-tertiary hover:text-red-400 transition-colors p-1 cursor-pointer"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full p-4 border-2 border-dashed border-white/20 hover:border-accent-blue/50 rounded-xl bg-black/40 hover:bg-accent-blue/5 transition-all text-center space-y-1 cursor-pointer group"
+                    >
+                      <Upload className="w-5 h-5 text-text-tertiary group-hover:text-accent-blue mx-auto transition-colors" />
+                      <p className="text-xs font-medium text-white">Click or drag payment screenshot here</p>
+                      <p className="text-[10px] text-text-tertiary">PNG, JPG, WEBP up to 5MB</p>
+                    </button>
+                  )}
+                </div>
+
+                {/* 4. Notes / UTR */}
+                <div>
+                  <label className="block text-[11px] font-medium text-text-secondary mb-1">
+                    Transaction UTR / Reference No. (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={proNotes}
+                    onChange={(e) => setProNotes(e.target.value)}
+                    placeholder="e.g. UTR Ref No. 423984729384"
+                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-text-tertiary focus:outline-none focus:border-accent-blue"
                   />
                 </div>
+
+                <div className="p-2.5 bg-black/40 border border-white/5 rounded-lg flex items-center gap-2 text-[11px] text-text-tertiary">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>24-Hour Review Guarantee: Once verified, your plan and addons will activate immediately.</span>
+                </div>
               </div>
             )}
 
-            {/* 3. STORAGE EXPANSION PACKS TAB (Top Notch Styling per Image 2) */}
-            {activeTab === 'storage' && (
-              <div className="space-y-3">
-                <p className="text-xs text-text-secondary">
-                  Need extra media buffer for your workflow triggers without altering your execution limits? Add a dedicated storage pack anytime.
-                </p>
-
-                {[
-                  {
-                    name: 'Starter Pack (+100 MB)',
-                    tag: 'STARTER BOOST',
-                    price: '₹199/mo',
-                    storage: '+100 MB Cloud Storage',
-                    images: '+15 Images',
-                    imgLimit: 'Max 2MB each',
-                    videos: '+2 Videos',
-                    vidLimit: 'Max 25MB each',
-                    border: 'border-sky-500/20 hover:border-sky-500/50'
-                  },
-                  {
-                    name: 'Growth Pack (+250 MB)',
-                    tag: 'CREATOR CHOICE',
-                    price: '₹499/mo',
-                    storage: '+250 MB Cloud Storage',
-                    images: '+40 Images',
-                    imgLimit: 'Max 5MB each',
-                    videos: '+5 Videos',
-                    vidLimit: 'Max 35MB each',
-                    border: 'border-accent-blue/40 bg-accent-blue/5'
-                  },
-                  {
-                    name: 'Power Pack (+500 MB)',
-                    tag: 'AGENCY POWER',
-                    price: '₹899/mo',
-                    storage: '+500 MB Cloud Storage',
-                    images: '+80 Images',
-                    imgLimit: 'Max 8MB each',
-                    videos: '+8 Videos',
-                    vidLimit: 'Max 50MB each',
-                    border: 'border-white/10 hover:border-white/20'
-                  }
-                ].map((pack) => {
-                  const isSelected = selectedStoragePack === pack.name;
-                  return (
-                    <div
-                      key={pack.name}
-                      onClick={() => setSelectedStoragePack(pack.name)}
-                      className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                        isSelected ? 'border-sky-400 bg-sky-500/10' : 'border-white/10 bg-black/40 hover:border-white/20'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <span className="text-[9px] font-extrabold text-sky-400 uppercase tracking-wider block">{pack.tag}</span>
-                          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                            {pack.name}
-                            {isSelected && <CheckCircle2 size={14} className="text-sky-400" />}
-                          </h4>
-                        </div>
-                        <span className="text-sm font-extrabold text-white font-mono">{pack.price}</span>
-                      </div>
-
-                      {/* Top notch stylized items */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[11px] pt-1">
-                        <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-text-secondary">
-                          <HardDrive size={13} className="text-sky-400 shrink-0" />
-                          <span className="truncate">{pack.storage}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-text-secondary">
-                          <span className="flex items-center gap-1 truncate"><ImageIcon size={13} className="text-emerald-400 shrink-0" /> {pack.images}</span>
-                          <span className="text-[9px] font-mono bg-white/10 px-1 rounded text-white/80 shrink-0">{pack.imgLimit}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-text-secondary">
-                          <span className="flex items-center gap-1 truncate"><Film size={13} className="text-sky-400 shrink-0" /> {pack.videos}</span>
-                          <span className="text-[9px] font-mono bg-white/10 px-1 rounded text-white/80 shrink-0">{pack.vidLimit}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 4. AI CREDITS TAB */}
-            {activeTab === 'ai' && (
-              <div className="space-y-3">
-                <p className="text-xs text-text-secondary">
-                  Top up your multimodal AI Radahn tokens for video speech transcription, scene reasoning, and viral synthesis.
-                </p>
-
-                {[
-                  {
-                    name: 'Starter AI Booster (+50 Credits)',
-                    tag: 'TOP UP',
-                    price: '₹99 (One-Time)',
-                    credits: '+50 Multimodal AI Runs',
-                    features: 'Verbatim Transcripts & Hooks',
-                    border: 'border-emerald-500/20'
-                  },
-                  {
-                    name: 'Pro AI Booster (+200 Credits)',
-                    tag: 'MOST POPULAR',
-                    price: '₹299 (One-Time)',
-                    credits: '+200 Multimodal AI Runs',
-                    features: 'Full Multimodal Scene Encoder',
-                    border: 'border-accent-blue/30 bg-accent-blue/5'
-                  },
-                  {
-                    name: 'Ultra AI Booster (+500 Credits)',
-                    tag: 'POWER AGENTS',
-                    price: '₹599 (One-Time)',
-                    credits: '+500 Multimodal AI Runs',
-                    features: 'Zero Token Bottlenecks',
-                    border: 'border-amber-500/20'
-                  }
-                ].map((pack) => {
-                  const isSelected = selectedAiPack === pack.name;
-                  return (
-                    <div
-                      key={pack.name}
-                      onClick={() => setSelectedAiPack(pack.name)}
-                      className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                        isSelected ? 'border-emerald-400 bg-emerald-500/10' : 'border-white/10 bg-black/40 hover:border-white/20'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div>
-                          <span className="text-[9px] font-extrabold text-emerald-400 uppercase tracking-wider block">{pack.tag}</span>
-                          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                            {pack.name}
-                            {isSelected && <CheckCircle2 size={14} className="text-emerald-400" />}
-                          </h4>
-                        </div>
-                        <span className="text-sm font-extrabold text-white font-mono">{pack.price}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs text-text-secondary">
-                        <span className="flex items-center gap-1 text-emerald-300 font-semibold"><Coins size={13} /> {pack.credits}</span>
-                        <span>•</span>
-                        <span className="text-text-tertiary truncate">{pack.features}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
 
-          {/* Footer Actions */}
+          {/* Footer Wizard Controls */}
           <div className="p-4 border-t border-white/10 flex items-center justify-between bg-black/40 shrink-0">
-            <button 
-              onClick={() => setIsOpen(false)}
-              className="px-4 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleSubmit}
-              disabled={isSubmitting || (activeTab === 'pro' && !session?.user)}
-              className="px-5 py-2 rounded-lg text-xs font-semibold text-white bg-accent-blue hover:bg-accent-blue/90 transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-            >
-              {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
-              {activeTab === 'pro' ? 'Submit Upgrade Request' : activeTab === 'enterprise' ? 'Send Enterprise Inquiry' : 'Request Add-on Quota'}
-            </button>
+            {currentStep > 1 ? (
+              <button 
+                onClick={() => setCurrentStep(prev => prev - 1)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-text-secondary hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeft size={13} />
+                <span>Back</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => setIsOpen(false)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-text-secondary hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            )}
+
+            {currentStep < 4 ? (
+              <div className="flex items-center gap-2">
+                {(currentStep === 2 || currentStep === 3) && (
+                  <button 
+                    onClick={() => {
+                      if (currentStep === 2) setSelectedStorage('none');
+                      if (currentStep === 3) setSelectedAi('none');
+                      setCurrentStep(prev => prev + 1);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium text-text-tertiary hover:text-white transition-colors cursor-pointer"
+                  >
+                    Skip
+                  </button>
+                )}
+                <button 
+                  onClick={() => setCurrentStep(prev => prev + 1)}
+                  className="px-5 py-2 rounded-lg text-xs font-semibold text-white bg-accent-blue hover:bg-accent-blue/90 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <span>{currentStep === 1 ? 'Proceed to Storage' : currentStep === 2 ? 'Proceed to AI Top-Up' : 'Proceed to Checkout'}</span>
+                  <ArrowRight size={13} />
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={handleSubmit}
+                disabled={isSubmitting || !session?.user}
+                className="px-5 py-2 rounded-lg text-xs font-semibold text-white bg-accent-blue hover:bg-accent-blue/90 transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
+                <span>Submit Upgrade Request (₹{totalPayable.toLocaleString('en-IN')})</span>
+              </button>
+            )}
           </div>
         </motion.div>
       </div>

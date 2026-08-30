@@ -1504,16 +1504,22 @@ export const subscriptionRenewalCron = inngest.createFunction(
 
         if (diffHours <= 12 && diffHours > 0) {
           stage = "12h";
-          stageTitle = "Critical Notice: Plan Renews in 12 Hours";
+          stageTitle = "Critical Notice: Plan Expires in 12 Hours";
         } else if (diffHours <= 24 && diffHours > 12) {
           stage = "1d";
-          stageTitle = "Urgent: Plan Renews in 24 Hours";
-        } else if (diffHours <= 72 && diffHours > 24) {
+          stageTitle = "Urgent Notice: Plan Expires in 1 Day";
+        } else if (diffHours <= 48 && diffHours > 24) {
+          stage = "2d";
+          stageTitle = "Reminder: Plan Expires in 2 Days";
+        } else if (diffHours <= 72 && diffHours > 48) {
           stage = "3d";
-          stageTitle = "Reminder: Plan Renews in 3 Days";
-        } else if (diffHours <= 120 && diffHours > 72) {
+          stageTitle = "Reminder: Plan Expires in 3 Days";
+        } else if (diffHours <= 96 && diffHours > 72) {
+          stage = "4d";
+          stageTitle = "Reminder: Plan Expires in 4 Days";
+        } else if (diffHours <= 120 && diffHours > 96) {
           stage = "5d";
-          stageTitle = "Upcoming Renewal: Plan Renews in 5 Days";
+          stageTitle = "Upcoming Renewal: Plan Expires in 5 Days";
         }
 
         if (stage && user.lastReminderStage !== stage) {

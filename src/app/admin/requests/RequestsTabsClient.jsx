@@ -403,10 +403,10 @@ export default function RequestsTabsClient({ quotaRequests = [], conciergeReques
                           <button 
                             onClick={() => handleApproveQuota(req.id)}
                             disabled={isProcessing && processingId === req.id}
-                            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-accent-blue hover:bg-accent-blue/90 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-accent-blue hover:bg-accent-blue/90 rounded-lg transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
                           >
                             {isProcessing && processingId === req.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                            Approve & Apply
+                            Grant Access & Activate Plan
                           </button>
                         </div>
                       )}

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { prisma } from '@/lib/prisma';
 import RegisterForm from './RegisterForm';
 
@@ -20,7 +21,13 @@ export default async function RegisterPage() {
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent-blue/10 rounded-full blur-[150px] pointer-events-none"></div>
 
       <div className="w-full max-w-md relative z-10">
-        <RegisterForm isFull={isFull} isEnabled={isEnabled} />
+        <Suspense fallback={
+          <div className="bg-[#111] border border-border-subtle rounded-2xl p-8 text-center text-text-secondary text-xs">
+            Loading registration form...
+          </div>
+        }>
+          <RegisterForm isFull={isFull} isEnabled={isEnabled} />
+        </Suspense>
       </div>
     </div>
   );

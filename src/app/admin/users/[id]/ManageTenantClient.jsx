@@ -450,7 +450,7 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
       )}
 
       {activeTab === 'storage' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
           <section className="bg-card border border-border-subtle p-6 rounded-xl space-y-6">
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -478,7 +478,7 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
                     key={preset.name}
                     type="button"
                     onClick={() => applyPreset(preset)}
-                    className="p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-accent-blue/30 text-left transition-all group"
+                    className="p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-accent-blue/30 text-left transition-all group cursor-pointer"
                   >
                     <span className="text-xs font-medium text-white group-hover:text-accent-blue block truncate">
                       {preset.name.split(' (')[0]}
@@ -556,7 +556,7 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
               </div>
 
               <div className="pt-2 flex items-center justify-between">
-                <button type="submit" disabled={loading} className="bg-accent-blue hover:bg-accent-blue/90 text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50">
+                <button type="submit" disabled={loading} className="bg-accent-blue hover:bg-accent-blue/90 text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer">
                   {loading ? 'Saving Quota...' : 'Save Storage Limits'}
                 </button>
                 {success && <span className="text-xs text-emerald-400 font-medium">{success}</span>}
@@ -565,8 +565,8 @@ export default function ManageTenantClient({ tenant, mediaFiles, userWorkflows =
             </form>
           </section>
 
-          <section className="bg-card border border-border-subtle p-6 rounded-xl">
-            <h3 className="text-base font-semibold text-foreground mb-4">User Storage Bucket</h3>
+          <section className="bg-card border border-border-subtle p-6 rounded-xl space-y-4">
+            <h3 className="text-base font-semibold text-foreground">User Storage Bucket</h3>
             <StorageBucketClient user={{ ...tenant, maxDocs, maxDocMB, maxStorageMB }} mediaFiles={mediaFiles} isAdminView={true} />
           </section>
         </div>
