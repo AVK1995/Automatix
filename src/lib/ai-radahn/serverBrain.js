@@ -87,7 +87,8 @@ export async function executeAiRadahnInference({
   triggerData = {},
   previousSteps = [],
   customNotes = '',
-  selectedDeployments = []
+  selectedDeployments = [],
+  targetData = {}
 }) {
   let user = null;
   if (userId) {
@@ -130,6 +131,20 @@ export async function executeAiRadahnInference({
       });
 
       if (llmResult?.success && (llmResult.template || llmResult.body || llmResult.message)) {
+        if (userId) {
+          logConsumptionEvent({
+            userId,
+            operation: mode,
+            engineMode: 'BYOK',
+            provider,
+            creditsUsed: 1,
+            promptTokens: llmResult.promptTokens || 180,
+            completionTokens: llmResult.completionTokens || 340,
+            targetTitle: targetData?.targetTitle || (mode.includes('TEMPLATE') ? 'System Email Template' : 'Workflow Node'),
+            targetUrl: targetData?.targetUrl || (mode.includes('TEMPLATE') ? '/admin/notifications' : '/dashboard/workflows')
+          }).catch(() => {});
+        }
+
         return {
           ...llmResult,
           engineUsed: `AI Radahn True AI Brain (${provider.toUpperCase()})`
@@ -142,6 +157,20 @@ export async function executeAiRadahnInference({
 
   // 2. Ironclad Fallback to Built-in AI Radahn Core Brain
   try {
+    if (userId) {
+      logConsumptionEvent({
+        userId,
+        operation: mode,
+        engineMode: 'NATIVE',
+        provider: 'native',
+        creditsUsed: 1,
+        promptTokens: 0,
+        completionTokens: 0,
+        targetTitle: targetData?.targetTitle || (mode.includes('TEMPLATE') ? 'System Email Template' : 'Workflow Component'),
+        targetUrl: targetData?.targetUrl || (mode.includes('TEMPLATE') ? '/admin/notifications' : '/dashboard/workflows')
+      }).catch(() => {});
+    }
+
     if (mode === 'TRANSACTIONAL_TEMPLATE' || mode === 'TEMPLATE') {
       const res = executeTemplateArchitect({ instruction, tone, currentTemplate });
       
@@ -441,4 +470,42 @@ async function recordLearnedKnowledge(instruction = '') {
     // Non-blocking catch
   }
 }
+
+/**
+ * Log AI Consumption Event into Database for Analytics
+ */
+export async function logConsumptionEvent({
+  userId,
+  operation = 'AI_GENERATION',
+  engineMode = 'NATIVE',
+  provider = 'native',
+  creditsUsed = 1,
+  promptTokens = 0,
+  completionTokens = 0,
+  targetTitle = 'Workflow Component',
+  targetUrl = '/dashboard/workflows',
+  metadata = null
+}) {
+  if (!userId) return;
+  try {
+    await prisma.aiConsumptionLog.create({
+      data: {
+        userId,
+        operation,
+        engineMode: engineMode.toUpperCase(),
+        provider: provider.toLowerCase(),
+        creditsUsed: Number(creditsUsed) || 1,
+        promptTokens: Number(promptTokens) || 0,
+        completionTokens: Number(completionTokens) || 0,
+        totalTokens: (Number(promptTokens) || 0) + (Number(completionTokens) || 0),
+        targetTitle: targetTitle || 'AI Task',
+        targetUrl: targetUrl || '/dashboard/workflows',
+        metadata: metadata ? metadata : undefined
+      }
+    });
+  } catch (e) {
+    console.warn('Failed to log AI consumption event:', e.message);
+  }
+}
+
 

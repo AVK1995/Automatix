@@ -55,6 +55,26 @@ model User {
   aiRadahnProvider      String              @default("gemini") // "gemini", "openai", "anthropic"
   aiRadahnApiKey        String?
   aiRadahnEngineMode    String              @default("native") // "native" (Default Brain), "byok" (True AI Brain)
+  aiConsumptionLogs     AiConsumptionLog[]
+}
+
+model AiConsumptionLog {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  operation        String   // "EMAIL_TEMPLATE", "WORKFLOW_EMAIL", "CALENDAR_THEME", "REPLICA_RESHOOT", "VISION_PROMPT", "SOCIAL_MESSAGE"
+  engineMode       String   // "NATIVE" or "BYOK"
+  provider         String?  // "gemini", "openai", "claude", "native"
+  creditsUsed      Int      @default(1)
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  targetTitle      String?  // e.g. "5-Day Fitness Challenge", "Password Reset Email"
+  targetUrl        String?  // e.g. "/workflows/clx123", "/admin/notifications", "/dashboard/calendars"
+  metadata         Json?
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model AiRadahnKnowledge {

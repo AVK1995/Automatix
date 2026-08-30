@@ -16,6 +16,7 @@ import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 import WebhookGuideModal from '@/components/builder/WebhookGuideModal';
 import AiLatencyBenchmarkModal from './AiLatencyBenchmarkModal';
 import AiRadahnPromptModal from './AiRadahnPromptModal';
+import AiRadahnReplicaModal from './AiRadahnReplicaModal';
 import { testNodeAction, verifyAiKeyAction } from '@/actions/testNode';
 import { getWebhookPayloadHistory, simulateInstagramDM, simulateStorageUpload } from '@/actions/workflows';
 import { getRecentBookings } from '@/actions/bookings';
@@ -50,6 +51,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
   const [aiRadahnModalOpen, setAiRadahnModalOpen] = useState(false);
   const [aiRadahnModalType, setAiRadahnModalType] = useState('smtp_email');
   const [aiRadahnContext, setAiRadahnContext] = useState({});
+  const [isReplicaModalOpen, setIsReplicaModalOpen] = useState(false);
   
   const prevIdRef = import('react').then(() => {}).catch(() => {}); // Hack to avoid importing if already there
   const [initialState, setInitialState] = useState(null);
@@ -4428,6 +4430,51 @@ function watchFolderForNewFiles() {
                 </div>
               </div>
             )}
+
+            {/* AI Radahn Replica Watcher Box for Dynamic Date/Time Re-evaluation */}
+            <div className="pt-4 border-t border-white/10 space-y-2.5">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-purple-950/20 border border-purple-500/30">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                    <Sparkles size={14} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-white">AI Radahn Replica Watcher</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">PRO</span>
+                    </div>
+                    <p className="text-[10px] text-text-secondary mt-0.5">
+                      Watches dynamic date/time cells and reshoots downstream reminder flows.
+                    </p>
+                  </div>
+                </div>
+                <Toggle
+                  checked={Boolean(config.aiRadahnReplicaEnabled)}
+                  onChange={(checked) => {
+                    handleChange('aiRadahnReplicaEnabled', checked);
+                    if (checked) {
+                      setIsReplicaModalOpen(true);
+                    }
+                  }}
+                />
+              </div>
+
+              {config.aiRadahnReplicaEnabled && (
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs">
+                  <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Replica Active
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsReplicaModalOpen(true)}
+                    className="text-[11px] font-bold text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    Configure Replica &rarr;
+                  </button>
+                </div>
+              )}
+            </div>
+
           </div>
         );
 
@@ -5510,6 +5557,23 @@ function watchFolderForNewFiles() {
             };
           });
           toast.success('AI Radahn generation applied to step config!');
+        }}
+      />
+      <AiRadahnReplicaModal
+        isOpen={isReplicaModalOpen}
+        onClose={() => setIsReplicaModalOpen(false)}
+        workflowId={workflowId}
+        workflowName={selectedNode?.title || 'Workflow Automation'}
+        nodeData={selectedNode}
+        onReplicaConfigured={(replicaCfg) => {
+          onUpdateNode(selectedNode.id, (prevNode) => ({
+            ...prevNode,
+            config: {
+              ...prevNode?.config,
+              aiRadahnReplicaEnabled: true,
+              aiRadahnReplicaConfig: replicaCfg
+            }
+          }));
         }}
       />
       <QuotaUpgradeModal />
