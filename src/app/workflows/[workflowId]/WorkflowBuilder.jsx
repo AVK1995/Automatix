@@ -736,7 +736,7 @@ export default function WorkflowBuilder({ workflow }) {
           const { needsConnection, isConnected } = getNodeConnectionStatus(node);
           if (needsConnection && !isConnected) {
             invalidSet.add(node.id);
-          } else if (!isNodeConfigured(node)) {
+          } else if (!isNodeConfigured(node, false, nodes)) {
             invalidSet.add(node.id);
           }
         }
@@ -754,7 +754,7 @@ export default function WorkflowBuilder({ workflow }) {
         const varPath = match[1];
         if (varPath.startsWith('trigger.')) {
            const trigger = nodes.find(n => n.type === 'TRIGGER' || n.type === 'trigger');
-           if (!trigger || !trigger.integration || trigger.issue || invalidSet.has(trigger.id)) {
+           if (!trigger || !trigger.integration || trigger.issue) {
              isInvalid = true;
              break;
            }
@@ -762,7 +762,7 @@ export default function WorkflowBuilder({ workflow }) {
         }
         if (varPath.startsWith('steps.')) {
           const referencedNodeId = varPath.split('.')[1];
-          if (!ancestors.has(referencedNodeId) || invalidSet.has(referencedNodeId)) {
+          if (!ancestors.has(referencedNodeId)) {
             isInvalid = true;
             break;
           }
@@ -777,7 +777,7 @@ export default function WorkflowBuilder({ workflow }) {
           invalidSet.add(node.id);
           return;
         }
-        if (!isNodeConfigured(node)) {
+        if (!isNodeConfigured(node, false, nodes)) {
           invalidSet.add(node.id);
           return;
         }

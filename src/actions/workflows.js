@@ -209,7 +209,7 @@ export async function updateWorkflow(workflowId, data) {
             continue;
           }
 
-          if (!isNodeConfigured(node)) {
+          if (!isNodeConfigured(node, false, nodes)) {
             issues.push({
               nodeId: node.id,
               message: `Step "${node.title || node.integration?.name || node.type}" requires complete configuration.`
@@ -231,7 +231,7 @@ export async function updateWorkflow(workflowId, data) {
                  break;
                }
             }
-            if (varPath.startsWith('steps.node-')) {
+            if (varPath.startsWith('steps.')) {
               const referencedNodeId = varPath.split('.')[1];
               const refNode = nodes.find(n => n.id === referencedNodeId);
               if (!refNode) {

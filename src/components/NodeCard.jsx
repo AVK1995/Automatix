@@ -224,7 +224,7 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
               <h3 className="text-sm sm:text-base font-semibold text-white truncate" title={node.title}>{node.title}</h3>
               {(() => {
                 const { needsConnection, isConnected } = getNodeConnectionStatus(node);
-                const configured = isNodeConfigured(node, isInvalid);
+                const configured = isNodeConfigured(node, false, nodes);
                 
                 if (needsConnection) {
                   return isConnected ? (
@@ -233,12 +233,17 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
                         <CheckCircle2 className="w-2.5 h-2.5" />
                         Connected
                       </span>
-                      {!configured && (
+                      {!configured ? (
                         <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-orange-500/10 text-orange-400 px-1.5 py-0.5 rounded border border-orange-500/20 shrink-0">
                           <AlertTriangle className="w-2.5 h-2.5" />
                           Needs Config
                         </span>
-                      )}
+                      ) : isInvalid ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded border border-red-500/20 shrink-0">
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          Invalid Variable
+                        </span>
+                      ) : null}
                     </div>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded border border-red-500/20 shrink-0">
@@ -247,15 +252,26 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
                     </span>
                   );
                 } else {
-                  return configured ? (
-                    <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 shrink-0">
-                      <CheckCircle2 className="w-2.5 h-2.5" />
-                      Configured
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-orange-500/10 text-orange-400 px-1.5 py-0.5 rounded border border-orange-500/20 shrink-0">
+                  if (configured && !isInvalid) {
+                    return (
+                      <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 shrink-0">
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        Configured
+                      </span>
+                    );
+                  }
+                  if (!configured) {
+                    return (
+                      <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-orange-500/10 text-orange-400 px-1.5 py-0.5 rounded border border-orange-500/20 shrink-0">
+                        <AlertTriangle className="w-2.5 h-2.5" />
+                        Needs Config
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded border border-red-500/20 shrink-0">
                       <AlertTriangle className="w-2.5 h-2.5" />
-                      Needs Config
+                      Invalid Variable
                     </span>
                   );
                 }
@@ -311,29 +327,40 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
         </div>
       </div>
       
-      {(isInvalid || node.issue) && (
-        <div 
-          className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-md flex items-start gap-2 text-red-400 cursor-help"
-          title={node.issue ? `Issue: ${node.issue}` : (isTrigger ? "Trigger requires configuration or has a missing connection." : "This step requires configuration, or uses variables that are missing/invalid. Please re-configure.")}
-        >
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <p className="text-xs">
-            {node.issue 
-              ? `Action Required: ${node.issue}` 
-              : (() => {
-                  const { needsConnection, isConnected } = getNodeConnectionStatus(node);
-                  if (needsConnection && !isConnected) {
-                    return "Warning: Missing required connection.";
-                  }
-                  if (isTrigger) {
-                    return "Warning: Trigger requires configuration.";
-                  }
-                  return "Warning: Step requires configuration or has invalid variables.";
-                })()
-            }
-          </p>
-        </div>
-      )}
+      {(() => {
+        const { needsConnection, isConnected } = getNodeConnectionStatus(node);
+        const configured = isNodeConfigured(node, false, nodes);
+        const hasIssue = isInvalid || node.issue || !configured || (needsConnection && !isConnected);
+        if (!hasIssue) return null;
+
+        return (
+          <div 
+            className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-md flex items-start gap-2 text-red-400 cursor-help"
+            title={node.issue ? `Issue: ${node.issue}` : (isTrigger ? "Trigger requires configuration or has a missing connection." : "Step requires attention.")}
+          >
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <p className="text-xs">
+              {node.issue 
+                ? `Action Required: ${node.issue}` 
+                : (() => {
+                    if (needsConnection && !isConnected) {
+                      return "Warning: Missing required connection.";
+                    }
+                    if (!configured) {
+                      return isTrigger 
+                        ? "Warning: Trigger requires configuration." 
+                        : "Warning: Step requires configuration.";
+                    }
+                    if (isInvalid) {
+                      return "Warning: Step references a missing variable or deleted step.";
+                    }
+                    return "Warning: Step requires attention.";
+                  })()
+              }
+            </p>
+          </div>
+        );
+      })()}
 
       {/* Node Config / Summary */}
       <div className="mt-4 pt-3 border-t border-border-subtle/50 text-xs text-text-secondary bg-black/20 rounded-md p-3">

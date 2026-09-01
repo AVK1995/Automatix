@@ -679,7 +679,7 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
           }
         }
       }
-    } else if (anc.type === 'ACTION' || anc.type === 'FORMATTER' || anc.integration?.id?.includes('formatter') || anc.integration?.id === 'ai_mediator' || anc.integration?.id === 'instagram_publish') {
+    } else if ((anc.type === 'ACTION' || anc.type === 'FORMATTER' || anc.integration?.id?.includes('formatter') || anc.integration?.id === 'ai_mediator' || anc.integration?.id === 'instagram_publish') && anc.integration?.id !== 'delay') {
       if (anc.integration?.id === 'ai_mediator') {
         group.variables.push(
           { id: `steps.${anc.id}.output`, label: 'output (Full Primary Generated Text)', example: 'Ready to level up your workflow? Check out these 3 game-changing tips!' },
@@ -716,9 +716,10 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         }
         group.variables.push({ id: `steps.${anc.id}.output`, label: 'Step Output', example: exampleStr });
       }
-    } else if (anc.type === 'DELAY' && anc.config?.delayType === 'wait_for_reply') {
+    } else if ((anc.type === 'DELAY' || anc.type === NODE_TYPES.DELAY || anc.integration?.id === 'delay') && anc.config?.delayType === 'wait_for_reply') {
       group.variables.push(
-        { id: `steps.${anc.id}.reply_text`, label: 'reply_text', example: 'John' }
+        { id: `steps.${anc.id}.reply_text`, label: 'reply_text (User response message)', example: 'Mock user reply' },
+        { id: `steps.${anc.id}.reply_timeout`, label: 'reply_timeout (true if timed out)', example: 'false' }
       );
     }
 
@@ -5139,7 +5140,17 @@ function watchFolderForNewFiles() {
               <label className="block text-[10px] font-semibold text-text-secondary uppercase tracking-widest mb-2">Delay Type</label>
               <Select 
                 value={config.delayType || 'duration'} 
-                onChange={(val) => handleChange('delayType', val)}
+                onChange={(val) => {
+                  onUpdateNode(selectedNode.id, {
+                    ...selectedNode,
+                    config: {
+                      ...config,
+                      delayType: val,
+                      duration: config.duration !== undefined && config.duration !== '' ? config.duration : 1,
+                      unit: config.unit || 'minutes'
+                    }
+                  });
+                }}
                 options={[
                   { value: 'duration', label: 'Wait a set amount of time' },
                   { value: 'until', label: 'Wait until a specific date/time' },
@@ -5155,7 +5166,21 @@ function watchFolderForNewFiles() {
                   <label className="block text-xs font-medium text-text-secondary mb-1">
                     {config.delayType === 'wait_for_reply' ? 'Timeout Duration' : 'Duration'}
                   </label>
-                  <input type="number" value={config.duration || 1} onChange={(e) => handleChange('duration', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue" />
+                  <input 
+                    type="number" 
+                    value={config.duration !== undefined && config.duration !== '' ? config.duration : 1} 
+                    onChange={(e) => {
+                      onUpdateNode(selectedNode.id, {
+                        ...selectedNode,
+                        config: {
+                          ...config,
+                          duration: e.target.value,
+                          unit: config.unit || 'minutes'
+                        }
+                      });
+                    }} 
+                    className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue" 
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1">Unit</label>
@@ -5270,7 +5295,16 @@ function watchFolderForNewFiles() {
                      <VariableInput 
                        placeholder="e.g. {{trigger.email}}" 
                        value={config[`path${branch.id}Var`] || ''} 
-                       onChange={(val) => handleChange(`path${branch.id}Var`, val)} 
+                       onChange={(val) => {
+                          onUpdateNode(selectedNode.id, {
+                            ...selectedNode,
+                            config: {
+                              ...config,
+                              [`path${branch.id}Var`]: val,
+                              [`path${branch.id}Op`]: config[`path${branch.id}Op`] || 'contains'
+                            }
+                          });
+                        }} 
                        variables={variableGroups}
                      />
                    </div>

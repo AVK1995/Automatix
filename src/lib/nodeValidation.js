@@ -64,7 +64,7 @@ export function getNodeConnectionStatus(node) {
   return { needsConnection: false, isConnected: false };
 }
 
-export function isNodeConfigured(node, isInvalid = false) {
+export function isNodeConfigured(node, isInvalid = false, allNodes = []) {
   if (!node) return false;
   if (isInvalid || node.issue) return false;
 
@@ -112,9 +112,9 @@ export function isNodeConfigured(node, isInvalid = false) {
 
   // 2. Action Nodes
   if (id === 'ai_mediator') {
-    // CRITICAL BYOK RULE: API Key is required
-    const hasKey = !!config.apiKey?.trim();
-    if (!hasKey) return false;
+    const provider = config.provider || 'gemini';
+    const usesVault = provider === 'native' || provider === 'automatix' || provider.startsWith('vault_');
+    if (!usesVault && !config.apiKey?.trim()) return false;
 
     if (config.provider === 'custom') {
       if (!config.baseUrl?.trim() || !config.customModel?.trim()) return false;
@@ -170,12 +170,14 @@ export function isNodeConfigured(node, isInvalid = false) {
   }
 
   if (id === 'formatter_math') {
-    const hasInput1 = config.input1 !== undefined && config.input1 !== null && String(config.input1).trim() !== '';
-    return hasInput1 && !!config.operation;
+    const hasInput = (config.valA !== undefined && config.valA !== '') || 
+                     (config.amount !== undefined && config.amount !== '') || 
+                     (config.input1 !== undefined && config.input1 !== '');
+    return hasInput && !!(config.operation || 'add');
   }
 
   if (id === 'formatter_extract') {
-    return !!(config.inputString?.trim() || config.input?.trim());
+    return !!(config.source?.trim() || config.inputString?.trim() || config.input?.trim());
   }
 
   if (id === 'formatter_dev') {
@@ -209,24 +211,49 @@ export function isNodeConfigured(node, isInvalid = false) {
 
   // 3. Logic & Sequences
   if (id === 'delay') {
-    if (config.delayType === 'until') {
-      return !!config.untilDate;
+    const delayType = config.delayType || 'duration';
+    if (delayType === 'until') {
+      return !!config.untilDate?.trim();
     }
-    if (config.delayType === 'event_based') {
-      return !!config.eventDate && config.duration !== undefined && config.duration !== '';
+    if (delayType === 'event_based') {
+      return !!config.eventDate?.trim() && config.duration !== undefined && config.duration !== '';
     }
-    return config.duration !== undefined && config.duration !== '' && !!config.unit;
+    if (delayType === 'wait_for_reply') {
+      return config.duration !== undefined && config.duration !== '';
+    }
+    return config.duration !== undefined && config.duration !== '';
   }
 
-  if (id === 'condition' || id === 'filter') {
-    return !!(config.field?.trim() || (config.rules && config.rules.length > 0)) && !!config.operator;
+  if (id === 'condition') {
+    const branches = config.branches || [{ id: 'A' }];
+    if (!branches.length) return false;
+    return branches.every(b => {
+      const v = config[`path${b.id}Var`] || config[`path_${b.id}_var`];
+      if (!v || String(v).trim() === '') return false;
+      const op = config[`path${b.id}Op`] || config[`path_${b.id}_op`] || 'contains';
+      if (op === 'exists' || op === 'not_exists') return true;
+      const val = config[`path${b.id}Val`] || config[`path_${b.id}_val`];
+      return val !== undefined && val !== null && String(val).trim() !== '';
+    });
+  }
+
+  if (id === 'filter') {
+    const varVal = config.variable || config.pathAVar || config.field;
+    const op = config.operation || config.pathAOp || config.operator;
+    return !!(varVal && String(varVal).trim() !== '') && !!op;
   }
 
   if (id === 'reminder_sequence') {
     const branches = config.branches || [{ id: '1', name: 'Reminder 1', color: 'purple-500' }];
-    for (const branch of branches) {
-      const branchChild = (node.children || []).find(c => c.pathId === branch.id);
-      if (!branchChild) return false;
+    if (!branches.length) return false;
+
+    // If canvas node has children populated
+    if (node.children && node.children.length > 0) {
+      return branches.every(branch => (node.children || []).some(c => c.pathId === branch.id));
+    }
+    // If flat allNodes array is available
+    if (Array.isArray(allNodes) && allNodes.length > 0) {
+      return branches.every(branch => allNodes.some(c => c.parentId === node.id && c.pathId === branch.id));
     }
     return true;
   }
