@@ -26,7 +26,7 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
         : 'border-border-subtle hover:border-white/20';
 
   const priorityKeys = ['provider', 'calendarName', 'spreadsheetName', 'range', 'triggerColumn', 'triggerEvent', 'method', 'actionType'];
-  const hiddenKeys = ['webhookToken', 'sheetUrl', 'schema', 'connectionId', 'selectedEventId', 'capturedPayload', 'lastCopiedSignature', 'customOrigin'];
+  const hiddenKeys = ['webhookToken', 'sheetUrl', 'schema', 'connectionId', 'calendarId', 'selectedEventId', 'capturedPayload', 'lastCopiedSignature', 'customOrigin'];
 
   // Ensure default values are displayed for specific integrations
   const displayConfig = { ...node.config };
@@ -314,11 +314,23 @@ export default function NodeCard({ node, nodes = [], isSelected, isInvalid, isAc
       {(isInvalid || node.issue) && (
         <div 
           className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-md flex items-start gap-2 text-red-400 cursor-help"
-          title={node.issue ? `Issue: ${node.issue}` : (isTrigger ? "Trigger is missing a required connection or configuration." : "This step requires configuration, or uses variables that are missing/invalid. Please re-configure.")}
+          title={node.issue ? `Issue: ${node.issue}` : (isTrigger ? "Trigger requires configuration or has a missing connection." : "This step requires configuration, or uses variables that are missing/invalid. Please re-configure.")}
         >
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <p className="text-xs">
-            {node.issue ? `Action Required: ${node.issue}` : (isTrigger ? "Warning: Missing required connection." : "Warning: Step requires configuration or has invalid variables.")}
+            {node.issue 
+              ? `Action Required: ${node.issue}` 
+              : (() => {
+                  const { needsConnection, isConnected } = getNodeConnectionStatus(node);
+                  if (needsConnection && !isConnected) {
+                    return "Warning: Missing required connection.";
+                  }
+                  if (isTrigger) {
+                    return "Warning: Trigger requires configuration.";
+                  }
+                  return "Warning: Step requires configuration or has invalid variables.";
+                })()
+            }
           </p>
         </div>
       )}

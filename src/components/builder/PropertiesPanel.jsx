@@ -135,9 +135,10 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
   }, [selectedNode?.id]);
 
   useEffect(() => {
-    if (selectedNode?.type === NODE_TYPES.TRIGGER && selectedNode?.config?.provider === 'builtin') {
+    const isBuiltin = selectedNode?.type === NODE_TYPES.TRIGGER && (selectedNode?.config?.provider || 'builtin') === 'builtin' && selectedNode?.integration?.id === 'calendar';
+    if (isBuiltin) {
       const fetchCalendars = () => {
-        getCalendars().then(c => setAutomatixCalendars(c)).catch(console.error);
+        getCalendars().then(c => setAutomatixCalendars(c || [])).catch(console.error);
       };
       
       fetchCalendars();
@@ -157,17 +158,18 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
         window.removeEventListener('focus', handleFocus);
       };
     }
-  }, [selectedNode?.id, selectedNode?.config?.provider]);
+  }, [selectedNode?.id, selectedNode?.config?.provider, selectedNode?.integration?.id]);
 
   useEffect(() => {
-    if (selectedNode?.type === NODE_TYPES.TRIGGER && selectedNode?.config?.provider === 'builtin' && selectedNode?.config?.connectionId) {
-      getCalendarById(selectedNode.config.connectionId)
+    const calId = selectedNode?.config?.connectionId || selectedNode?.config?.calendarId;
+    if (selectedNode?.type === NODE_TYPES.TRIGGER && (selectedNode?.config?.provider || 'builtin') === 'builtin' && selectedNode?.integration?.id === 'calendar' && calId) {
+      getCalendarById(calId)
         .then(c => setSelectedAutomatixCalendar(c))
         .catch(console.error);
     } else {
       setSelectedAutomatixCalendar(null);
     }
-  }, [selectedNode?.config?.connectionId, selectedNode?.config?.provider]);
+  }, [selectedNode?.config?.connectionId, selectedNode?.config?.calendarId, selectedNode?.config?.provider, selectedNode?.integration?.id]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -312,14 +314,15 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
   };
   const fetchPayloadHistory = async (showLoader = false) => {
     const isCalendar = selectedNode?.integration?.id === 'calendar';
+    const calId = selectedNode?.config?.connectionId || selectedNode?.config?.calendarId;
     if (!isCalendar && (!workflowId || workflowId === 'new')) return;
-    if (isCalendar && !selectedNode?.config?.connectionId) return;
+    if (isCalendar && !calId) return;
 
     if (showLoader) setIsLoadingHistory(true);
     try {
       let history = [];
       if (isCalendar) {
-        history = await getRecentBookings(selectedNode.config.connectionId);
+        history = await getRecentBookings(calId);
       } else {
         history = await getWebhookPayloadHistory(workflowId);
       }
@@ -2280,17 +2283,24 @@ function watchFolderForNewFiles() {
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1">Select Event</label>
                   <Select 
-                    value={config.connectionId || ''}
+                    value={config.connectionId || config.calendarId || ''}
                     onChange={(val) => {
-                      handleChange('connectionId', val);
-                      if (val) {
-                        const selectedCal = automatixCalendars.find(c => c.id === val);
-                        if (selectedCal) {
-                          handleChange('calendarName', selectedCal.name);
-                        }
-                      } else {
-                        handleChange('calendarName', null);
-                      }
+                      const selectedCal = automatixCalendars.find(c => c.id === val);
+                      onUpdateNode(selectedNode.id, (prevNode) => {
+                        if (!prevNode) return prevNode;
+                        return {
+                          ...prevNode,
+                          config: {
+                            ...prevNode.config,
+                            provider: prevNode.config?.provider || 'builtin',
+                            connectionId: val || null,
+                            calendarId: val || null,
+                            calendarName: selectedCal ? selectedCal.name : null,
+                            triggerEvent: prevNode.config?.triggerEvent || 'invitee.created'
+                          },
+                          issue: null
+                        };
+                      });
                     }}
                     disabled={automatixCalendars.length === 0}
                     options={[
@@ -2300,11 +2310,11 @@ function watchFolderForNewFiles() {
                   />
                 </div>
                 
-                {config.connectionId && (
+                {(config.connectionId || config.calendarId) && (
                   <div>
                     <label className="block text-xs font-medium text-text-secondary mb-1">Trigger Event</label>
                     <Select 
-                      value={config.triggerEvent || ''} 
+                      value={config.triggerEvent || 'invitee.created'} 
                       onChange={(val) => handleChange('triggerEvent', val)}
                       options={[
                         { value: 'invitee.created', label: 'Invitee Created (New Meeting)' },
@@ -2317,12 +2327,12 @@ function watchFolderForNewFiles() {
 
                 <div className="bg-black/50 border border-white/10 p-4 rounded-lg flex flex-col gap-3 mt-4">
                    <p className="text-[11px] text-text-secondary leading-relaxed">Automatix Calendars are created and managed entirely from your Calendars page.</p>
-                   <Link href={config.connectionId ? `/dashboard/calendars?edit=${config.connectionId}` : "/dashboard/calendars"} target="_blank" className="bg-white/5 border border-white/10 py-2 rounded-md text-sm text-center font-medium hover:bg-white/10 transition-colors block w-full text-white">
+                   <Link href={(config.connectionId || config.calendarId) ? `/dashboard/calendars?edit=${config.connectionId || config.calendarId}` : "/dashboard/calendars"} target="_blank" className="bg-white/5 border border-white/10 py-2 rounded-md text-sm text-center font-medium hover:bg-white/10 transition-colors block w-full text-white">
                      Manage Automatix Calendars
                    </Link>
                 </div>
 
-                {config.connectionId && (
+                {(config.connectionId || config.calendarId) && (
                   <div className="pt-2 border-t border-white/5 space-y-3 mt-4">
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-medium text-text-secondary">Recent Bookings</label>

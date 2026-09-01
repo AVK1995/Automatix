@@ -314,6 +314,11 @@ export default function WorkflowBuilder({ workflow }) {
         isListening: true,
         webhookToken: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : `token_${Date.now()}`
       };
+    } else if (integration.id === 'calendar') {
+      initialConfig = {
+        provider: 'builtin',
+        triggerEvent: 'invitee.created'
+      };
     }
 
     const newNode = {
@@ -755,9 +760,9 @@ export default function WorkflowBuilder({ workflow }) {
            }
            continue;
         }
-        if (varPath.startsWith('steps.node-')) {
+        if (varPath.startsWith('steps.')) {
           const referencedNodeId = varPath.split('.')[1];
-          if (!ancestors.has(referencedNodeId)) {
+          if (!ancestors.has(referencedNodeId) || invalidSet.has(referencedNodeId)) {
             isInvalid = true;
             break;
           }

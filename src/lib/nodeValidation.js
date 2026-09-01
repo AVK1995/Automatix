@@ -50,11 +50,15 @@ export function getNodeConnectionStatus(node) {
   }
 
   // Calendar Trigger
-  if (integrationId === 'calendar' && config.provider !== 'builtin') {
-    return {
-      needsConnection: true,
-      isConnected: !!config.connectionId
-    };
+  if (integrationId === 'calendar') {
+    const provider = config.provider || 'builtin';
+    if (provider !== 'builtin') {
+      return {
+        needsConnection: true,
+        isConnected: !!config.connectionId
+      };
+    }
+    return { needsConnection: false, isConnected: false };
   }
 
   return { needsConnection: false, isConnected: false };
@@ -91,8 +95,9 @@ export function isNodeConfigured(node, isInvalid = false) {
   }
 
   if (id === 'calendar') {
-    if (config.provider === 'builtin') {
-      return !!config.calendarId;
+    const provider = config.provider || 'builtin';
+    if (provider === 'builtin') {
+      return !!(config.calendarId || config.connectionId || config.calendarName);
     }
     return !!config.connectionId;
   }
