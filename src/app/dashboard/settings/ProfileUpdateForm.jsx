@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { updateProfile } from './actions';
 import { Check, Loader2 } from 'lucide-react';
+import PhoneInput from '@/components/ui/PhoneInput';
 
 export default function ProfileUpdateForm({ user }) {
   const [name, setName] = useState(user.name || '');
@@ -48,12 +49,10 @@ export default function ProfileUpdateForm({ user }) {
       </div>
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-1">Phone Number</label>
-        <input 
-          type="tel" 
+        <PhoneInput 
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="+1 234 567 890"
-          className="w-full bg-background border border-border-subtle rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent-blue transition-colors"
+          onChange={setPhone}
+          placeholder="234 567 890"
         />
       </div>
       <div>

@@ -9,6 +9,7 @@ import Select from '@/components/ui/Select';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { getWorkflowExecutionHistory } from '@/actions/workflows';
 import { motion, AnimatePresence } from 'framer-motion';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 const STATUS_COLORS = {
   ACTIVE: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
@@ -210,8 +211,16 @@ export default function HistoryClient({ workflows }) {
       header: 'Workflow', 
       className: 'w-[40%] max-w-[200px] sm:max-w-[300px]',
       accessor: (row) => (
-        <div className="truncate min-w-0" title={row.workflow?.name || 'Unknown'}>
-          <span className="font-medium text-white truncate block">{row.workflow?.name || 'Unknown'}</span>
+        <div className="min-w-0">
+          <span 
+            className="font-medium text-white truncate block" 
+            data-tooltip={row.workflow?.name || 'Unknown'}
+          >
+            {row.workflow?.name || 'Unknown'}
+          </span>
+          <div className="text-[11px] text-text-secondary font-mono mt-0.5">
+            <TruncatedText text={row.id} prefix="Log ID: " maxChars={8} copyable={true} />
+          </div>
         </div>
       ) 
     },
@@ -374,7 +383,10 @@ export default function HistoryClient({ workflows }) {
                       />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-white truncate">{row.workflow?.name || 'Unknown'}</p>
+                      <p className="font-medium text-white truncate" data-tooltip={row.workflow?.name || 'Unknown'}>{row.workflow?.name || 'Unknown'}</p>
+                      <div className="text-[11px] text-text-secondary font-mono mt-0.5">
+                        <TruncatedText text={row.id} prefix="Log ID: " maxChars={8} copyable={true} />
+                      </div>
                       <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
                         <Clock className="w-3 h-3" />
                         {new Date(row.createdAt).toLocaleString()}
@@ -411,15 +423,17 @@ export default function HistoryClient({ workflows }) {
               <div className="px-6 py-5 border-b border-border-subtle flex items-start justify-between bg-white/5">
                 <div>
                   <h2 className="text-lg font-semibold text-white flex items-center gap-3">
-                    {activeLog.workflow?.name || 'Unknown Workflow'}
+                    <span data-tooltip={activeLog.workflow?.name}>{activeLog.workflow?.name || 'Unknown Workflow'}</span>
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${STATUS_COLORS[activeLog.status] || STATUS_COLORS.CANCELLED}`}>
                       {STATUS_ICONS[activeLog.status]}
                       {activeLog.status.charAt(0) + activeLog.status.slice(1).toLowerCase()}
                     </span>
                   </h2>
-                  <p className="text-sm text-text-secondary mt-1">
-                    Executed on {new Date(activeLog.createdAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'long' })}
-                  </p>
+                  <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
+                    <span>Executed on {new Date(activeLog.createdAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'long' })}</span>
+                    <span>•</span>
+                    <TruncatedText text={activeLog.id} prefix="Log ID: " maxChars={12} copyable={true} className="font-mono text-foreground" />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {activeLog.status === 'ACTIVE' && (

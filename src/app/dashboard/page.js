@@ -8,10 +8,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function ClientOverview() {
   const session = await auth();
+  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
   
   const [
     totalWorkflows,
     activeRuns,
+    failedRuns,
     allLogs
   ] = await Promise.all([
     prisma.workflow.count({ where: { clientId: session.user.id } }),
@@ -20,6 +22,13 @@ export default async function ClientOverview() {
         workflow: { clientId: session.user.id },
         status: 'ACTIVE' 
       } 
+    }),
+    prisma.executionLog.count({
+      where: {
+        workflow: { clientId: session.user.id },
+        status: { in: ['FAILED', 'CANCELLED'] },
+        createdAt: { gte: last24h }
+      }
     }),
     prisma.executionLog.findMany({
       where: { workflow: { clientId: session.user.id } },
@@ -51,14 +60,14 @@ export default async function ClientOverview() {
         />
         <MetricCard 
           title="Failed Executions" 
-          value={0} 
+          value={failedRuns} 
           description="In the last 24 hours" 
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-3">
-          <DashboardAnalytics logs={allLogs} />
+          <DashboardAnalytics logs={allLogs} dateRange="14" />
         </div>
 
         <div className="lg:col-span-3 bg-card border border-border-subtle rounded-sm p-6 flex flex-col">
@@ -68,13 +77,17 @@ export default async function ClientOverview() {
               <div className="space-y-3 pr-2">
                 {recentLogs.map(log => (
                   <div key={log.id} className="flex items-center justify-between py-2 border-b border-border-subtle last:border-0">
-                    <div>
-                      <Link href={`/dashboard/workflows/${log.workflow.id}`} className="text-sm font-medium text-foreground hover:text-accent-blue transition-colors block">
+                    <div className="min-w-0 pr-4">
+                      <Link 
+                        href={`/dashboard/workflows/${log.workflow.id}`} 
+                        className="text-sm font-medium text-foreground hover:text-accent-blue transition-colors block truncate max-w-sm"
+                        data-tooltip={log.workflow.name}
+                      >
                         {log.workflow.name}
                       </Link>
                       <p className="text-xs text-text-secondary mt-0.5">{new Date(log.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                     </div>
-                    <div>
+                    <div className="shrink-0">
                       <span className={`text-xs px-2 py-1 rounded-full ${
                         log.status === 'ACTIVE' ? 'bg-accent-blue/10 text-accent-blue' :
                         log.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400' :

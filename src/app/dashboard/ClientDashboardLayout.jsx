@@ -9,6 +9,7 @@ import NotificationDropdown from '@/components/layout/NotificationDropdown';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import Chatbot from '@/components/ui/Chatbot';
 import QuotaUpgradeModal from '@/components/ui/QuotaUpgradeModal';
+import StorageExpansionModal from '@/components/ui/StorageExpansionModal';
 import RenewalAlertToast from '@/components/ui/RenewalAlertToast';
 
 export default function ClientDashboardLayout({ children, user }) {
@@ -23,6 +24,7 @@ export default function ClientDashboardLayout({ children, user }) {
     if (path === '/dashboard') return 'Dashboard';
     if (path.startsWith('/dashboard/workflows')) return 'Workflows';
     if (path.startsWith('/dashboard/connections')) return 'Global Connections';
+    if (path.startsWith('/dashboard/whatsapp')) return 'WhatsApp Studio & Cloud API';
     if (path.startsWith('/dashboard/settings')) return 'Settings';
     if (path.startsWith('/dashboard/calendars')) return 'Calendars';
     if (path.startsWith('/dashboard/storage')) return 'Storage Bucket';
@@ -94,6 +96,7 @@ export default function ClientDashboardLayout({ children, user }) {
       
       <Chatbot />
       <QuotaUpgradeModal />
+      <StorageExpansionModal />
       <RenewalAlertToast />
     </div>
   );

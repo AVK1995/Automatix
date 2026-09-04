@@ -7,6 +7,8 @@ import DataTable from '@/components/DataTable';
 import Link from 'next/link';
 import { Download, Filter, Calendar, BarChart3, Activity, Layers, User } from 'lucide-react';
 import { exportToCsv } from '@/lib/csvExport';
+import TruncatedText from '@/components/ui/TruncatedText';
+import Select from '@/components/ui/Select';
 
 export default function AdminAnalyticsClient({ 
   totalWorkflows, 
@@ -15,7 +17,7 @@ export default function AdminAnalyticsClient({
   allLogs, 
   usages, 
   populatedIntegrations,
-  allTenants 
+  allTenants = []
 }) {
   const [dateRange, setDateRange] = useState('30'); // '7' | '30' | '90' | 'ALL'
   const [selectedTenantId, setSelectedTenantId] = useState('ALL');
@@ -28,7 +30,7 @@ export default function AdminAnalyticsClient({
 
     return allLogs.filter(log => {
       if (cutoff && new Date(log.createdAt).getTime() < cutoff) return false;
-      if (selectedTenantId !== 'ALL' && log.workflow?.userId !== selectedTenantId) return false;
+      if (selectedTenantId !== 'ALL' && log.workflow?.clientId !== selectedTenantId) return false;
       return true;
     });
   }, [allLogs, dateRange, selectedTenantId]);
@@ -49,6 +51,7 @@ export default function AdminAnalyticsClient({
     const columns = [
       { key: 'id', label: 'Log ID' },
       { label: 'Workflow Name', accessor: l => l.workflow?.name || 'Unknown' },
+      { label: 'Tenant', accessor: l => l.workflow?.client?.email || 'N/A' },
       { key: 'externalReferenceId', label: 'External Ref' },
       { key: 'status', label: 'Status' },
       { label: 'Created At', accessor: l => new Date(l.createdAt).toISOString() },
@@ -59,16 +62,35 @@ export default function AdminAnalyticsClient({
   };
 
   const tableColumns = [
-    { header: 'Log ID', accessor: (row) => row.id.substring(0, 8) + '...' },
+    { 
+      header: 'Log ID', 
+      accessor: (row) => <TruncatedText text={row.id} maxChars={8} copyable={true} /> 
+    },
     { 
       header: 'Workflow Name', 
       accessor: (row) => row.workflow ? (
-        <Link href={`/admin/workflows/${row.workflow.id}`} className="font-medium text-foreground hover:text-accent-blue transition-colors block">
-          {row.workflow.name}
-        </Link>
+        <div className="min-w-0 max-w-[240px]">
+          <Link 
+            href={`/admin/workflows/${row.workflow.id}`} 
+            className="font-medium text-foreground hover:text-accent-blue transition-colors block truncate"
+            data-tooltip={row.workflow.name}
+          >
+            {row.workflow.name}
+          </Link>
+          {row.workflow.client && (
+            <div className="text-[11px] text-text-tertiary truncate" data-tooltip={row.workflow.client.email}>
+              {row.workflow.client.name ? `${row.workflow.client.name} • ${row.workflow.client.email}` : row.workflow.client.email}
+            </div>
+          )}
+        </div>
       ) : 'Unknown'
     },
-    { header: 'Ext. Reference', accessor: (row) => row.externalReferenceId || 'N/A' },
+    { 
+      header: 'Ext. Reference', 
+      accessor: (row) => row.externalReferenceId ? (
+        <TruncatedText text={row.externalReferenceId} maxChars={12} copyable={true} />
+      ) : <span className="text-text-tertiary">N/A</span> 
+    },
     { header: 'Status', accessor: (row) => row.status, isStatus: true },
     { header: 'Started At', accessor: (row) => new Date(row.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) },
   ];
@@ -86,13 +108,30 @@ export default function AdminAnalyticsClient({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Tenant Filter Selector */}
+          {allTenants && allTenants.length > 0 && (
+            <div className="w-48">
+              <Select
+                value={selectedTenantId}
+                onChange={setSelectedTenantId}
+                options={[
+                  { value: 'ALL', label: 'All Tenants' },
+                  ...allTenants.map(t => ({
+                    value: t.id,
+                    label: t.name ? `${t.name} (${t.email})` : t.email
+                  }))
+                ]}
+              />
+            </div>
+          )}
+
           {/* Date Range Selector */}
           <div className="flex items-center gap-1 bg-[#111] p-1 rounded-lg border border-white/10 text-xs">
             {['7', '30', '90', 'ALL'].map((range) => (
               <button
                 key={range}
                 onClick={() => setDateRange(range)}
-                className={`px-3 py-1.5 rounded-md transition-colors font-medium ${
+                className={`px-3 py-1.5 rounded-md transition-colors font-medium cursor-pointer ${
                   dateRange === range ? 'bg-accent-blue text-white' : 'text-text-secondary hover:text-white'
                 }`}
               >
@@ -105,7 +144,7 @@ export default function AdminAnalyticsClient({
           <button
             onClick={exportFilteredAnalyticsCsv}
             disabled={filteredLogs.length === 0}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-xs font-semibold border border-white/10 flex items-center gap-2 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-xs font-semibold border border-white/10 flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
           >
             <Download size={14} />
             Export Analytics CSV
@@ -137,7 +176,7 @@ export default function AdminAnalyticsClient({
         <div className="flex items-center justify-between mb-4">
           <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Execution Throughput (Filtered: {filteredLogs.length} events)</span>
         </div>
-        <DashboardAnalytics logs={filteredLogs} isAdmin={true} />
+        <DashboardAnalytics logs={filteredLogs} dateRange={dateRange} isAdmin={true} />
       </div>
 
       {/* API Connection Usage Section */}

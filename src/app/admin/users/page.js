@@ -4,6 +4,7 @@ import ProvisionForm from './ProvisionForm';
 import Link from 'next/link';
 import DeleteButton from '@/components/DeleteButton';
 import SearchInput from '@/components/SearchInput';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,10 +37,19 @@ export default async function TenantProvisioningPage({ searchParams }) {
       header: 'Tenant / Email', 
       className: 'w-[30%]',
       accessor: (row) => (
-        <Link href={`/admin/users/${row.id}`} className="block group">
-          <div className="font-semibold text-foreground group-hover:text-accent-blue transition-colors">{row.name || 'Pending Setup'}</div>
-          <div className="text-xs text-text-secondary mt-0.5 group-hover:text-accent-blue/70 transition-colors">{row.email}</div>
-        </Link>
+        <div className="min-w-0 max-w-[260px]">
+          <Link href={`/admin/users/${row.id}`} className="block group">
+            <div className="font-semibold text-foreground group-hover:text-accent-blue transition-colors truncate" data-tooltip={row.name}>
+              {row.name || 'Pending Setup'}
+            </div>
+            <div className="text-xs text-text-secondary mt-0.5 group-hover:text-accent-blue/70 transition-colors truncate" data-tooltip={row.email}>
+              {row.email}
+            </div>
+          </Link>
+          <div className="text-[10px] text-text-tertiary font-mono mt-0.5">
+            <TruncatedText text={row.id} prefix="ID: " maxChars={8} copyable={true} />
+          </div>
+        </div>
       )
     },
     { 

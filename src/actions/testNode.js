@@ -79,6 +79,9 @@ export async function testNodeAction(node) {
           data: { message: `Simulated success for ${integrationId}. Real execution engine for this provider is coming soon.` } 
         };
 
+      case 'whatsapp_template':
+        return await executeWhatsAppTemplateTest(config, session.user.id);
+
       case 'ai_mediator':
         return await executeAiMediatorTest(config);
 
@@ -1156,4 +1159,189 @@ async function executeInstagramPublishTest(config, userId) {
     time: Date.now() - startTime
   };
 }
+
+async function executeWhatsAppTemplateTest(config, userId) {
+  const startTime = Date.now();
+  try {
+    const connectionId = config.connectionId;
+    if (!connectionId) {
+      return { 
+        success: false, 
+        error: 'No WhatsApp connection selected', 
+        fix: 'Select a connected WhatsApp Business account in the properties panel.' 
+      };
+    }
+
+    const connection = await prisma.integration.findUnique({
+      where: { id: connectionId }
+    });
+
+    if (!connection || connection.clientId !== userId) {
+      return { 
+        success: false, 
+        error: 'WhatsApp connection not found or unauthorized',
+        fix: 'Please reselect or reconnect your WhatsApp account in Connections.'
+      };
+    }
+
+    const templateName = config.templateName;
+    if (!templateName) {
+      return { 
+        success: false, 
+        error: 'No template selected', 
+        fix: 'Choose an approved WhatsApp template from the dropdown.' 
+      };
+    }
+
+    let toPhone = (config.toPhone || config.to || '').trim();
+    if (!toPhone) {
+      return { 
+        success: false, 
+        error: 'Recipient phone number is required', 
+        fix: 'Provide a valid recipient phone with country code (e.g., +1234567890).' 
+      };
+    }
+
+    toPhone = applyTestVariables(toPhone);
+    const cleanPhone = toPhone.replace(/[^0-9]/g, '');
+    if (!cleanPhone || cleanPhone.length < 8) {
+      return { 
+        success: false, 
+        error: `Invalid recipient phone number format: "${toPhone}"`,
+        fix: 'Ensure the phone number includes the international country code.' 
+      };
+    }
+
+    const phoneNumberId = connection.privateKey;
+    const accessToken = connection.apiKey;
+
+    if (!phoneNumberId || !accessToken) {
+      return { 
+        success: false, 
+        error: 'WhatsApp connection is missing credentials.',
+        fix: 'Please reconnect your WhatsApp Business account in Connections.' 
+      };
+    }
+
+    // Build components
+    const components = [];
+
+    // Header parameters
+    if (config.headerType && config.headerType !== 'NONE') {
+      const headerParams = [];
+      if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(config.headerType)) {
+        const mediaUrl = applyTestVariables(config.headerMediaUrl || '');
+        if (mediaUrl) {
+          headerParams.push({
+            type: config.headerType.toLowerCase(),
+            [config.headerType.toLowerCase()]: { link: mediaUrl }
+          });
+        }
+      } else if (config.headerType === 'TEXT' && config.headerVariables) {
+        headerParams.push({
+          type: 'text',
+          text: String(applyTestVariables(config.headerVariables['1'] || 'Sample'))
+        });
+      }
+
+      if (headerParams.length > 0) {
+        components.push({
+          type: 'header',
+          parameters: headerParams
+        });
+      }
+    }
+
+    // Body parameters
+    if (config.bodyVariables && typeof config.bodyVariables === 'object') {
+      const bodyParams = [];
+      const sortedKeys = Object.keys(config.bodyVariables).sort((a, b) => Number(a) - Number(b));
+      for (const key of sortedKeys) {
+        bodyParams.push({
+          type: 'text',
+          text: String(applyTestVariables(config.bodyVariables[key] || `Value_${key}`))
+        });
+      }
+      if (bodyParams.length > 0) {
+        components.push({
+          type: 'body',
+          parameters: bodyParams
+        });
+      }
+    }
+
+    const payload = {
+      messaging_product: 'whatsapp',
+      to: cleanPhone,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: config.language || 'en_US' }
+      }
+    };
+
+    if (components.length > 0) {
+      payload.template.components = components;
+    }
+
+    const metaRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const metaData = await metaRes.json();
+
+    if (!metaRes.ok) {
+      const errorMsg = metaData.error?.message || 'Meta Cloud API rejected the template dispatch';
+      return {
+        success: false,
+        error: errorMsg,
+        fix: metaData.error?.error_user_msg || 'Verify your Meta WhatsApp number has a valid payment method attached and template is in APPROVED status.'
+      };
+    }
+
+    const messageId = metaData.messages?.[0]?.id || 'wamid.simulated';
+    const maskedPhone = cleanPhone.slice(0, 3) + '*****' + cleanPhone.slice(-4);
+
+    // Non-blocking privacy log
+    try {
+      await prisma.whatsAppLog.create({
+        data: {
+          clientId: userId,
+          integrationId: connection.id,
+          templateName: templateName,
+          recipientPhoneMasked: maskedPhone,
+          status: 'SENT',
+          source: 'WORKFLOW_TEST',
+          metaMessageId: messageId
+        }
+      });
+    } catch (logErr) {
+      console.warn('[executeWhatsAppTemplateTest] Log creation error:', logErr);
+    }
+
+    return {
+      success: true,
+      data: {
+        status: 'SENT',
+        messageId: messageId,
+        recipient: maskedPhone,
+        template: templateName,
+        metaStatus: 'Message accepted for delivery by Meta Cloud API'
+      },
+      time: Date.now() - startTime
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err.message || 'WhatsApp template test failed',
+      fix: 'Verify your WhatsApp Phone ID and recipient number format.'
+    };
+  }
+}
+
 

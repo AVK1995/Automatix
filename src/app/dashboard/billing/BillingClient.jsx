@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import PlanUpgradeModal from '@/components/ui/PlanUpgradeModal';
 
 export default function BillingClient({ initialUser }) {
   const [user, setUser] = useState(initialUser);
@@ -59,8 +58,8 @@ export default function BillingClient({ initialUser }) {
     }
   };
 
-  const openQuotaModal = () => {
-    window.dispatchEvent(new CustomEvent('open-plan-modal', { detail: { step: 2 } }));
+  const openStorageModal = () => {
+    window.dispatchEvent(new CustomEvent('open-storage-modal'));
   };
 
   const openRenewalModal = () => {
@@ -248,8 +247,9 @@ export default function BillingClient({ initialUser }) {
               <span className="text-accent-blue font-medium">{user.quotaTier || 'Free Plan (50 MB)'}</span>
             </div>
             <button
-              onClick={openQuotaModal}
-              className="w-full py-2 px-3 rounded-lg text-xs font-medium bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors border border-accent-blue/20"
+              type="button"
+              onClick={openStorageModal}
+              className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue transition-colors border border-accent-blue/20 cursor-pointer"
             >
               Expand Storage Quota
             </button>
@@ -469,8 +469,6 @@ export default function BillingClient({ initialUser }) {
         document.body
       )}
 
-      {/* Plan and Storage Upgrade Modal */}
-      <PlanUpgradeModal />
-    </div>
+      </div>
   );
 }

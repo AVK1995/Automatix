@@ -7,10 +7,12 @@ import {
 } from 'recharts';
 import ExecutionDrilldownModal from '@/components/ExecutionDrilldownModal';
 
-export default function DashboardAnalytics({ logs, isAdmin = false }) {
+export default function DashboardAnalytics({ logs = [], isAdmin = false, dateRange = '14' }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalData, setModalData] = useState([]);
+
+  const rangeLabel = dateRange === 'ALL' ? 'All Time' : dateRange === '7' ? 'Last 7 Days' : dateRange === '90' ? 'Last 90 Days' : dateRange === '30' ? 'Last 30 Days' : 'Last 14 Days';
 
   // Process data for charts
   const { areaData, pieData } = useMemo(() => {
@@ -20,26 +22,43 @@ export default function DashboardAnalytics({ logs, isAdmin = false }) {
     const daysMap = {};
     const statusCount = { COMPLETED: 0, FAILED: 0, ACTIVE: 0, CANCELLED: 0 };
 
-    // Initialize last 14 days
-    for (let i = 13; i >= 0; i--) {
+    let numDays = 14;
+    if (dateRange === '7') numDays = 7;
+    else if (dateRange === '30') numDays = 30;
+    else if (dateRange === '90') numDays = 90;
+    else if (dateRange === 'ALL') {
+      if (logs.length > 0) {
+        const earliest = Math.min(...logs.map(l => new Date(l.createdAt).getTime()));
+        const diffDays = Math.ceil((Date.now() - earliest) / (1000 * 60 * 60 * 24));
+        numDays = Math.min(Math.max(diffDays + 1, 14), 180);
+      } else {
+        numDays = 30;
+      }
+    }
+
+    // Initialize days in chronological order
+    for (let i = numDays - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      daysMap[dateStr] = { name: dateStr, runs: 0, logs: [] };
+      daysMap[dateStr] = { name: dateStr, date: d, runs: 0, logs: [] };
     }
 
     logs.forEach(log => {
-      const dateStr = new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      if (daysMap[dateStr]) {
-        daysMap[dateStr].runs += 1;
-        daysMap[dateStr].logs.push(log);
+      const logDate = new Date(log.createdAt);
+      const dateStr = logDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (!daysMap[dateStr]) {
+        daysMap[dateStr] = { name: dateStr, date: logDate, runs: 0, logs: [] };
       }
+      daysMap[dateStr].runs += 1;
+      daysMap[dateStr].logs.push(log);
+
       if (statusCount[log.status] !== undefined) {
         statusCount[log.status] += 1;
       }
     });
 
-    const areaData = Object.values(daysMap);
+    const areaData = Object.values(daysMap).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const pieData = [
       { name: 'Completed', value: statusCount.COMPLETED, color: '#10B981', logs: logs.filter(l => l.status === 'COMPLETED') },
@@ -48,7 +67,7 @@ export default function DashboardAnalytics({ logs, isAdmin = false }) {
     ].filter(d => d.value > 0);
 
     return { areaData, pieData };
-  }, [logs]);
+  }, [logs, dateRange]);
 
   const handleBarClick = (data) => {
     if (!data || !data.activePayload || !data.activePayload[0]) return;
@@ -80,7 +99,7 @@ export default function DashboardAnalytics({ logs, isAdmin = false }) {
         {/* Area Chart */}
         <div className="md:col-span-2 bg-card border border-border-subtle rounded-sm p-4 sm:p-6 flex flex-col h-[320px] md:h-full">
           <div className="mb-4 sm:mb-6">
-            <h2 className="text-base font-medium text-foreground">Execution Volume (Last 14 Days)</h2>
+            <h2 className="text-base font-medium text-foreground">Execution Volume ({rangeLabel})</h2>
             <p className="text-xs text-text-secondary mt-1">Click on a point to view specific runs.</p>
           </div>
           <div className="flex-1 w-full min-h-[180px]">

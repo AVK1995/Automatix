@@ -121,6 +121,34 @@ export default function PropertiesPanel({ selectedNode, nodes = [], onClose, onU
     });
   }, []);
 
+  const [whatsappTemplates, setWhatsappTemplates] = useState([]);
+  const [loadingWhatsAppTemplates, setLoadingWhatsAppTemplates] = useState(false);
+
+  useEffect(() => {
+    if (selectedNode?.integration?.id === 'whatsapp_template' && selectedNode?.config?.connectionId) {
+      setLoadingWhatsAppTemplates(true);
+      import('@/actions/whatsapp').then(m => {
+        if (m.getWhatsAppTemplates) {
+          m.getWhatsAppTemplates(selectedNode.config.connectionId)
+            .then(res => {
+              if (res.success && res.templates) {
+                setWhatsappTemplates(res.templates);
+              } else {
+                setWhatsappTemplates([]);
+              }
+            })
+            .catch(err => {
+              console.error('Error loading WhatsApp templates:', err);
+              setWhatsappTemplates([]);
+            })
+            .finally(() => setLoadingWhatsAppTemplates(false));
+        }
+      });
+    } else {
+      setWhatsappTemplates([]);
+    }
+  }, [selectedNode?.id, selectedNode?.config?.connectionId]);
+
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -4263,6 +4291,204 @@ function watchFolderForNewFiles() {
             </div>
           </div>
         );
+
+      case 'whatsapp_template': {
+        const tplName = config.templateName || '';
+        const currentTpl = whatsappTemplates.find(t => (t.templateName || t.name) === tplName);
+        const comps = currentTpl?.componentsJson || currentTpl?.components || [];
+        const headerComp = comps.find(c => (c.type || '').toUpperCase() === 'HEADER');
+        const bodyComp = comps.find(c => (c.type || '').toUpperCase() === 'BODY');
+
+        const bodyText = config.bodyText || bodyComp?.text || '';
+        const varMatches = Array.from(bodyText.matchAll(/\{\{(\d+)\}\}/g));
+        const uniqueIndices = Array.from(new Set(varMatches.map(m => m[1]))).sort((a, b) => Number(a) - Number(b));
+
+        const headerFormat = (config.headerType || headerComp?.format || 'NONE').toUpperCase();
+        const headerText = headerComp?.text || '';
+        const hasHeaderVar = headerFormat === 'TEXT' && /\{\{1\}\}/.test(headerText);
+
+        return (
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-text-secondary">WhatsApp Account</label>
+                <Link 
+                  href="/dashboard/connections" 
+                  className="text-[11px] text-accent-blue hover:underline flex items-center gap-1"
+                >
+                  Manage Connections
+                </Link>
+              </div>
+              <ConnectIntegration 
+                provider="WhatsApp" 
+                selectedConnectionId={config.connectionId}
+                onConnectionSelect={(id) => {
+                  handleChange('connectionId', id);
+                  handleChange('templateName', '');
+                  handleChange('bodyVariables', {});
+                  handleChange('headerVariables', {});
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">
+                Recipient Phone Number <span className="text-red-400">*</span>
+              </label>
+              <VariableInput 
+                placeholder="+1234567890 or {{trigger.phone}}" 
+                value={config.toPhone || ''} 
+                onChange={(val) => handleChange('toPhone', val)} 
+                variables={variableGroups} 
+              />
+              <p className="text-[10px] text-text-tertiary mt-1">E.164 format with country code (e.g. +14155552671 or +919876543210)</p>
+            </div>
+
+            <div className="pt-2 border-t border-border-subtle">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-text-secondary">Select Template <span className="text-red-400">*</span></label>
+                <Link 
+                  href="/dashboard/whatsapp?tab=studio" 
+                  target="_blank" 
+                  className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-medium"
+                >
+                  + New Template <ExternalLink size={10} />
+                </Link>
+              </div>
+
+              {loadingWhatsAppTemplates ? (
+                <div className="flex items-center gap-2 p-3 bg-white/5 border border-border-subtle rounded-md text-xs text-text-tertiary">
+                  <RefreshCw size={14} className="animate-spin text-emerald-400" />
+                  Fetching approved Meta templates...
+                </div>
+              ) : whatsappTemplates.length === 0 ? (
+                <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-md text-xs space-y-2">
+                  <p className="text-emerald-300 font-medium">No synced templates found</p>
+                  <p className="text-text-tertiary text-[11px]">
+                    Create a template in the Template Studio or ensure your WABA ID has templates approved in Meta Business Manager.
+                  </p>
+                  <Link
+                    href="/dashboard/whatsapp?tab=studio"
+                    className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 bg-emerald-500 text-black font-semibold rounded hover:bg-emerald-600 transition-colors"
+                  >
+                    Open Template Studio
+                  </Link>
+                </div>
+              ) : (
+                <Select
+                  value={config.templateName || ''}
+                  onChange={(val) => {
+                    const chosen = whatsappTemplates.find(t => (t.templateName || t.name) === val);
+                    handleChange('templateName', val);
+                    if (chosen) {
+                      handleChange('language', chosen.language || 'en_US');
+                      handleChange('category', chosen.category || 'MARKETING');
+                      const cList = chosen.componentsJson || chosen.components || [];
+                      const h = cList.find(c => (c.type || '').toUpperCase() === 'HEADER');
+                      const b = cList.find(c => (c.type || '').toUpperCase() === 'BODY');
+                      handleChange('headerType', h?.format || 'NONE');
+                      handleChange('bodyText', b?.text || '');
+                      handleChange('bodyVariables', {});
+                      handleChange('headerVariables', {});
+                    }
+                  }}
+                  options={whatsappTemplates.map(t => {
+                    const name = t.templateName || t.name;
+                    const st = t.status || 'APPROVED';
+                    return {
+                      value: name,
+                      label: `${name} (${t.language || 'en_US'}) [${st}]`
+                    };
+                  })}
+                  placeholder="Choose an approved template..."
+                />
+              )}
+            </div>
+
+            {config.templateName && (
+              <div className="space-y-4 pt-2 border-t border-border-subtle">
+                {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerFormat) && (
+                  <div className="p-3 bg-white/5 border border-border-subtle rounded-md space-y-1.5">
+                    <label className="block text-xs font-semibold text-emerald-400">
+                      Header Media URL ({headerFormat}) <span className="text-red-400">*</span>
+                    </label>
+                    <VariableInput 
+                      placeholder={`https://example.com/asset.${headerFormat === 'IMAGE' ? 'jpg' : headerFormat === 'VIDEO' ? 'mp4' : 'pdf'} or {{trigger.mediaUrl}}`}
+                      value={config.headerMediaUrl || ''} 
+                      onChange={(val) => handleChange('headerMediaUrl', val)} 
+                      variables={variableGroups} 
+                    />
+                    <p className="text-[10px] text-text-tertiary">Direct publicly accessible HTTPS URL required by Meta.</p>
+                  </div>
+                )}
+
+                {hasHeaderVar && (
+                  <div className="p-3 bg-white/5 border border-border-subtle rounded-md space-y-1.5">
+                    <label className="block text-xs font-semibold text-emerald-400">
+                      Header Variable <span className="font-mono text-emerald-300">{"{{1}}"}</span>
+                    </label>
+                    <VariableInput 
+                      placeholder="Header parameter value or {{trigger.name}}"
+                      value={config.headerVariables?.['1'] || ''} 
+                      onChange={(val) => {
+                        const updated = { ...(config.headerVariables || {}), '1': val };
+                        handleChange('headerVariables', updated);
+                      }} 
+                      variables={variableGroups} 
+                    />
+                  </div>
+                )}
+
+                {uniqueIndices.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-foreground">Body Dynamic Variables ({uniqueIndices.length})</label>
+                      <span className="text-[10px] text-emerald-400 font-mono">Meta Parameters</span>
+                    </div>
+
+                    {uniqueIndices.map(idx => (
+                      <div key={idx} className="p-2.5 bg-black/40 border border-border-subtle rounded-md space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-mono text-emerald-400 font-semibold">{`{{${idx}}}`}</span>
+                          <span className="text-[10px] text-text-tertiary">Variable Parameter #{idx}</span>
+                        </div>
+                        <VariableInput 
+                          placeholder={`Value or workflow variable for {{${idx}}}`}
+                          value={config.bodyVariables?.[idx] || ''} 
+                          onChange={(val) => {
+                            const updated = { ...(config.bodyVariables || {}), [idx]: val };
+                            handleChange('bodyVariables', updated);
+                          }} 
+                          variables={variableGroups} 
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {bodyText && (
+                  <div className="p-3 bg-black/60 border border-emerald-500/20 rounded-lg space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-text-secondary border-b border-white/10 pb-1.5">
+                      <span className="font-semibold text-emerald-400">Template Message Preview</span>
+                      <span className="text-[10px] text-text-tertiary font-mono">{config.templateName}</span>
+                    </div>
+                    <div className="text-xs text-white/90 whitespace-pre-wrap font-sans leading-relaxed">
+                      {(() => {
+                        let preview = bodyText;
+                        uniqueIndices.forEach(idx => {
+                          const val = config.bodyVariables?.[idx];
+                          preview = preview.replaceAll(`{{${idx}}}`, val ? `[${val}]` : `{{${idx}}}`);
+                        });
+                        return preview;
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
 
       case 'sheets':
         const actionType = config.actionType || 'WRITE';

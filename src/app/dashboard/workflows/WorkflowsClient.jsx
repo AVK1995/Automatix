@@ -12,6 +12,7 @@ import { AlertTriangle, AlertCircle, Clock, Check, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveNotification, ignoreNotification } from '@/actions/notifications';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 function IssuesTooltip({ issues }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -264,25 +265,30 @@ export default function WorkflowsClient({ workflows, notifications: rawNotificat
         }
 
         return (
-          <div className="flex items-center gap-2 relative group min-w-0 max-w-[200px] sm:max-w-[300px] md:max-w-[400px]">
-            <Link 
-              href={`/workflows/${row.id}`} 
-              className="flex items-center hover:text-accent-blue transition-colors min-w-0"
-              title={row.name}
-            >
-              <span className="font-medium truncate block">{row.name}</span>
-            </Link>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                setEditingId(row.id);
-                setEditingName(row.name);
-              }}
-              className="p-1 -ml-1 text-text-secondary opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:text-white"
-            >
-              <Edit2 className="w-3 h-3" />
-            </button>
-            {issues.length > 0 && <div className="ml-1"><IssuesTooltip issues={issues} /></div>}
+          <div className="flex flex-col min-w-0 max-w-[200px] sm:max-w-[300px] md:max-w-[400px]">
+            <div className="flex items-center gap-2 relative group min-w-0">
+              <Link 
+                href={`/workflows/${row.id}`} 
+                className="flex items-center hover:text-accent-blue transition-colors min-w-0"
+                data-tooltip={row.name}
+              >
+                <span className="font-medium truncate block">{row.name}</span>
+              </Link>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setEditingId(row.id);
+                  setEditingName(row.name);
+                }}
+                className="p-1 -ml-1 text-text-secondary opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:text-white"
+              >
+                <Edit2 className="w-3 h-3" />
+              </button>
+              {issues.length > 0 && <div className="ml-1"><IssuesTooltip issues={issues} /></div>}
+            </div>
+            <div className="text-[11px] text-text-secondary font-mono mt-0.5">
+              <TruncatedText text={row.id} prefix="ID: " maxChars={8} copyable={true} />
+            </div>
           </div>
         );
       }
@@ -463,7 +469,7 @@ export default function WorkflowsClient({ workflows, notifications: rawNotificat
                         <Link 
                           href={`/workflows/${row.id}`} 
                           className="font-medium text-white hover:text-accent-blue transition-colors truncate"
-                          title={row.name}
+                          data-tooltip={row.name}
                         >
                           {row.name}
                         </Link>

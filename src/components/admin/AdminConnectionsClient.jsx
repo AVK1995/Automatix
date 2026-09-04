@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import DeleteButton from '@/components/DeleteButton';
 import { exportToCsv } from '@/lib/csvExport';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 const APP_CATALOG = [
   // 1. Social & Messaging
@@ -215,7 +216,7 @@ const CATEGORIES = [
   { id: 'DEVELOPER', label: 'Webhooks & APIs' }
 ];
 
-export default function AdminConnectionsClient({ initialConnections = [] }) {
+export default function AdminConnectionsClient({ initialConnections = [], whatsAppStats = {} }) {
   const [connections, setConnections] = useState(initialConnections);
   const [selectedApp, setSelectedApp] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -336,6 +337,40 @@ export default function AdminConnectionsClient({ initialConnections = [] }) {
             </div>
           </div>
 
+          {/* WhatsApp Dedicated Model B Banner */}
+          {selectedApp.id === 'WHATSAPP' && (
+            <div className="bg-emerald-500/5 border border-emerald-500/20 p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <h3 className="text-sm font-bold text-emerald-300">Model B Architecture: Direct Meta Billing Active</h3>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Zero Financial Liability
+                  </span>
+                </div>
+                <p className="text-xs text-text-secondary max-w-2xl leading-relaxed">
+                  Every tenant links their own WhatsApp Business Account (WABA ID, Phone Number ID, Permanent System User Token). Meta bills conversation fees directly to the tenant's credit card. Automatix charges a predictable recurring SaaS add-on fee with zero markup or debt risk.
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-text-tertiary">
+                  <span>🔒 Privacy-Compliant (E.164 numbers masked)</span>
+                  <span>•</span>
+                  <span>⚡ Direct Meta Graph API v21.0</span>
+                  <span>•</span>
+                  <span>📱 Non-invasive Template Sync</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href="/admin/settings"
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 shadow-sm"
+                >
+                  Configure Add-on Pricing →
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Table Toolbar / Search */}
           <div className="flex items-center justify-between gap-4 bg-[#111] border border-border-subtle p-3.5 rounded-xl">
             <div className="relative flex-1 max-w-md">
@@ -379,48 +414,114 @@ export default function AdminConnectionsClient({ initialConnections = [] }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-border-subtle text-[10px] uppercase text-text-secondary font-semibold bg-white/[0.02]">
-                      <th className="py-3.5 px-4 w-[25%]">Connection Name</th>
-                      <th className="py-3.5 px-4 w-[25%]">Tenant / Owner</th>
-                      <th className="py-3.5 px-4 w-[25%]">Account Identifier / Email</th>
-                      <th className="py-3.5 px-4 w-[15%]">Provisioned Date</th>
-                      <th className="py-3.5 px-4 w-[10%] text-center">Actions</th>
-                    </tr>
+                    {selectedApp.id === 'WHATSAPP' ? (
+                      <tr className="border-b border-border-subtle text-[10px] uppercase text-text-secondary font-semibold bg-white/[0.02]">
+                        <th className="py-3.5 px-4 w-[24%]">Connection Name</th>
+                        <th className="py-3.5 px-4 w-[22%]">Tenant / Owner</th>
+                        <th className="py-3.5 px-4 w-[22%]">Display Phone / WABA ID</th>
+                        <th className="py-3.5 px-4 w-[12%] text-center">Meta Templates</th>
+                        <th className="py-3.5 px-4 w-[12%] text-center">Volume</th>
+                        <th className="py-3.5 px-4 w-[8%] text-center">Actions</th>
+                      </tr>
+                    ) : (
+                      <tr className="border-b border-border-subtle text-[10px] uppercase text-text-secondary font-semibold bg-white/[0.02]">
+                        <th className="py-3.5 px-4 w-[25%]">Connection Name</th>
+                        <th className="py-3.5 px-4 w-[25%]">Tenant / Owner</th>
+                        <th className="py-3.5 px-4 w-[25%]">Account Identifier / Email</th>
+                        <th className="py-3.5 px-4 w-[15%]">Provisioned Date</th>
+                        <th className="py-3.5 px-4 w-[10%] text-center">Actions</th>
+                      </tr>
+                    )}
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {currentAppConnections.map((row) => (
-                      <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-3.5 px-4">
-                          <div className="font-bold text-white text-xs">{row.name || 'Unnamed Connection'}</div>
-                          <div className="text-[10px] text-accent-blue font-mono mt-0.5 uppercase tracking-wider">{row.providerName}</div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <Link href={`/admin/users/${row.client?.id}`} className="block group">
-                            <div className="text-xs font-semibold text-white group-hover:text-accent-blue transition-colors">
-                              {row.client?.name || 'Tenant User'}
-                            </div>
-                            <div className="text-[11px] text-text-tertiary group-hover:text-accent-blue/70 transition-colors font-mono">
-                              {row.client?.email}
-                            </div>
-                          </Link>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="text-xs text-text-secondary font-mono bg-black/40 px-2 py-1 rounded border border-white/5">
-                            {row.accountEmail || row.spreadsheetId || 'Provisioned via Token'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-text-tertiary">
-                          {new Date(row.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <DeleteButton 
-                            id={row.id} 
-                            type="connection" 
-                            confirmMessage={`Are you sure you want to delete the ${row.providerName} connection "${row.name}" owned by ${row.client?.email}? Any running workflows utilizing this integration will fail.`} 
-                          />
-                        </td>
-                      </tr>
-                    ))}
+                    {currentAppConnections.map((row) => {
+                      if (selectedApp.id === 'WHATSAPP') {
+                        const stats = whatsAppStats[row.id] || { templateCount: 0, messageCount: 0 };
+                        return (
+                          <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="py-3.5 px-4">
+                              <div className="font-bold text-white text-xs">{row.name || 'WhatsApp Account'}</div>
+                              <div className="text-[10px] text-emerald-400 font-mono mt-0.5 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                Direct Meta Billing
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <Link href={`/admin/users/${row.client?.id}`} className="block group">
+                                <div className="text-xs font-semibold text-white group-hover:text-accent-blue transition-colors">
+                                  {row.client?.name || 'Tenant User'}
+                                </div>
+                                <div className="text-[11px] text-text-tertiary group-hover:text-accent-blue/70 transition-colors font-mono">
+                                  {row.client?.email}
+                                </div>
+                              </Link>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="text-xs text-white font-mono">{row.accountEmail || 'Direct Number'}</div>
+                              <div className="text-[10px] text-text-tertiary font-mono mt-0.5 flex flex-wrap items-center gap-x-1.5">
+                                <TruncatedText text={row.clientEmail || 'N/A'} prefix="WABA: " maxChars={12} copyable={!!row.clientEmail} />
+                                <span>•</span>
+                                <TruncatedText text={row.privateKey || 'N/A'} prefix="Phone ID: " maxChars={12} copyable={!!row.privateKey} />
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                {stats.templateCount} Templates
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-white/5 text-text-secondary border border-white/10">
+                                {stats.messageCount} Sent
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <DeleteButton 
+                                id={row.id} 
+                                type="connection" 
+                                confirmMessage={`Are you sure you want to delete the WhatsApp connection "${row.name}" owned by ${row.client?.email}? Any active workflows sending WhatsApp messages with this connection will fail.`} 
+                              />
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return (
+                        <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-white text-xs">{row.name || 'Unnamed Connection'}</div>
+                            <div className="text-[10px] text-accent-blue font-mono mt-0.5 uppercase tracking-wider">{row.providerName}</div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <Link href={`/admin/users/${row.client?.id}`} className="block group">
+                              <div className="text-xs font-semibold text-white group-hover:text-accent-blue transition-colors">
+                                {row.client?.name || 'Tenant User'}
+                              </div>
+                              <div className="text-[11px] text-text-tertiary group-hover:text-accent-blue/70 transition-colors font-mono">
+                                {row.client?.email}
+                              </div>
+                            </Link>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <TruncatedText 
+                              text={row.accountEmail || row.spreadsheetId || 'Provisioned via Token'} 
+                              maxChars={24} 
+                              copyable={!!(row.accountEmail || row.spreadsheetId)} 
+                              className="text-xs text-text-secondary font-mono bg-black/40 px-2 py-1 rounded border border-white/5 inline-block"
+                            />
+                          </td>
+                          <td className="py-3.5 px-4 text-text-tertiary">
+                            {new Date(row.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <DeleteButton 
+                              id={row.id} 
+                              type="connection" 
+                              confirmMessage={`Are you sure you want to delete the ${row.providerName} connection "${row.name}" owned by ${row.client?.email}? Any running workflows utilizing this integration will fail.`} 
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

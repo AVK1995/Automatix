@@ -364,6 +364,16 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
               <ArrowLeft size={16} />
             </button>
             <h3 className="text-lg font-medium text-foreground">{selectedProvider} Connections</h3>
+            {selectedProvider === 'WhatsApp' && (
+              <div className="ml-auto">
+                <Link
+                  href="/dashboard/whatsapp"
+                  className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-black font-semibold text-xs rounded-md transition-colors flex items-center gap-1.5"
+                >
+                  <Smartphone size={14} /> Open Template Studio →
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -475,6 +485,46 @@ export default function ConnectionsClient({ initialConnections, usageMap = {}, w
                         </span>
                         <span className="text-text-tertiary text-[11px]">Your account credentials are stored and operating cleanly</span>
                       </div>
+
+                      {conn.providerName === 'whatsapp' && (
+                        <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                              <div className="text-xs font-semibold text-emerald-400 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                WhatsApp Cloud API Active
+                              </div>
+                              <div className="text-[11px] text-text-tertiary mt-0.5 font-mono">
+                                WABA ID: {conn.clientEmail || 'N/A'} • Phone ID: {conn.privateKey || 'N/A'}
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              Direct Meta Billing
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-emerald-500/10">
+                            <Link
+                              href="/dashboard/whatsapp?tab=templates"
+                              className="px-3 py-1.5 text-xs font-medium bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-md transition-colors flex items-center gap-1.5"
+                            >
+                              Browse Templates
+                            </Link>
+                            <Link
+                              href="/dashboard/whatsapp?tab=studio"
+                              className="px-3 py-1.5 text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-black font-semibold rounded-md transition-colors flex items-center gap-1.5"
+                            >
+                              + Template Studio
+                            </Link>
+                            <Link
+                              href="/dashboard/whatsapp?tab=api"
+                              className="px-3 py-1.5 text-xs font-medium bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white border border-border-subtle rounded-md transition-colors flex items-center gap-1.5"
+                            >
+                              Public cURL API
+                            </Link>
+                          </div>
+                        </div>
+                      )}
 
                       {(() => {
                         const q = searchQuery.trim().toLowerCase();

@@ -704,6 +704,127 @@ export const executeWorkflow = inngest.createFunction(
                   if (!twilioRes.ok) throw new Error(twilioData.message || 'Twilio API Error');
                   output = twilioData;
                 }
+                // --- 11B. SEND WHATSAPP TEMPLATE (META CLOUD API) ---
+                else if (node.integrationId === 'whatsapp_template' || node.integration?.id === 'whatsapp_template') {
+                  const toRaw = resolveVars(node.config?.toPhone || node.config?.to || node.config?.recipient || '');
+                  const cleanPhone = String(toRaw).replace(/[^0-9]/g, '');
+                  if (!cleanPhone || cleanPhone.length < 8) {
+                    throw new Error("WhatsApp Action: Valid recipient phone number with country code is required");
+                  }
+
+                  const templateName = node.config?.templateName;
+                  if (!templateName) {
+                    throw new Error("WhatsApp Action: Template name is required");
+                  }
+
+                  const connectionId = node.config?.connectionId;
+                  if (!connectionId) {
+                    throw new Error("WhatsApp Action: WhatsApp connection is required");
+                  }
+
+                  const conn = await prisma.integration.findUnique({ where: { id: connectionId } });
+                  if (!conn) throw new Error("WhatsApp connection not found");
+
+                  const phoneNumberId = conn.privateKey;
+                  const accessToken = conn.apiKey;
+                  if (!phoneNumberId || !accessToken) {
+                    throw new Error("WhatsApp connection missing Phone ID or Access Token");
+                  }
+
+                  // Build Meta components
+                  const components = [];
+
+                  // Header
+                  if (node.config?.headerType && node.config.headerType !== 'NONE') {
+                    const headerParams = [];
+                    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(node.config.headerType)) {
+                      const mediaUrl = resolveVars(node.config?.headerMediaUrl || '');
+                      if (mediaUrl) {
+                        headerParams.push({
+                          type: node.config.headerType.toLowerCase(),
+                          [node.config.headerType.toLowerCase()]: { link: mediaUrl }
+                        });
+                      }
+                    } else if (node.config.headerType === 'TEXT' && node.config.headerVariables) {
+                      const hVal = resolveVars(String(node.config.headerVariables['1'] || ''));
+                      if (hVal) {
+                        headerParams.push({ type: 'text', text: hVal });
+                      }
+                    }
+                    if (headerParams.length > 0) {
+                      components.push({ type: 'header', parameters: headerParams });
+                    }
+                  }
+
+                  // Body
+                  if (node.config?.bodyVariables && typeof node.config.bodyVariables === 'object') {
+                    const bodyParams = [];
+                    const sortedKeys = Object.keys(node.config.bodyVariables).sort((a, b) => Number(a) - Number(b));
+                    for (const key of sortedKeys) {
+                      const val = resolveVars(String(node.config.bodyVariables[key] || ''));
+                      bodyParams.push({ type: 'text', text: val });
+                    }
+                    if (bodyParams.length > 0) {
+                      components.push({ type: 'body', parameters: bodyParams });
+                    }
+                  }
+
+                  const payload = {
+                    messaging_product: 'whatsapp',
+                    to: cleanPhone,
+                    type: 'template',
+                    template: {
+                      name: templateName,
+                      language: { code: node.config?.language || 'en_US' }
+                    }
+                  };
+
+                  if (components.length > 0) {
+                    payload.template.components = components;
+                  }
+
+                  const metaRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                  });
+
+                  const metaData = await metaRes.json();
+                  if (!metaRes.ok) {
+                    const msg = metaData.error?.message || 'Meta Cloud API WhatsApp template dispatch failed';
+                    throw new Error(msg);
+                  }
+
+                  const messageId = metaData.messages?.[0]?.id || null;
+                  const maskedPhone = cleanPhone.slice(0, 3) + '*****' + cleanPhone.slice(-4);
+
+                  // Non-blocking privacy log
+                  try {
+                    await prisma.whatsAppLog.create({
+                      data: {
+                        clientId: conn.clientId,
+                        integrationId: conn.id,
+                        templateName: templateName,
+                        recipientPhoneMasked: maskedPhone,
+                        status: 'SENT',
+                        source: 'WORKFLOW',
+                        metaMessageId: messageId
+                      }
+                    });
+                  } catch (logErr) {
+                    console.warn('[Inngest] WhatsAppLog creation failed:', logErr);
+                  }
+
+                  output = {
+                    status: 'sent',
+                    messageId: messageId,
+                    recipient: maskedPhone,
+                    template: templateName
+                  };
+                }
                 // --- 12. META CONVERSIONS API ---
                 else if (node.integrationId === 'meta_capi' || node.integration?.id === 'meta_capi') {
                   const pixelId = resolveVars(node.config?.pixelId || '');

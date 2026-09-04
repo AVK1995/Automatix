@@ -11,13 +11,41 @@ export default async function AdminConnectionsPage() {
     redirect('/dashboard');
   }
 
-  const connections = await prisma.integration.findMany({
-    include: {
-      client: {
-        select: { id: true, name: true, email: true }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
+  const [connections, templateCounts, logCounts] = await Promise.all([
+    prisma.integration.findMany({
+      include: {
+        client: {
+          select: { id: true, name: true, email: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.whatsAppTemplate.groupBy({
+      by: ['integrationId'],
+      _count: { id: true }
+    }).catch(() => []),
+    prisma.whatsAppLog.groupBy({
+      by: ['integrationId'],
+      _count: { id: true }
+    }).catch(() => [])
+  ]);
+
+  const statsMap = {};
+  templateCounts.forEach(t => {
+    if (t.integrationId) {
+      statsMap[t.integrationId] = {
+        ...(statsMap[t.integrationId] || {}),
+        templateCount: t._count.id
+      };
+    }
+  });
+  logCounts.forEach(l => {
+    if (l.integrationId) {
+      statsMap[l.integrationId] = {
+        ...(statsMap[l.integrationId] || {}),
+        messageCount: l._count.id
+      };
+    }
   });
 
   return (
@@ -29,7 +57,7 @@ export default async function AdminConnectionsPage() {
         </p>
       </div>
 
-      <AdminConnectionsClient initialConnections={connections} />
+      <AdminConnectionsClient initialConnections={connections} whatsAppStats={statsMap} />
     </div>
   );
 }

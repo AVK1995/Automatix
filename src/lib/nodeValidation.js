@@ -19,6 +19,7 @@ export function getNodeConnectionStatus(node) {
     'instagram_publish',
     'slack',
     'twilio',
+    'whatsapp_template',
     'stripe',
     'gmail',
     'openai',
@@ -144,6 +145,13 @@ export function isNodeConfigured(node, isInvalid = false, allNodes = []) {
 
   if (id === 'twilio') {
     return !!config.connectionId && !!config.to?.trim() && !!config.message?.trim();
+  }
+
+  if (id === 'whatsapp_template') {
+    const hasConnection = !!config.connectionId;
+    const hasTo = !!(config.toPhone?.trim() || config.to?.trim());
+    const hasTemplate = !!config.templateName?.trim();
+    return hasConnection && hasTo && hasTemplate;
   }
 
   if (id === 'email') {

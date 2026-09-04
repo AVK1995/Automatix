@@ -1,20 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Loader2, Phone, HelpCircle } from 'lucide-react';
+import { X, Loader2, Smartphone, HelpCircle, CheckCircle2, ShieldCheck, ExternalLink, Copy, Check, Info, Sparkles, BookOpen, Key } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
 export default function WhatsappModal({ isOpen, onClose, onSuccess, initialData = null }) {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('connect'); // 'connect' | 'guide' | 'billing'
+  const [copiedKey, setCopiedKey] = useState(null);
+
   const [formData, setFormData] = useState({
     connectionName: '',
-    appId: '',
-    appSecret: '',
-    pageAccessToken: '' // Technically WhatsApp Business Token
+    phoneNumberId: '',
+    wabaId: '',
+    pageAccessToken: ''
   });
   const [error, setError] = useState(null);
   const router = useRouter();
@@ -24,8 +26,8 @@ export default function WhatsappModal({ isOpen, onClose, onSuccess, initialData 
     if (initialData) {
       setFormData({
         connectionName: initialData.name || '',
-        appId: initialData.clientEmail || '',
-        appSecret: initialData.privateKey || '',
+        phoneNumberId: initialData.privateKey || initialData.accountEmail || '',
+        wabaId: initialData.clientEmail || '',
         pageAccessToken: initialData.apiKey || ''
       });
     }
@@ -33,14 +35,21 @@ export default function WhatsappModal({ isOpen, onClose, onSuccess, initialData 
 
   if (!isOpen || !mounted) return null;
 
+  const handleCopy = (text, key) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      if (!formData.connectionName.trim() || !formData.appId.trim() || !formData.appSecret.trim() || !formData.pageAccessToken.trim()) {
-        setError('Please fill in all fields.');
+      if (!formData.connectionName.trim() || !formData.phoneNumberId.trim() || !formData.pageAccessToken.trim()) {
+        setError('Please fill in Connection Name, Phone Number ID, and Permanent Access Token.');
         setLoading(false);
         return;
       }
@@ -50,155 +59,329 @@ export default function WhatsappModal({ isOpen, onClose, onSuccess, initialData 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           providerName: 'whatsapp',
-          connectionName: formData.connectionName,
-          appId: formData.appId,
-          appSecret: formData.appSecret,
-          pageAccessToken: formData.pageAccessToken
+          connectionName: formData.connectionName.trim(),
+          phoneNumberId: formData.phoneNumberId.trim(),
+          wabaId: formData.wabaId.trim(),
+          pageAccessToken: formData.pageAccessToken.trim()
         })
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
-        setError(data.error || 'Failed to connect WhatsApp account.');
+        setError(data.error || 'Failed to verify and connect WhatsApp account.');
         setLoading(false);
         return;
       }
-      
+
+      toast.success(`WhatsApp account connected! (${data.phone})`);
       setLoading(false);
       onSuccess(data.integrationId);
       router.refresh();
+      onClose();
     } catch (err) {
       console.error(err);
-      setError('An unexpected error occurred while connecting.');
+      setError('An unexpected error occurred while connecting to Meta.');
       setLoading(false);
     }
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
       <div 
-        className="bg-[#0f0f0f] border border-border-subtle rounded-xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-[#0f0f0f] border border-border-subtle rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 sm:p-6 border-b border-border-subtle flex justify-between items-center bg-[#151515]">
+        {/* Header */}
+        <div className="p-5 border-b border-border-subtle flex justify-between items-center bg-[#141414]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border text-green-500 bg-green-500/10 border-green-500/20">
-              <Phone size={20} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
+              <Smartphone size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Connect WhatsApp</h2>
-              <p className="text-xs text-text-secondary">Add a new WhatsApp Business connection</p>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                Connect WhatsApp Business
+                <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono">
+                  Cloud API
+                </span>
+              </h2>
+              <p className="text-xs text-text-secondary">Official Meta Cloud API • Zero markup on conversation costs</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 text-text-tertiary hover:text-white hover:bg-white/10 rounded-md transition-colors"
+            className="p-1.5 text-text-tertiary hover:text-white hover:bg-white/5 rounded-lg transition-colors"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-sm text-text-secondary">
-              Enter your Meta App credentials to connect your WhatsApp Business account.
-            </p>
-            <button 
-              type="button" 
-              onClick={() => setIsGuideOpen(true)} 
-              className="text-[11px] text-accent-blue hover:underline flex items-center gap-1 shrink-0"
-            >
-              <HelpCircle className="w-3 h-3" /> Setup Guide
-            </button>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex border-b border-border-subtle bg-[#111] px-5 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('connect')}
+            className={`py-3 px-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
+              activeTab === 'connect'
+                ? 'border-emerald-500 text-white'
+                : 'border-transparent text-text-secondary hover:text-white'
+            }`}
+          >
+            <Key size={14} className={activeTab === 'connect' ? 'text-emerald-400' : 'text-text-tertiary'} />
+            <span>Direct Setup</span>
+          </button>
 
+          <button
+            type="button"
+            onClick={() => setActiveTab('guide')}
+            className={`py-3 px-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
+              activeTab === 'guide'
+                ? 'border-emerald-500 text-white'
+                : 'border-transparent text-text-secondary hover:text-white'
+            }`}
+          >
+            <BookOpen size={14} className={activeTab === 'guide' ? 'text-emerald-400' : 'text-text-tertiary'} />
+            <span>3-Minute Setup Guide</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('billing')}
+            className={`py-3 px-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
+              activeTab === 'billing'
+                ? 'border-emerald-500 text-white'
+                : 'border-transparent text-text-secondary hover:text-white'
+            }`}
+          >
+            <ShieldCheck size={14} className={activeTab === 'billing' ? 'text-emerald-400' : 'text-text-tertiary'} />
+            <span>Direct Meta Billing Notice</span>
+          </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
           {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-md text-sm text-red-400">
-              {error}
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 flex items-start gap-2">
+              <span className="font-bold shrink-0">Error:</span>
+              <span>{error}</span>
             </div>
           )}
 
-          <form id="whatsapp-form" onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Connection Name</label>
-              <input
-                type="text"
-                value={formData.connectionName}
-                onChange={(e) => setFormData({...formData, connectionName: e.target.value})}
-                placeholder="e.g. My WA Bot"
-                className="w-full bg-[#111] border border-border-subtle rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors"
-                required
-              />
-            </div>
+          {/* TAB 1: CONNECT FORM */}
+          {activeTab === 'connect' && (
+            <form id="whatsapp-connect-form" onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-white uppercase tracking-wider mb-1.5">
+                  Connection Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.connectionName}
+                  onChange={(e) => setFormData({ ...formData, connectionName: e.target.value })}
+                  placeholder="e.g. Sales Support Bot or Primary WhatsApp"
+                  className="w-full bg-[#141414] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-text-tertiary/50"
+                  required
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Meta App ID</label>
-              <input
-                type="text"
-                value={formData.appId}
-                onChange={(e) => setFormData({...formData, appId: e.target.value})}
-                placeholder="e.g. 123456789012345"
-                className="w-full bg-[#111] border border-border-subtle rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors font-mono"
-                required
-              />
-            </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-white uppercase tracking-wider">
+                      Phone Number ID <span className="text-red-400">*</span>
+                    </label>
+                    <span className="text-[10px] text-text-tertiary">From Meta Cloud API</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={formData.phoneNumberId}
+                    onChange={(e) => setFormData({ ...formData, phoneNumberId: e.target.value })}
+                    placeholder="e.g. 104829381920394"
+                    className="w-full bg-[#141414] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors placeholder:text-text-tertiary/50"
+                    required
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Meta App Secret</label>
-              <input
-                type="password"
-                value={formData.appSecret}
-                onChange={(e) => setFormData({...formData, appSecret: e.target.value})}
-                placeholder="Paste your App Secret here..."
-                className="w-full bg-[#111] border border-border-subtle rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors font-mono"
-                required
-              />
-            </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-white uppercase tracking-wider">
+                      WABA ID (Account ID)
+                    </label>
+                    <span className="text-[10px] text-text-tertiary">For template syncing</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={formData.wabaId}
+                    onChange={(e) => setFormData({ ...formData, wabaId: e.target.value })}
+                    placeholder="e.g. 984728192837461"
+                    className="w-full bg-[#141414] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors placeholder:text-text-tertiary/50"
+                  />
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">System User Token (Permanent)</label>
-              <input
-                type="password"
-                value={formData.pageAccessToken}
-                onChange={(e) => setFormData({...formData, pageAccessToken: e.target.value})}
-                placeholder="Paste your permanent access token here..."
-                className="w-full bg-[#111] border border-border-subtle rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue transition-colors font-mono"
-                required
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-white uppercase tracking-wider">
+                    Permanent Access Token <span className="text-red-400">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('guide')}
+                    className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1"
+                  >
+                    <HelpCircle size={12} /> How to get token?
+                  </button>
+                </div>
+                <textarea
+                  rows={3}
+                  value={formData.pageAccessToken}
+                  onChange={(e) => setFormData({ ...formData, pageAccessToken: e.target.value })}
+                  placeholder="EAAG..."
+                  className="w-full bg-[#141414] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono resize-none transition-colors placeholder:text-text-tertiary/50"
+                  required
+                />
+                <p className="text-[11px] text-text-tertiary mt-1">
+                  System User Token with <code className="text-emerald-400 font-mono">whatsapp_business_messaging</code> and <code className="text-emerald-400 font-mono">whatsapp_business_management</code> permissions.
+                </p>
+              </div>
+
+              <div className="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-xl flex items-center gap-2.5 text-xs text-emerald-300">
+                <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
+                <span>Zero Markup Guarantee: Meta bills conversation costs directly to your payment card.</span>
+              </div>
+            </form>
+          )}
+
+          {/* TAB 2: STEP-BY-STEP GUIDE */}
+          {activeTab === 'guide' && (
+            <div className="space-y-4 text-xs">
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                <p className="font-semibold text-white flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-emerald-400" />
+                  Meta Cloud API Direct Setup (Takes ~3 minutes)
+                </p>
+                <p className="text-text-secondary leading-relaxed">
+                  Follow these steps to connect your WhatsApp Business number directly with zero middleman fees.
+                </p>
+              </div>
+
+              {/* Step 1 */}
+              <div className="p-4 rounded-xl bg-[#141414] border border-white/10 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">1</span>
+                  Create or Open a Meta Business App
+                </div>
+                <p className="text-text-secondary leading-relaxed pl-7">
+                  Go to <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" className="text-emerald-400 underline inline-flex items-center gap-1">Meta for Developers <ExternalLink size={10} /></a>, click <strong>Create App</strong>, choose <strong>Other</strong>, and select the <strong>Business</strong> app type.
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="p-4 rounded-xl bg-[#141414] border border-white/10 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">2</span>
+                  Add WhatsApp Product & Copy IDs
+                </div>
+                <p className="text-text-secondary leading-relaxed pl-7">
+                  Under your App Dashboard, click <strong>Set Up</strong> next to WhatsApp. In the left sidebar, navigate to <strong>WhatsApp &gt; API Setup</strong>. You will find your <strong>Phone Number ID</strong> and <strong>WhatsApp Business Account ID</strong>.
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="p-4 rounded-xl bg-[#141414] border border-white/10 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">3</span>
+                  Create Permanent System User Token
+                </div>
+                <p className="text-text-secondary leading-relaxed pl-7">
+                  Open <a href="https://business.facebook.com/settings/system-users" target="_blank" rel="noreferrer" className="text-emerald-400 underline inline-flex items-center gap-1">Meta Business Settings &gt; System Users <ExternalLink size={10} /></a>. Create an Admin System User, click <strong>Generate Token</strong>, select your App, and check these 2 permissions:
+                </p>
+                <div className="pl-7 flex flex-wrap gap-2 pt-1">
+                  <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-[11px] font-mono text-emerald-300">
+                    whatsapp_business_messaging
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-[11px] font-mono text-emerald-300">
+                    whatsapp_business_management
+                  </span>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="p-4 rounded-xl bg-[#141414] border border-white/10 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-white">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">4</span>
+                  Paste Credentials in Automatix & Done!
+                </div>
+                <p className="text-text-secondary leading-relaxed pl-7">
+                  Copy the generated token and IDs into the Direct Setup tab and hit <strong>Verify & Connect</strong>.
+                </p>
+              </div>
             </div>
-          </form>
+          )}
+
+          {/* TAB 3: ZERO LIABILITY / BILLING NOTICE */}
+          {activeTab === 'billing' && (
+            <div className="space-y-4 text-xs leading-relaxed">
+              <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2 text-emerald-200">
+                <p className="font-bold text-white text-sm flex items-center gap-2">
+                  <ShieldCheck size={18} className="text-emerald-400" />
+                  Direct Meta Billing Architecture (Model B)
+                </p>
+                <p className="text-xs text-emerald-300/90">
+                  Automatix is built with a direct-to-Meta passthrough engine so you always pay the true wholesale conversation rate with zero hidden surcharges.
+                </p>
+              </div>
+
+              <div className="space-y-3 p-4 rounded-xl bg-[#141414] border border-white/10">
+                <h4 className="font-bold text-white text-xs">How Meta Charges for WhatsApp:</h4>
+                <ul className="space-y-2 text-text-secondary list-disc pl-5">
+                  <li><strong>Service Conversations:</strong> Free (when customer messages you first, you get a 24-hour free reply window).</li>
+                  <li><strong>Utility Conversations:</strong> Low rate (~$0.005 to $0.01 / conversation) for order confirmations, booking reminders, and OTPs.</li>
+                  <li><strong>Marketing Conversations:</strong> Standard rate (~$0.01 to $0.03 / conversation) for promotions and sales announcements.</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#141414] border border-white/10 space-y-2">
+                <h4 className="font-bold text-white text-xs">Where do you pay?</h4>
+                <p className="text-text-secondary">
+                  You attach your payment card directly under <a href="https://business.facebook.com/billing_hub" target="_blank" rel="noreferrer" className="text-emerald-400 underline inline-flex items-center gap-1">Meta Business Manager &gt; Payment Methods <ExternalLink size={10} /></a>. Meta bills your card directly on their standard invoicing threshold.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="p-4 sm:p-6 border-t border-border-subtle bg-[#151515] flex gap-3 justify-end">
+        {/* Footer */}
+        <div className="p-4 border-t border-border-subtle flex justify-between items-center bg-[#141414]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-white hover:bg-white/5 transition-colors"
-            disabled={loading}
+            className="px-4 py-2 text-xs font-semibold text-text-secondary hover:text-white hover:bg-white/5 rounded-xl transition-colors"
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            form="whatsapp-form"
-            className="bg-accent-blue hover:bg-accent-blue/90 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 min-w-[100px] justify-center"
-            disabled={loading}
-          >
-            {loading ? (
-              <><Loader2 size={16} className="animate-spin" /> Connecting...</>
-            ) : (
-              'Connect Account'
-            )}
-          </button>
+
+          {activeTab === 'connect' ? (
+            <button
+              type="submit"
+              form="whatsapp-connect-form"
+              disabled={loading}
+              className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+            >
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              <span>{loading ? 'Verifying with Meta...' : 'Verify & Connect WhatsApp'}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setActiveTab('connect')}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
+            >
+              <span>Go to Direct Setup</span>
+            </button>
+          )}
         </div>
       </div>
-
-      <ConnectionGuideModal
-        isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
-        providerName="WhatsApp"
-      />
     </div>,
     document.body
   );

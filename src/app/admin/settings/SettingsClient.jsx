@@ -6,10 +6,12 @@ import { Save, Users, Settings2, CreditCard, Loader2, Sparkles, Database, Layers
 import toast from 'react-hot-toast';
 import StoragePlans from './StoragePlans';
 import AiCreditPlans from './AiCreditPlans';
+import WhatsAppAddonPlan from './WhatsAppAddonPlan';
 import Toggle from '@/components/ui/Toggle';
+import { Smartphone } from 'lucide-react';
 
 export default function SettingsClient({ initialSettings }) {
-  const [activeTab, setActiveTab] = useState('main'); // 'main' | 'addons'
+  const [activeTab, setActiveTab] = useState('main'); // 'main' | 'addons' | 'whatsapp'
   const [settings, setSettings] = useState(initialSettings);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -51,7 +53,7 @@ export default function SettingsClient({ initialSettings }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Master Control</h1>
-          <p className="text-sm text-text-secondary">Configure platform limits, base subscriptions, storage quotas, and AI credit add-ons.</p>
+          <p className="text-sm text-text-secondary">Configure platform limits, base subscriptions, storage quotas, AI credits, and WhatsApp add-ons.</p>
         </div>
         
         {activeTab === 'main' && (
@@ -105,7 +107,20 @@ export default function SettingsClient({ initialSettings }) {
           }`}
         >
           <Layers size={14} className={activeTab === 'addons' ? 'text-accent-violet' : 'text-text-tertiary'} />
-          <span>Add-on Plans (Storage & AI Credits)</span>
+          <span>Storage & AI Credits</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('whatsapp')}
+          className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors shrink-0 flex items-center gap-2 ${
+            activeTab === 'whatsapp'
+              ? 'border-emerald-500 text-white'
+              : 'border-transparent text-text-secondary hover:text-white'
+          }`}
+        >
+          <Smartphone size={14} className={activeTab === 'whatsapp' ? 'text-emerald-400' : 'text-text-tertiary'} />
+          <span>WhatsApp Business Add-on</span>
         </button>
       </div>
 
@@ -233,6 +248,13 @@ export default function SettingsClient({ initialSettings }) {
             <AiCreditPlans />
           </section>
         </div>
+      )}
+
+      {/* Tab 3: WhatsApp Business Add-on Plan */}
+      {activeTab === 'whatsapp' && (
+        <section className="w-full">
+          <WhatsAppAddonPlan settings={settings} onUpdate={(newSettings) => setSettings(newSettings)} />
+        </section>
       )}
     </div>
   );

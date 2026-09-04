@@ -85,7 +85,7 @@ export default function StorageBucketClient({ user, mediaFiles, isAdminView }) {
           {!isAdminView && (
             <button
               type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('open-plan-modal', { detail: { tab: 'storage' } }))}
+              onClick={() => window.dispatchEvent(new CustomEvent('open-storage-modal'))}
               className="text-xs text-accent-blue hover:text-sky-300 font-semibold flex items-center gap-1 cursor-pointer"
             >
               Expand Storage <ArrowUpRight size={13} />

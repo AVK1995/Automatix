@@ -8,6 +8,7 @@ import { Trash2 } from 'lucide-react';
 import { deleteWorkflow } from '@/actions/workflows';
 import Checkbox from '@/components/ui/Checkbox';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 export default function AdminWorkflowsClient({ groupedWorkflows, tenantIdFilter }) {
   const [selectedIds, setSelectedIds] = useState([]);
@@ -59,10 +60,18 @@ export default function AdminWorkflowsClient({ groupedWorkflows, tenantIdFilter 
       header: 'Workflow', 
       className: 'w-[45%]',
       accessor: (row) => (
-        <Link href={`/admin/workflows/${row.id}`} className="block group text-left min-w-0 max-w-[200px] sm:max-w-[300px]">
-          <div className="font-semibold text-foreground group-hover:text-accent-blue transition-colors truncate" title={row.name}>{row.name}</div>
-          <div className="text-xs text-text-secondary mt-0.5 font-mono group-hover:text-accent-blue/70 transition-colors truncate">ID: {row.id.substring(0, 8)}...</div>
-        </Link>
+        <div className="block text-left min-w-0 max-w-[200px] sm:max-w-[320px]">
+          <Link 
+            href={`/admin/workflows/${row.id}`} 
+            className="font-semibold text-foreground hover:text-accent-blue transition-colors block truncate" 
+            data-tooltip={row.name}
+          >
+            {row.name}
+          </Link>
+          <div className="text-xs text-text-secondary mt-0.5 font-mono">
+            <TruncatedText text={row.id} prefix="ID: " maxChars={8} copyable={true} />
+          </div>
+        </div>
       )
     },
     { header: 'Status', className: 'w-[15%]', accessor: (row) => row.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true },

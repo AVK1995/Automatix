@@ -20,11 +20,13 @@ import {
   ExternalLink,
   ShieldCheck,
   Check,
-  Inbox
+  Inbox,
+  Database
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Select from '@/components/ui/Select';
 import { resolveTicketNotifications } from '@/actions/notifications';
+import TruncatedText from '@/components/ui/TruncatedText';
 
 export default function SupportPage() {
   const [activeMainTab, setActiveMainTab] = useState('support'); // 'support' | 'requests'
@@ -465,8 +467,10 @@ export default function SupportPage() {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <span className="text-[10px] text-text-tertiary font-mono block">REQUEST #{req.id.slice(0, 8)}</span>
-                            <h4 className="text-sm font-bold text-white truncate">{req.requestedPlan}</h4>
+                            <span className="text-[10px] text-text-tertiary font-mono block">
+                              <TruncatedText text={req.id} prefix="REQUEST #" maxChars={8} copyable={true} />
+                            </span>
+                            <h4 className="text-sm font-bold text-white truncate" data-tooltip={req.requestedPlan}>{req.requestedPlan}</h4>
                           </div>
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider shrink-0 ${getQuotaStatusColor(req.status)}`}>
                             {req.status}

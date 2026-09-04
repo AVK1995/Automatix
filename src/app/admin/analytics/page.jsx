@@ -28,8 +28,20 @@ export default async function AdminAnalyticsPage() {
       prisma.executionLog.findMany({
         take: 1000,
         orderBy: { createdAt: 'desc' },
-        include: { workflow: { select: { id: true, name: true, userId: true } } }
-      }).catch(() => []),
+        include: { 
+          workflow: { 
+            select: { 
+              id: true, 
+              name: true, 
+              clientId: true,
+              client: { select: { id: true, name: true, email: true } }
+            } 
+          } 
+        }
+      }).catch((err) => {
+        console.error('[AdminAnalyticsPage] executionLog.findMany error:', err);
+        return [];
+      }),
       prisma.connectionUsage.groupBy({
         by: ['date'],
         _sum: { requestCount: true },

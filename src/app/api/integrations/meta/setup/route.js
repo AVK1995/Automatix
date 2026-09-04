@@ -9,7 +9,78 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { appId, appSecret, pageAccessToken, connectionName, providerName } = await req.json();
+    const body = await req.json();
+    const { appId, appSecret, pageAccessToken, connectionName, providerName, phoneNumberId, wabaId } = body;
+
+    // Special Branch for WhatsApp Cloud API
+    if (providerName === 'whatsapp') {
+      const activePhoneId = (phoneNumberId || appId || '').trim();
+      const activeWabaId = (wabaId || appSecret || '').trim();
+      const activeToken = (pageAccessToken || '').trim();
+
+      if (!activePhoneId || !activeToken || !connectionName?.trim()) {
+        return NextResponse.json({ error: 'Please provide Connection Name, Phone Number ID, and Permanent Access Token.' }, { status: 400 });
+      }
+
+      // 1. Verify phone number details with Meta Cloud API
+      const metaRes = await fetch(`https://graph.facebook.com/v21.0/${activePhoneId}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier&access_token=${activeToken}`);
+      const metaData = await metaRes.json();
+
+      if (metaData.error) {
+        return NextResponse.json({ error: `Meta Cloud API Error: ${metaData.error.message}` }, { status: 400 });
+      }
+
+      const displayPhone = metaData.display_phone_number || activePhoneId;
+      const verifiedName = metaData.verified_name || connectionName;
+
+      // 2. Subscribe WABA to webhooks if wabaId is provided
+      if (activeWabaId) {
+        try {
+          await fetch(`https://graph.facebook.com/v21.0/${activeWabaId}/subscribed_apps`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: activeToken })
+          });
+        } catch (e) {
+          console.warn('WABA webhook subscription warning:', e);
+        }
+      }
+
+      // 3. Save WhatsApp Integration
+      const integration = await prisma.integration.upsert({
+        where: {
+          clientId_providerName_accountEmail: {
+            clientId: session.user.id,
+            providerName: 'whatsapp',
+            accountEmail: displayPhone
+          }
+        },
+        update: {
+          name: connectionName,
+          apiKey: activeToken,
+          privateKey: activePhoneId,
+          clientEmail: activeWabaId
+        },
+        create: {
+          clientId: session.user.id,
+          providerName: 'whatsapp',
+          name: connectionName,
+          accountEmail: displayPhone,
+          apiKey: activeToken,
+          privateKey: activePhoneId,
+          clientEmail: activeWabaId
+        }
+      });
+
+      return NextResponse.json({
+        success: true,
+        integrationId: integration.id,
+        phone: displayPhone,
+        verifiedName,
+        qualityRating: metaData.quality_rating || 'GREEN',
+        tier: metaData.messaging_limit_tier || 'TIER_1K'
+      });
+    }
 
     if (!appId || !appSecret || !pageAccessToken || !connectionName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

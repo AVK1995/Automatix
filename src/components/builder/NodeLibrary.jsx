@@ -48,6 +48,7 @@ export const INTEGRATIONS = {
     { id: 'meta_capi', name: 'Meta Conversions API', icon: MetaIcon, color: 'bg-blue-600/10 text-blue-600 border-blue-600/20', description: 'Send server-side events to FB Ads' },
     { id: 'twilio', name: 'Send SMS', icon: Smartphone, color: 'bg-red-500/10 text-red-500 border-red-500/20', description: 'Send a text message via Twilio' },
     { id: 'sheets', name: 'Google Sheets', icon: GoogleSheetsIcon, color: 'bg-green-600/10 text-green-600 border-green-600/20', description: 'Add or update a row in Sheets' },
+    { id: 'whatsapp_template', name: 'Send WhatsApp Template', icon: Smartphone, color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', description: 'Send Meta-approved WhatsApp Cloud API templates' },
   ],
   [NODE_TYPES.CONDITION]: [
     { id: 'condition', name: 'Router / IF-ELSE', icon: GitFork, color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20', description: 'Split your workflow into multiple conditional paths' },

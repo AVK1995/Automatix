@@ -56,6 +56,8 @@ model User {
   aiRadahnApiKey        String?
   aiRadahnEngineMode    String              @default("native") // "native" (Default Brain), "byok" (True AI Brain)
   aiConsumptionLogs     AiConsumptionLog[]
+  whatsAppTemplates     WhatsAppTemplate[]
+  whatsAppLogs          WhatsAppLog[]
 }
 
 model AiConsumptionLog {
@@ -347,16 +349,58 @@ model TicketMessage {
 }
 
 model PlatformSettings {
-  id                 String   @id @default("default")
-  maxUsers           Int      @default(10)
-  starterPlanEnabled Boolean  @default(true)
-  starterPlanPrice   Int      @default(0)
-  starterPlanDesc    String   @default("Perfect for testing and small projects.")
-  proPlanEnabled     Boolean  @default(true)
-  proPlanPrice       Int      @default(499)
-  proPlanDesc        String   @default("For businesses automating at scale.")
-  resetEmailTemplate String?  @db.Text
-  updatedAt          DateTime @updatedAt
+  id                         String   @id @default("default")
+  maxUsers                   Int      @default(10)
+  starterPlanEnabled         Boolean  @default(true)
+  starterPlanPrice           Int      @default(0)
+  starterPlanDesc            String   @default("Perfect for testing and small projects.")
+  proPlanEnabled             Boolean  @default(true)
+  proPlanPrice               Int      @default(499)
+  proPlanDesc                String   @default("For businesses automating at scale.")
+  resetEmailTemplate         String?  @db.Text
+  whatsappAddonEnabled       Boolean  @default(false)
+  whatsappAddonPriceRs       Int      @default(799)
+  whatsappAddonYearlyPriceRs Int      @default(7999)
+  whatsappAddonDesc          String   @default("Automate WhatsApp templates, broadcasts, and public cURL API triggers.")
+  updatedAt                  DateTime @updatedAt
+}
+
+model WhatsAppTemplate {
+  id              String   @id @default(uuid())
+  integrationId   String
+  clientId        String
+  templateName    String
+  category        String   // "MARKETING", "UTILITY", "AUTHENTICATION"
+  language        String   @default("en_US")
+  status          String   @default("PENDING") // "APPROVED", "PENDING", "REJECTED", "PAUSED"
+  componentsJson  Json     // Headers, body with {{1}}, footer, buttons
+  metaTemplateId  String?
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  client          User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, templateName, language])
+  @@index([clientId, status])
+}
+
+model WhatsAppLog {
+  id                   String   @id @default(uuid())
+  integrationId        String
+  clientId             String
+  templateName         String
+  recipientPhoneMasked String   // e.g. "+91*****4321" (for privacy compliance)
+  status               String   @default("SENT") // "SENT", "DELIVERED", "READ", "FAILED"
+  metaMessageId        String?
+  errorMessage         String?
+  source               String   @default("WORKFLOW") // "WORKFLOW" or "PUBLIC_API"
+  createdAt            DateTime @default(now())
+
+  client               User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
+  @@index([integrationId, createdAt])
 }
 
 model AdminEmailLog {
