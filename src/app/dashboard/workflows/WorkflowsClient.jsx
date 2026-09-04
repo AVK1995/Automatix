@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useTransition, useRef, useEffect } from 'react';
+import { useState, useTransition, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import DataTable from '@/components/DataTable';
 import Link from 'next/link';
-import { Plus, Search, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, RotateCcw } from 'lucide-react';
 import { createWorkflow, deleteWorkflow, updateWorkflow } from '@/actions/workflows';
 import Checkbox from '@/components/ui/Checkbox';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import Select from '@/components/ui/Select';
 import { AlertTriangle, AlertCircle, Clock, Check, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -162,6 +163,8 @@ export default function WorkflowsClient({ workflows, notifications: rawNotificat
   })();
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'INACTIVE'
+  const [dateRange, setDateRange] = useState('ALL'); // 'ALL' | 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS'
   const [isCreating, startTransition] = useTransition();
   const [selectedIds, setSelectedIds] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -178,9 +181,35 @@ export default function WorkflowsClient({ workflows, notifications: rawNotificat
     });
   };
 
-  const filteredWorkflows = workflows.filter(workflow => 
-    workflow.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredWorkflows = useMemo(() => {
+    const now = Date.now();
+    return workflows.filter(workflow => {
+      // Search
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = (workflow.name || '').toLowerCase().includes(q);
+        const matchId = (workflow.id || '').toLowerCase().includes(q);
+        if (!matchName && !matchId) return false;
+      }
+
+      // Status
+      if (statusFilter === 'ACTIVE' && !workflow.isActive) return false;
+      if (statusFilter === 'INACTIVE' && workflow.isActive) return false;
+
+      // Date Range
+      if (dateRange !== 'ALL') {
+        const createdMs = new Date(workflow.createdAt).getTime();
+        const ageDays = (now - createdMs) / (1000 * 60 * 60 * 24);
+        if (dateRange === 'TODAY' && ageDays > 1) return false;
+        if (dateRange === 'LAST_7_DAYS' && ageDays > 7) return false;
+        if (dateRange === 'LAST_30_DAYS' && ageDays > 30) return false;
+      }
+
+      return true;
+    });
+  }, [workflows, searchQuery, statusFilter, dateRange]);
+
+  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'ALL' || dateRange !== 'ALL';
 
   const columns = [
     { 
@@ -357,37 +386,81 @@ export default function WorkflowsClient({ workflows, notifications: rawNotificat
           </div>
         </div>
 
-        {/* Search & Bulk Actions */}
-        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+        {/* Search, Filters & Bulk Actions */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
           <Link 
             href="/dashboard/workflows/history"
-            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-border-subtle px-4 py-2.5 rounded-md text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-border-subtle px-3.5 py-2 rounded-md text-xs font-medium transition-colors shrink-0"
           >
-            <Clock size={16} className="text-accent-blue" />
-            View Run History
+            <Clock size={14} className="text-accent-blue" />
+            <span>Run History</span>
           </Link>
+
+          {/* Status Filter */}
+          <div className="w-32 shrink-0">
+            <Select
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'ALL', label: 'All Statuses' },
+                { value: 'ACTIVE', label: 'Active Only' },
+                { value: 'INACTIVE', label: 'Inactive Only' }
+              ]}
+              buttonClassName="py-2 text-xs"
+            />
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="w-36 shrink-0">
+            <Select
+              value={dateRange}
+              onChange={setDateRange}
+              options={[
+                { value: 'ALL', label: 'All Time' },
+                { value: 'TODAY', label: 'Today' },
+                { value: 'LAST_7_DAYS', label: 'Last 7 Days' },
+                { value: 'LAST_30_DAYS', label: 'Last 30 Days' }
+              ]}
+              buttonClassName="py-2 text-xs"
+            />
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('ALL');
+                setDateRange('ALL');
+              }}
+              className="px-2.5 py-2 text-xs font-semibold text-accent-blue hover:text-white bg-accent-blue/10 hover:bg-accent-blue/20 rounded-md border border-accent-blue/20 transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
+            >
+              <RotateCcw size={11} />
+              Reset
+            </button>
+          )}
 
           {selectedIds.length > 0 && (
             <button 
               onClick={() => setIsConfirmOpen(true)}
               disabled={isDeleting}
-              className="flex items-center gap-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 px-4 py-2.5 rounded-md text-sm font-medium transition-colors"
+              className="flex items-center gap-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 px-3.5 py-2 rounded-md text-xs font-medium transition-colors shrink-0"
             >
-              <Trash2 size={16} />
+              <Trash2 size={13} />
               {isDeleting ? 'Deleting...' : `Delete (${selectedIds.length})`}
             </button>
           )}
 
-          <div className="relative flex-1 min-w-[200px] md:w-80">
+          <div className="relative flex-1 min-w-[180px] md:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-text-secondary" />
+              <Search className="h-3.5 w-3.5 text-text-secondary" />
             </div>
             <input
               type="text"
               placeholder="Search workflows..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-card border border-border-subtle rounded-md pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/50 transition-colors"
+              className="w-full bg-card border border-border-subtle rounded-md pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/50 transition-colors"
             />
           </div>
         </div>

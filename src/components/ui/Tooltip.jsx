@@ -7,17 +7,19 @@ import { AnimatePresence, motion } from 'framer-motion';
 export default function Tooltip({ 
   children, 
   content, 
-  delay = 120, 
+  copyValue = null,
+  delay = 100, 
   position = 'top', // 'top' | 'bottom' | 'left' | 'right'
   copyable = false,
   className = '',
-  maxWidth = 360
+  maxWidth = 400
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const triggerRef = useRef(null);
   const timerRef = useRef(null);
+  const leaveTimerRef = useRef(null);
 
   const calculatePosition = () => {
     if (!triggerRef.current) return;
@@ -55,6 +57,7 @@ export default function Tooltip({
 
   const handleMouseEnter = () => {
     if (!content) return;
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       calculatePosition();
@@ -64,17 +67,30 @@ export default function Tooltip({
 
   const handleMouseLeave = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    // 150ms hover bridge so the user can easily move mouse over to click the tooltip
+    leaveTimerRef.current = setTimeout(() => {
+      setIsOpen(false);
+    }, 150);
+  };
+
+  const handleTooltipMouseEnter = () => {
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+  };
+
+  const handleTooltipMouseLeave = () => {
     setIsOpen(false);
   };
 
   const handleCopy = (e) => {
-    if (!copyable || !content) return;
-    e.stopPropagation();
-    e.preventDefault();
-    const textToCopy = typeof content === 'string' ? content : String(content);
+    if (!copyable) return;
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const textToCopy = copyValue != null ? String(copyValue) : (typeof content === 'string' ? content : String(content));
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   useEffect(() => {
@@ -92,6 +108,7 @@ export default function Tooltip({
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
     };
   }, []);
 
@@ -103,7 +120,8 @@ export default function Tooltip({
         ref={triggerRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`inline-flex items-center min-w-0 max-w-full ${className}`}
+        onClick={copyable ? handleCopy : undefined}
+        className={`inline-flex items-center min-w-0 max-w-full ${copyable ? 'cursor-pointer' : ''} ${className}`}
       >
         {children}
       </span>
@@ -125,16 +143,24 @@ export default function Tooltip({
               maxWidth: `${maxWidth}px`,
               zIndex: 99999
             }}
+            onMouseEnter={handleTooltipMouseEnter}
+            onMouseLeave={handleTooltipMouseLeave}
             onClick={handleCopy}
-            className={`px-2 py-0.5 text-xs text-white bg-[#111] border border-white/60 rounded-sm shadow-2xl select-none pointer-events-auto ${
-              copyable ? 'cursor-pointer hover:border-white' : 'cursor-default'
+            className={`px-2 py-0.5 text-xs text-white bg-[#111] border rounded-sm shadow-2xl select-none pointer-events-auto transition-colors ${
+              copied
+                ? 'border-emerald-500 bg-emerald-950/80 text-emerald-200'
+                : copyable 
+                  ? 'border-white/60 hover:border-white cursor-pointer' 
+                  : 'border-white/60 cursor-default'
             }`}
           >
             <div className="flex items-center gap-1.5 leading-snug">
               <span className="font-mono text-xs break-all">{content}</span>
               {copyable && (
-                <span className="text-[10px] text-accent-blue font-sans font-semibold shrink-0">
-                  {copied ? '✓ Copied' : '• Copy'}
+                <span className={`text-[10px] font-sans font-semibold shrink-0 transition-colors ${
+                  copied ? 'text-emerald-400 font-bold' : 'text-accent-blue hover:underline'
+                }`}>
+                  {copied ? '✓ Copied' : '• Click to copy'}
                 </span>
               )}
             </div>

@@ -3,15 +3,16 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 export default function GlobalTooltipProvider({ children }) {
-  const [tooltip, setTooltip] = useState(null); // { text, top, left, copyable }
+  const [tooltip, setTooltip] = useState(null); // { text, top, left, isBottom, copyable }
   const timerRef = useRef(null);
 
   useEffect(() => {
     const handleMouseOver = (e) => {
       // Look for explicit data-tooltip, title, or truncated element
-      const target = e.target.closest('[data-tooltip], [data-truncate], [title], .truncate, .line-clamp-1, .line-clamp-2');
+      const target = e.target.closest('[data-tooltip], [data-truncate], [data-copyable], [title], .truncate, .line-clamp-1, .line-clamp-2');
       if (!target) {
         if (timerRef.current) clearTimeout(timerRef.current);
         setTooltip(null);
@@ -19,6 +20,7 @@ export default function GlobalTooltipProvider({ children }) {
       }
 
       let text = target.getAttribute('data-tooltip');
+      const isCopyable = target.getAttribute('data-copyable') === 'true';
 
       // If no data-tooltip, check title attribute
       if (!text) {
@@ -57,7 +59,8 @@ export default function GlobalTooltipProvider({ children }) {
           text,
           top,
           left,
-          isBottom
+          isBottom,
+          copyable: isCopyable
         });
       }, 100);
     };
@@ -80,13 +83,26 @@ export default function GlobalTooltipProvider({ children }) {
       setTooltip(null);
     };
 
+    const handleClick = (e) => {
+      const copyEl = e.target.closest('[data-copyable="true"]');
+      if (copyEl) {
+        const text = copyEl.getAttribute('data-copy-text') || copyEl.getAttribute('data-tooltip') || copyEl.textContent?.trim();
+        if (text) {
+          navigator.clipboard.writeText(text);
+          toast.success(`Copied to clipboard: ${text.slice(0, 16)}${text.length > 16 ? '...' : ''}`);
+        }
+      }
+    };
+
     document.addEventListener('mouseover', handleMouseOver, true);
     document.addEventListener('mouseout', handleMouseOut, true);
+    document.addEventListener('click', handleClick, true);
     window.addEventListener('scroll', handleScroll, true);
 
     return () => {
       document.removeEventListener('mouseover', handleMouseOver, true);
       document.removeEventListener('mouseout', handleMouseOut, true);
+      document.removeEventListener('click', handleClick, true);
       window.removeEventListener('scroll', handleScroll, true);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
@@ -107,12 +123,17 @@ export default function GlobalTooltipProvider({ children }) {
               top: tooltip.top,
               left: tooltip.left,
               transform: tooltip.isBottom ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
-              maxWidth: '360px',
+              maxWidth: '380px',
               zIndex: 99999
             }}
-            className="px-2 py-0.5 text-xs text-white bg-[#111] border border-white/60 rounded-sm shadow-2xl pointer-events-none select-none"
+            className="px-2 py-0.5 text-xs text-white bg-[#111] border border-white/60 rounded-sm shadow-2xl pointer-events-none select-none flex items-center gap-1.5"
           >
             <span className="font-mono text-xs break-all leading-snug">{tooltip.text}</span>
+            {tooltip.copyable && (
+              <span className="text-[10px] text-accent-blue font-sans font-semibold shrink-0">
+                • Click to copy
+              </span>
+            )}
           </motion.div>
         </AnimatePresence>,
         document.body

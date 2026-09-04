@@ -1,18 +1,30 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { Check, Minus } from 'lucide-react';
 
 export default function Checkbox({ 
   checked = false, 
+  indeterminate = false,
   onChange, 
   label, 
   id, 
   name, 
   disabled = false, 
-  className = '',
+  className = '', 
   labelClassName = ''
 }) {
+  const isSelected = checked || indeterminate;
+
+  const handleChange = (e) => {
+    if (disabled) return;
+    const isChecked = e.target.checked;
+    if (onChange) {
+      // Pass isChecked as 1st argument, but also pass the native event e as 2nd argument
+      onChange(isChecked, e);
+    }
+  };
+
   return (
     <label 
       htmlFor={id} 
@@ -20,7 +32,7 @@ export default function Checkbox({
     >
       <div 
         className={`relative w-4 h-4 rounded-md border transition-all duration-150 flex items-center justify-center flex-shrink-0 shrink-0 ${
-          checked 
+          isSelected 
             ? 'bg-accent-blue border-accent-blue text-white shadow-sm shadow-accent-blue/25 ring-1 ring-accent-blue/50' 
             : 'bg-[#111] border-white/20 group-hover:border-white/40'
         }`}
@@ -30,8 +42,20 @@ export default function Checkbox({
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="flex items-center justify-center"
           >
             <Check className="w-3 h-3 text-white" strokeWidth={3.5} />
+          </motion.div>
+        )}
+
+        {!checked && indeterminate && (
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="flex items-center justify-center"
+          >
+            <Minus className="w-3 h-3 text-white" strokeWidth={3.5} />
           </motion.div>
         )}
         
@@ -42,7 +66,7 @@ export default function Checkbox({
           className="sr-only" 
           checked={checked} 
           disabled={disabled}
-          onChange={(e) => onChange?.(e.target.checked, e)} 
+          onChange={handleChange} 
         />
       </div>
       {label && (
