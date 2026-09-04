@@ -17,7 +17,22 @@ export async function POST(req, { params }) {
       where: { id },
       include: {
         user: {
-          select: { id: true, email: true, name: true, maxStorageMB: true, aiCredits: true }
+          select: { 
+            id: true, 
+            email: true, 
+            name: true, 
+            maxStorageMB: true, 
+            aiCredits: true,
+            subscriptionTier: true,
+            subscriptionCycle: true,
+            subscriptionExpiresAt: true,
+            maxImages: true,
+            maxVideos: true,
+            maxDocs: true,
+            maxImageMB: true,
+            maxVideoMB: true,
+            maxDocMB: true
+          }
         }
       }
     });
@@ -29,30 +44,35 @@ export async function POST(req, { params }) {
     const user = request.user;
     const lowerPlan = (request.requestedPlan || '').toLowerCase();
     const lowerMsg = (request.message || '').toLowerCase();
+    const isStorageOnly = lowerPlan.includes('storage') && !lowerPlan.includes('professional') && !lowerPlan.includes('enterprise');
 
     // 1. Determine Billing Cycle & Expiry Duration
-    let cycle = 'monthly';
+    let cycle = isStorageOnly ? (user?.subscriptionCycle || 'monthly') : 'monthly';
     let multiplier = 1;
-    if (lowerPlan.includes('yearly') || lowerPlan.includes('12 month') || lowerMsg.includes('yearly')) {
-      cycle = 'yearly';
-      multiplier = 12;
-    } else if (lowerPlan.includes('quarterly') || lowerPlan.includes('3 month') || lowerMsg.includes('quarterly')) {
-      cycle = 'quarterly';
-      multiplier = 3;
+    if (!isStorageOnly) {
+      if (lowerPlan.includes('yearly') || lowerPlan.includes('12 month') || lowerMsg.includes('yearly')) {
+        cycle = 'yearly';
+        multiplier = 12;
+      } else if (lowerPlan.includes('quarterly') || lowerPlan.includes('3 month') || lowerMsg.includes('quarterly')) {
+        cycle = 'quarterly';
+        multiplier = 3;
+      }
     }
 
     const daysToAdd = 30 * multiplier;
-    const subscriptionExpiresAt = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000);
+    const subscriptionExpiresAt = isStorageOnly && user?.subscriptionExpiresAt 
+      ? user.subscriptionExpiresAt 
+      : new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000);
 
     // 2. Base Limits
-    let tier = 'Professional';
-    let baseStorage = 200;
-    let baseImages = 30;
-    let baseVideos = 4;
-    let baseDocs = 40;
-    let baseAiCredits = 100;
+    let tier = isStorageOnly ? (user?.subscriptionTier || 'Starter') : 'Professional';
+    let baseStorage = isStorageOnly ? (user?.maxStorageMB || 50) : 200;
+    let baseImages = isStorageOnly ? (user?.maxImages || 15) : 30;
+    let baseVideos = isStorageOnly ? (user?.maxVideos || 1) : 4;
+    let baseDocs = isStorageOnly ? (user?.maxDocs || 20) : 40;
+    let baseAiCredits = isStorageOnly ? 0 : 100;
 
-    if (lowerPlan.includes('enterprise') || lowerMsg.includes('enterprise')) {
+    if (!isStorageOnly && (lowerPlan.includes('enterprise') || lowerMsg.includes('enterprise'))) {
       tier = 'Enterprise';
       baseStorage = 500;
       baseImages = 80;
@@ -63,7 +83,12 @@ export async function POST(req, { params }) {
 
     // 3. Storage Addon Calculation
     let extraStorage = 0;
-    if (lowerMsg.includes('+500 mb') || lowerMsg.includes('power pack')) {
+    if (lowerMsg.includes('+1000 mb') || lowerMsg.includes('1 gb') || lowerMsg.includes('ultra pack')) {
+      extraStorage = 1000;
+      baseImages += 100;
+      baseVideos += 8;
+      baseDocs += 100;
+    } else if (lowerMsg.includes('+500 mb') || lowerMsg.includes('power pack')) {
       extraStorage = 500;
       baseImages += 50;
       baseVideos += 4;
@@ -90,7 +115,7 @@ export async function POST(req, { params }) {
       extraAiCredits = 50;
     }
 
-    const totalStorageMB = Math.max(user?.maxStorageMB || 50, baseStorage + extraStorage);
+    const totalStorageMB = (user?.maxStorageMB && isStorageOnly) ? (user.maxStorageMB + extraStorage) : Math.max(user?.maxStorageMB || 50, baseStorage + extraStorage);
     const totalAiCredits = (user?.aiCredits || 10) + baseAiCredits + extraAiCredits;
 
     const updateData = {
@@ -123,12 +148,16 @@ export async function POST(req, { params }) {
     });
 
     // Create In-App Notification
+    const notifMessage = isStorageOnly
+      ? `🎉 Payment Verified & Storage Expanded! +${extraStorage}MB has been added to your media bucket (Total Quota: ${totalStorageMB}MB).`
+      : `🎉 Payment Verified & Access Granted! Your account is now active on the ${tier} tier (${cycle}) with ${totalStorageMB}MB storage and ${totalAiCredits} AI credits.`;
+
     await prisma.notification.create({
       data: {
         id: crypto.randomUUID(),
         userId: request.userId,
         type: 'STORAGE_QUOTA',
-        message: `🎉 Payment Verified & Access Granted! Your account is now active on the ${tier} tier (${cycle}) with ${totalStorageMB}MB storage and ${totalAiCredits} AI credits.`,
+        message: notifMessage,
         status: 'UNREAD',
         metadata: {
           icon: 'CheckCircle2',
@@ -140,10 +169,26 @@ export async function POST(req, { params }) {
 
     // Send Confirmation Email
     if (user?.email) {
-      await sendMail({
-        to: user.email,
-        subject: `🚀 Access Granted: Your Automatix ${tier} Plan is Active!`,
-        html: `
+      const emailSubject = isStorageOnly
+        ? `🚀 Storage Quota Expanded: ${totalStorageMB} MB Now Available!`
+        : `🚀 Access Granted: Your Automatix ${tier} Plan is Active!`;
+      
+      const emailBody = isStorageOnly
+        ? `
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; max-width: 540px; margin: auto; padding: 32px; background: #0e0e13; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
+            <h2 style="color: #3b82f6; margin-top: 0;">Payment Verified & Storage Expanded!</h2>
+            <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6;">
+              Hello ${user.name || 'there'}, your storage add-on payment has been verified by our team. Your media bucket capacity has been successfully increased.
+            </p>
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 16px; margin: 20px 0; font-size: 13px;">
+              <p style="margin: 4px 0;"><strong>Added Capacity:</strong> +${extraStorage} MB</p>
+              <p style="margin: 4px 0;"><strong>Total Cloud Storage:</strong> ${totalStorageMB} MB</p>
+              <p style="margin: 4px 0;"><strong>Active Tier:</strong> ${tier}</p>
+            </div>
+            <a href="${process.env.NEXTAUTH_URL || 'https://automatix.agency'}/dashboard/storage" style="display: inline-block; background: #3b82f6; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 13px;">Open Storage Bucket</a>
+          </div>
+        `
+        : `
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; max-width: 540px; margin: auto; padding: 32px; background: #0e0e13; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
             <h2 style="color: #3b82f6; margin-top: 0;">Payment Verified & Plan Activated!</h2>
             <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6;">
@@ -157,7 +202,12 @@ export async function POST(req, { params }) {
             </div>
             <a href="${process.env.NEXTAUTH_URL || 'https://automatix.agency'}/dashboard" style="display: inline-block; background: #3b82f6; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 13px;">Open Dashboard</a>
           </div>
-        `
+        `;
+
+      await sendMail({
+        to: user.email,
+        subject: emailSubject,
+        html: emailBody
       }).catch(console.error);
     }
 

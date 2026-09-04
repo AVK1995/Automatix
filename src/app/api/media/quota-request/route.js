@@ -61,11 +61,17 @@ export async function POST(req) {
 
     // 3. Storage Downgrade Check
     let targetMaxStorage = 50;
-    if (lowerTargetPlan.includes('enterprise')) targetMaxStorage = 500;
-    else if (lowerTargetPlan.includes('professional') || lowerTargetPlan.includes('pro')) targetMaxStorage = 200;
+    if (lowerTargetPlan.includes('storage')) {
+      targetMaxStorage = dbUser.maxStorageMB || 50;
+    } else if (lowerTargetPlan.includes('enterprise')) {
+      targetMaxStorage = 500;
+    } else if (lowerTargetPlan.includes('professional') || lowerTargetPlan.includes('pro')) {
+      targetMaxStorage = 200;
+    }
 
     if (storageAddon && typeof storageAddon === 'string') {
-      if (storageAddon.includes('500')) targetMaxStorage += 500;
+      if (storageAddon.includes('1000') || storageAddon.includes('1 gb') || storageAddon.includes('1gb') || storageAddon.includes('ultra')) targetMaxStorage += 1000;
+      else if (storageAddon.includes('500')) targetMaxStorage += 500;
       else if (storageAddon.includes('250')) targetMaxStorage += 250;
       else if (storageAddon.includes('100')) targetMaxStorage += 100;
     }
