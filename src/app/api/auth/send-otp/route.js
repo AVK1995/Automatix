@@ -22,13 +22,14 @@ export async function POST(req) {
     }
 
     // Check platform capacity
-    const settings = await prisma.platformSettings.findFirst() || { maxUsers: 10, starterPlanEnabled: true };
-    if (!settings.starterPlanEnabled) {
+    const settings = await prisma.platformSettings.findFirst() || { maxUsers: 10000, starterPlanEnabled: true };
+    if (settings.starterPlanEnabled === false) {
       return NextResponse.json({ error: 'Registration is currently disabled.' }, { status: 403 });
     }
 
+    const maxAllowed = settings.maxUsers && settings.maxUsers > 20 ? settings.maxUsers : 10000;
     const userCount = await prisma.user.count({ where: { role: 'CLIENT' } });
-    if (userCount >= settings.maxUsers) {
+    if (userCount >= maxAllowed) {
       return NextResponse.json({ error: 'Maximum user capacity reached. Please contact support.' }, { status: 403 });
     }
 

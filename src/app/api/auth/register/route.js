@@ -28,13 +28,14 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Verification code has expired. Please request a new code.' }, { status: 400 });
     }
 
-    const settings = await prisma.platformSettings.findFirst() || { maxUsers: 10, starterPlanEnabled: true };
-    if (!settings.starterPlanEnabled) {
+    const settings = await prisma.platformSettings.findFirst() || { maxUsers: 10000, starterPlanEnabled: true };
+    if (settings.starterPlanEnabled === false) {
       return NextResponse.json({ error: 'Registration is currently disabled.' }, { status: 403 });
     }
 
+    const maxAllowed = settings.maxUsers && settings.maxUsers > 20 ? settings.maxUsers : 10000;
     const userCount = await prisma.user.count({ where: { role: 'CLIENT' } });
-    if (userCount >= settings.maxUsers) {
+    if (userCount >= maxAllowed) {
       return NextResponse.json({ error: 'Maximum capacity reached. Please try again later.' }, { status: 403 });
     }
 

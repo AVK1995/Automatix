@@ -851,7 +851,7 @@ export const executeWorkflow = inngest.createFunction(
                 }
                 // --- 13. GOOGLE SHEETS ACTION ---
                 else if (['sheets', 'google_sheets'].includes(node.integrationId) || ['sheets', 'google_sheets'].includes(node.integration?.id)) {
-                  const accessToken = await getGoogleAccessToken(node.config?.connectionId, execution.workflow?.userId);
+                  const accessToken = await getGoogleAccessToken(node.config?.connectionId, execution.workflow?.clientId || execution.workflow?.userId);
                   if (!accessToken) {
                     throw new Error('No active Google authentication token found for this step.');
                   }

@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { addByokConnection, testSheetsConnection } from '@/actions/connections';
-import { X, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { X, Loader2, AlertTriangle, CheckCircle2, HelpCircle } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import ConnectionGuideModal from '@/components/ui/ConnectionGuideModal';
 
 export default function GoogleSheetsModal({ isOpen, onClose, onSuccess, initialData = null }) {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -96,16 +98,26 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSuccess, initialD
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
       <div className="bg-card border border-border-subtle rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-border-subtle">
           <div>
             <h2 className="text-lg font-medium text-foreground">Connect Google Sheets</h2>
             <p className="text-xs text-text-secondary mt-1">Authenticate using a Google Cloud Service Account.</p>
           </div>
-          <button onClick={onClose} className="text-text-secondary hover:text-white transition-colors">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsGuideOpen(true)}
+              className="flex items-center gap-1.5 text-xs text-accent-blue hover:text-white bg-accent-blue/10 hover:bg-accent-blue/20 border border-accent-blue/20 px-2.5 py-1.5 rounded-lg transition-colors font-medium shrink-0"
+            >
+              <HelpCircle size={13} className="shrink-0" />
+              <span>Setup Guide</span>
+            </button>
+            <button onClick={onClose} className="text-text-secondary hover:text-white transition-colors shrink-0">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="p-6 overflow-y-auto">
@@ -229,6 +241,11 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSuccess, initialD
           </div>
         </div>
       </div>
+      <ConnectionGuideModal
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        providerName="Google Sheets"
+      />
     </div>,
     document.body
   );

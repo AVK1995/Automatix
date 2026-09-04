@@ -188,7 +188,7 @@ export default function WeeklyScheduleBuilder({ availability, onChange, onErrorS
 
       {/* Copy Modal */}
       {copySourceDay && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-[#111] border-0 sm:border sm:border-white/10 rounded-none sm:rounded-xl w-full h-[100dvh] sm:h-auto sm:max-w-md shadow-2xl shadow-black/50 animate-in zoom-in-95 duration-200 flex flex-col">
             <div className="flex justify-between items-center p-4 border-b border-white/10">
               <h3 className="text-base font-semibold text-white flex items-center gap-2">

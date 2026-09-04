@@ -49,7 +49,7 @@ export default function GlobalSupportTicketsClient() {
   const { data, error, isLoading, mutate } = useSWR(
     `/api/admin/support?status=${statusFilter}&search=${encodeURIComponent(searchQuery)}`, 
     fetcher, 
-    { refreshInterval: 5000, revalidateOnFocus: true }
+    { refreshInterval: 10000, revalidateOnFocus: true }
   );
 
   const tickets = data?.tickets || [];
@@ -58,7 +58,7 @@ export default function GlobalSupportTicketsClient() {
   const { data: fullActiveTicketData, mutate: mutateActiveTicket } = useSWR(
     activeTicket?.id ? `/api/support/tickets/${activeTicket.id}` : null,
     fetcher,
-    { refreshInterval: 2500, revalidateOnFocus: true }
+    { refreshInterval: 5000, revalidateOnFocus: true }
   );
 
   // Sync active ticket thread automatically when new data arrives

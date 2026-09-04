@@ -412,7 +412,7 @@ export default function HistoryClient({ workflows }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setActiveLog(null)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/80"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -533,7 +533,7 @@ export default function HistoryClient({ workflows }) {
       <AnimatePresence>
         {skipModalOpen && activeLog && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSkipModalOpen(false)} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSkipModalOpen(false)} className="absolute inset-0 bg-black/80" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-md bg-card border border-border-subtle rounded-xl shadow-2xl p-6">
               <h3 className="text-lg font-semibold text-white mb-2">Rerun Workflow</h3>
               <p className="text-sm text-text-secondary mb-4">Select any steps you want to skip during this rerun.</p>

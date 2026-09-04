@@ -48,7 +48,7 @@ export default function WebhookGuideModal({ isOpen, onClose, integrationId }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
+            className="fixed inset-0 bg-black/60 z-[9998]"
           />
           <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none p-4">
             <motion.div

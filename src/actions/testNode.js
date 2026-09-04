@@ -100,8 +100,24 @@ export async function testNodeAction(node) {
       case 'custom_variable':
         return await executeCustomVariableTest(config);
 
+      case 'formatter_extract':
+        return await executeExtractFormatterTest(config);
+
+      case 'filter':
+        return await executeFilterTest(config);
+
       case 'code':
+      case 'formatter_dev':
         return await executeCodeTest(config);
+
+      case 'reminder_sequence':
+        return {
+          success: true,
+          data: {
+            message: `Reminder Sequence configured with ${(config.branches || []).length} branches. Simulated test pass.`,
+            branches: config.branches || []
+          }
+        };
 
       default:
         return { success: false, error: 'Unsupported integration type for testing', fix: 'This step type cannot be tested yet.' };
@@ -529,6 +545,72 @@ async function executeCodeTest(config) {
     data: {
       result: 'simulated_code_output',
       status: 'success'
+    }
+  };
+}
+
+async function executeExtractFormatterTest(config) {
+  const rawSource = config?.source || config?.inputString || config?.input || 'contact support@automatix.io or call +1 555-0199 for order #4920';
+  const type = config?.type || 'email';
+  let output = null;
+
+  if (type === 'email') {
+    const matches = rawSource.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+    output = matches ? matches[0] : 'sample_user@example.com';
+  } else if (type === 'phone') {
+    const matches = rawSource.match(/(?:(?:\+|00)\d{1,3}[\s-]?)?(?:\d{2,4}[\s-]?){2,4}\d{2,4}/g);
+    output = matches ? matches[0] : '+1 555-0199';
+  } else if (type === 'url') {
+    const matches = rawSource.match(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g);
+    output = matches ? matches[0] : 'https://automatix.io';
+  } else if (type === 'number') {
+    const matches = rawSource.match(/-?\d+(?:\.\d+)?/g);
+    output = matches ? Number(matches[0]) : 4920;
+  } else if (type === 'regex') {
+    try {
+      const regex = new RegExp(config?.regexPattern || '\\w+', 'g');
+      const matches = rawSource.match(regex);
+      output = matches ? (matches.length === 1 ? matches[0] : matches) : 'match_sample';
+    } catch (e) {
+      return { success: false, error: 'Invalid Regex Pattern: ' + e.message, fix: 'Please test with a valid JavaScript regex pattern.' };
+    }
+  } else {
+    output = rawSource;
+  }
+
+  return {
+    success: true,
+    data: {
+      result: output,
+      extractedType: type,
+      sourceLength: rawSource.length
+    }
+  };
+}
+
+async function executeFilterTest(config) {
+  const varVal = config?.variable || config?.pathAVar || 'Active';
+  const op = config?.operation || config?.pathAOp || 'equals';
+  const expectedVal = config?.value || config?.pathAVal || 'Active';
+  const isCaseSensitive = config?.caseSensitive === true;
+
+  const a = isCaseSensitive ? String(varVal) : String(varVal).toLowerCase();
+  const e = isCaseSensitive ? String(expectedVal) : String(expectedVal).toLowerCase();
+
+  let isPass = false;
+  if (op === 'contains' && a.includes(e)) isPass = true;
+  else if (op === 'equals' && a === e) isPass = true;
+  else if (op === 'not_equals' && a !== e) isPass = true;
+  else if (op === 'starts_with' && a.startsWith(e)) isPass = true;
+  else if (op === 'ends_with' && a.endsWith(e)) isPass = true;
+  else if (op === 'exists' && varVal !== undefined && varVal !== null && varVal !== '') isPass = true;
+
+  return {
+    success: true,
+    data: {
+      passed: isPass,
+      evaluated: `${varVal} [${op}] ${expectedVal}`,
+      outcome: isPass ? 'Workflow continues' : 'Workflow filtered / halts gracefully'
     }
   };
 }

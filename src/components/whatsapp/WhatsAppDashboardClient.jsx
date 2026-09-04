@@ -26,8 +26,10 @@ import {
   Send,
   Loader2,
   HelpCircle,
-  BarChart3
+  BarChart3,
+  Play
 } from 'lucide-react';
+import Select from '@/components/ui/Select';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import WhatsAppTemplateStudio from './WhatsAppTemplateStudio';
@@ -259,20 +261,13 @@ print(response.json())`;
         {/* Multi-Account Switcher & Meta BM Link */}
         <div className="flex items-center gap-2.5">
           {connections.length > 1 && (
-            <div className="relative">
-              <select
-                value={selectedConnId}
-                onChange={(e) => setSelectedConnId(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer pr-8 font-medium"
-              >
-                {connections.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.accountEmail})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
-            </div>
+            <Select
+              value={selectedConnId}
+              onChange={(val) => setSelectedConnId(val)}
+              options={connections.map(c => ({ value: c.id, label: `${c.name} (${c.accountEmail})` }))}
+              className="min-w-[200px] text-xs"
+              buttonClassName="py-2 bg-black/40 border-white/10 text-xs rounded-xl"
+            />
           )}
 
           <a
@@ -372,27 +367,31 @@ print(response.json())`;
             </div>
 
             <div className="flex items-center gap-2.5">
-              <select
+              <Select
                 value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              >
-                <option value="ALL">All Categories</option>
-                <option value="MARKETING">Marketing</option>
-                <option value="UTILITY">Utility</option>
-                <option value="AUTHENTICATION">Authentication</option>
-              </select>
+                onChange={(val) => setCategoryFilter(val)}
+                options={[
+                  { value: 'ALL', label: 'All Categories' },
+                  { value: 'MARKETING', label: 'Marketing' },
+                  { value: 'UTILITY', label: 'Utility' },
+                  { value: 'AUTHENTICATION', label: 'Authentication' }
+                ]}
+                className="w-[145px] text-xs"
+                buttonClassName="py-2 bg-black/40 border-white/10 text-xs rounded-xl"
+              />
 
-              <select
+              <Select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="APPROVED">Approved</option>
-                <option value="PENDING">Pending Review</option>
-                <option value="REJECTED">Rejected</option>
-              </select>
+                onChange={(val) => setStatusFilter(val)}
+                options={[
+                  { value: 'ALL', label: 'All Statuses' },
+                  { value: 'APPROVED', label: 'Approved' },
+                  { value: 'PENDING', label: 'Pending Review' },
+                  { value: 'REJECTED', label: 'Rejected' }
+                ]}
+                className="w-[145px] text-xs"
+                buttonClassName="py-2 bg-black/40 border-white/10 text-xs rounded-xl"
+              />
 
               <button
                 type="button"

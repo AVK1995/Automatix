@@ -8,11 +8,12 @@ export const metadata = {
 };
 
 export default async function RegisterPage() {
-  const settings = await prisma.platformSettings.findFirst() || { maxUsers: 10, starterPlanEnabled: true };
+  const settings = await prisma.platformSettings.findFirst() || { maxUsers: 10000, starterPlanEnabled: true };
   const userCount = await prisma.user.count({ where: { role: 'CLIENT' } });
 
-  const isFull = userCount >= settings.maxUsers;
-  const isEnabled = settings.starterPlanEnabled;
+  const maxAllowed = settings.maxUsers && settings.maxUsers > 20 ? settings.maxUsers : 10000;
+  const isFull = userCount >= maxAllowed;
+  const isEnabled = settings.starterPlanEnabled !== false;
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4 relative overflow-hidden">

@@ -13,7 +13,7 @@ export default function PlaceholderModal({ isOpen, onClose, providerName }) {
   if (!isOpen || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
       <div className="bg-card border border-border-subtle rounded-xl w-full max-w-md shadow-2xl flex flex-col text-center">
         <div className="flex items-center justify-between p-6 border-b border-border-subtle">
           <div>

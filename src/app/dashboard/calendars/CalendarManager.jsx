@@ -60,7 +60,7 @@ function AvailabilityModal({ calendar, onChange, onClose }) {
     onClose();
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 sm:p-4 animate-in fade-in duration-200">
       <div className="bg-[#111] border-0 sm:border sm:border-white/10 rounded-none sm:rounded-xl w-full h-[100dvh] sm:h-auto sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl shadow-black/50 animate-in zoom-in-95 duration-200 flex flex-col">
         <div className="flex justify-between items-center p-5 border-b border-white/10 sticky top-0 bg-[#111]/90 backdrop-blur-md z-10">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -299,7 +299,7 @@ function CssGuideModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 animate-in fade-in duration-200">
       <div className="bg-[#111] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[88vh] shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
@@ -491,7 +491,7 @@ function ShareEmbedModal({ calendarId, onClose }) {
   return (
     <>
       {showCssGuide && <CssGuideModal onClose={() => setShowCssGuide(false)} />}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 sm:p-4 animate-in fade-in duration-200">
         <div className="bg-[#111] border-0 sm:border sm:border-white/10 rounded-none sm:rounded-xl w-full h-[100dvh] sm:h-auto sm:max-w-lg shadow-2xl shadow-black/50 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
           <div className="flex justify-between items-center p-5 border-b border-white/10">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">

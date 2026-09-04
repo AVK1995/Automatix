@@ -94,9 +94,29 @@ export default function Chatbot() {
 
   useEffect(() => {
     fetchTickets();
-    const pollInterval = (isOpen && !isMinimized && activeTab === 'live_support') ? 2500 : 8000;
-    const interval = setInterval(fetchTickets, pollInterval);
-    return () => clearInterval(interval);
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchTickets();
+      }
+    };
+
+    const pollInterval = (isOpen && !isMinimized && activeTab === 'live_support') ? 3500 : 25000;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchTickets();
+    }, pollInterval);
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
   }, [isOpen, isMinimized, activeTab]);
 
   // Auto-resolve notifications when active ticket is open in live chat

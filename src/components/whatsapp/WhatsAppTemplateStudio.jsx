@@ -23,6 +23,7 @@ import {
   Clock,
   ArrowRight
 } from 'lucide-react';
+import Select from '@/components/ui/Select';
 import toast from 'react-hot-toast';
 import { createWhatsAppTemplate } from '@/actions/whatsapp';
 
@@ -205,17 +206,17 @@ export default function WhatsAppTemplateStudio({ connectionId, onTemplateCreated
               <label className="block text-xs font-semibold text-white uppercase tracking-wider mb-1.5">
                 Category
               </label>
-              <div className="relative">
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
-                >
-                  <option value="MARKETING">Marketing (Promotions & Offers)</option>
-                  <option value="UTILITY">Utility (Order, Account, Alerts)</option>
-                  <option value="AUTHENTICATION">Authentication (OTPs & Security)</option>
-                </select>
-              </div>
+              <Select
+                value={category}
+                onChange={(val) => setCategory(val)}
+                options={[
+                  { value: 'MARKETING', label: 'Marketing (Promotions & Offers)' },
+                  { value: 'UTILITY', label: 'Utility (Order, Account, Alerts)' },
+                  { value: 'AUTHENTICATION', label: 'Authentication (OTPs & Security)' }
+                ]}
+                className="w-full text-xs"
+                buttonClassName="py-2 bg-black/40 border-white/10 text-xs rounded-xl"
+              />
               <p className="text-[10px] text-text-tertiary mt-1">Utility templates have lower Meta fees.</p>
             </div>
 
@@ -223,19 +224,21 @@ export default function WhatsAppTemplateStudio({ connectionId, onTemplateCreated
               <label className="block text-xs font-semibold text-white uppercase tracking-wider mb-1.5">
                 Language
               </label>
-              <select
+              <Select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
-              >
-                <option value="en_US">English (US)</option>
-                <option value="en_GB">English (UK)</option>
-                <option value="hi_IN">Hindi (India)</option>
-                <option value="es_ES">Spanish (ES)</option>
-                <option value="pt_BR">Portuguese (BR)</option>
-                <option value="fr_FR">French (FR)</option>
-                <option value="de_DE">German (DE)</option>
-              </select>
+                onChange={(val) => setLanguage(val)}
+                options={[
+                  { value: 'en_US', label: 'English (US)' },
+                  { value: 'en_GB', label: 'English (UK)' },
+                  { value: 'hi_IN', label: 'Hindi (India)' },
+                  { value: 'es_ES', label: 'Spanish (ES)' },
+                  { value: 'pt_BR', label: 'Portuguese (BR)' },
+                  { value: 'fr_FR', label: 'French (FR)' },
+                  { value: 'de_DE', label: 'German (DE)' }
+                ]}
+                className="w-full text-xs"
+                buttonClassName="py-2 bg-black/40 border-white/10 text-xs rounded-xl"
+              />
               <p className="text-[10px] text-text-tertiary mt-1">Language code for Meta template.</p>
             </div>
           </div>
@@ -439,14 +442,16 @@ export default function WhatsAppTemplateStudio({ connectionId, onTemplateCreated
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div>
                   <label className="block text-[10px] text-text-tertiary uppercase font-bold mb-1">Type</label>
-                  <select
+                  <Select
                     value={ctaType}
-                    onChange={(e) => setCtaType(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="URL">Website URL</option>
-                    <option value="PHONE_NUMBER">Phone Call</option>
-                  </select>
+                    onChange={(val) => setCtaType(val)}
+                    options={[
+                      { value: 'URL', label: 'Website URL' },
+                      { value: 'PHONE_NUMBER', label: 'Phone Call' }
+                    ]}
+                    className="w-full text-xs"
+                    buttonClassName="py-1.5 bg-black/40 border-white/10 text-xs rounded-lg"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] text-text-tertiary uppercase font-bold mb-1">Button Label</label>

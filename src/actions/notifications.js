@@ -16,27 +16,31 @@ export async function getNotifications() {
         userId: session.user.id,
         status: 'UNREAD'
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: 20
     });
 
     // 2. Fetch pending Storage Quota Requests
     const pendingQuotaRequests = await prisma.quotaRequest.findMany({
       where: { status: 'PENDING' },
       include: { user: { select: { name: true, email: true } } },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: 20
     });
 
     // 3. Fetch open Support Tickets awaiting response
     const openTickets = await prisma.supportTicket.findMany({
       where: { status: 'OPEN' },
       include: { user: { select: { name: true, email: true } } },
-      orderBy: { updatedAt: 'desc' }
+      orderBy: { updatedAt: 'desc' },
+      take: 20
     });
 
     // 4. Fetch grace period accounts
     const graceAccounts = await prisma.user.findMany({
       where: { storageStatus: 'GRACE_PERIOD' },
-      select: { id: true, name: true, email: true, storageGraceExpiresAt: true, quotaTier: true }
+      select: { id: true, name: true, email: true, storageGraceExpiresAt: true, quotaTier: true },
+      take: 20
     });
 
     // 5. Fetch recent new registrations (last 3 days)
@@ -124,7 +128,8 @@ export async function getNotifications() {
       userId: session.user.id,
       status: 'UNREAD'
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
+    take: 25
   });
 
   // Enrich announcements/system notifications with AdminEmailLog full HTML body if missing

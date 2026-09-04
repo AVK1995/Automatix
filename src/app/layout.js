@@ -14,8 +14,48 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Automatix | Workflow Engine",
-  description: "Webhook, Marketing, and Chat Automation Engine",
+  title: {
+    default: "Automatix — The Modern Visual Automation & Workflow Engine",
+    template: "%s | Automatix"
+  },
+  description: "Enterprise-grade visual workflow builder. Seamlessly connect Meta WhatsApp Cloud API, Instagram DM, Google Sheets, Stripe, Meta CAPI, and custom Webhooks with AI mediation.",
+  keywords: [
+    "Workflow automation",
+    "WhatsApp Cloud API automation",
+    "Instagram DM automation",
+    "Visual workflow builder",
+    "Zapier alternative",
+    "Meta CAPI automation",
+    "Google Sheets webhook sync",
+    "Enterprise automation engine"
+  ],
+  authors: [{ name: "Automatix Platform" }],
+  creator: "Automatix",
+  metadataBase: new URL(process.env.NEXTAUTH_URL || 'https://automatix.io'),
+  openGraph: {
+    title: "Automatix — Modern Visual Workflow & Marketing Automation",
+    description: "Connect your webhooks, WhatsApp templates, Instagram DM bots, and databases on a single unified canvas. Built for modern high-growth teams.",
+    url: "https://automatix.io",
+    siteName: "Automatix",
+    locale: "en_US",
+    type: "website"
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Automatix — Visual Automation Engine",
+    description: "Visual canvas for WhatsApp, Instagram, Google Sheets, Stripe, and Webhook automations."
+  },
+  robots: {
+    index: true,
+    follow: true
+  }
+};
+
+export const viewport = {
+  themeColor: "#0a0a0a",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1
 };
 
 export default function RootLayout({ children }) {

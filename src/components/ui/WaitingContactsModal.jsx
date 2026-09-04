@@ -77,7 +77,7 @@ export default function WaitingContactsModal({ isOpen, onClose, workflowId, node
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}

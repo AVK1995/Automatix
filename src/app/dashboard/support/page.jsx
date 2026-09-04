@@ -59,8 +59,28 @@ export default function SupportPage() {
 
   useEffect(() => {
     fetchTickets();
-    const interval = setInterval(fetchTickets, 3000);
-    return () => clearInterval(interval);
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchTickets();
+      }
+    };
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchTickets();
+    }, 8000); // Guarded 8s polling interval
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
   }, [activeTicket?.id]);
 
   useEffect(() => {
